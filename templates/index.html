@@ -4,20 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fuel Flux</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'fuel-orange': '#FF6B35',
-                        'fuel-black': '#1A1A1A',
-                        'fuel-gray': '#2D2D2D',
-                    }
-                }
-            }
-        }
-    </script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+
     <style>
         .animate-fade-in { animation: fadeIn 1s ease-in-out; }
         .animate-fade-in-delay { animation: fadeIn 1s ease-in-out 0.3s both; }
@@ -112,7 +100,7 @@
                     </a>
 
                     <!-- Cab Owner Button -->
-                    <a href="/cab-owner" class="group block">
+                    <a href="/cab-owner-auth" class="group block">
                         <div class="bg-fuel-gray hover:bg-fuel-orange transition-all duration-300 rounded-xl p-8 border-2 border-fuel-orange hover:border-fuel-orange transform hover:scale-105 hover:shadow-2xl">
                             <div class="text-6xl mb-4 group-hover:animate-bounce">🚕</div>
                             <h3 class="text-2xl font-bold mb-3 text-fuel-orange group-hover:text-white">Cab Owner</h3>
