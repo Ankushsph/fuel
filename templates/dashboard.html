@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Fuel Flux</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+  <style>
+    #toast {
+      position: fixed;
+      top: -100px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 50;
+      padding: 1rem 1.5rem;
+      border-radius: 0.5rem;
+      font-weight: 500;
+      color: white;
+      opacity: 0;
+      transition: all 0.5s ease-in-out;
+      min-width: 250px;
+      text-align: center;
+    }
+    #toast.show { top: 2rem; opacity: 1; }
+  </style>
+</head>
+<body class="bg-fuel-black text-white min-h-screen flex flex-col">
+
+  <!-- Toast -->
+  <div id="toast"></div>
+
+  <!-- Header -->
+  <header class="bg-fuel-gray p-4 flex justify-between items-center shadow-md">
+    <div class="flex items-center space-x-2">
+      <button id="openMobileSidebar" class="lg:hidden text-fuel-orange text-2xl font-bold">☰</button>
+      <img src="{{ url_for('static', filename='images/logo2.png') }}" alt="Fuel Flux Logo" class="h-10 w-auto" />
+      <span class="text-fuel-orange font-bold text-xl">Dashboard</span>
+    </div>
+    <div class="flex items-center space-x-4">
+      <a href="/logout" class="bg-fuel-orange hover:bg-orange-600 px-4 py-2 rounded-lg font-semibold transition">Logout</a>
+    </div>
+  </header>
+
+  <!-- Main Dashboard Layout -->
+  <div class="flex flex-1 min-h-0">
+
+    <!-- Sidebar (Desktop) -->
+    <aside class="w-64 bg-fuel-gray flex flex-col justify-between p-6 hidden lg:flex">
+      <div>
+        <nav class="space-y-4">
+          <a href="#" class="block py-2 px-3 rounded-lg hover:bg-fuel-black transition">💳 Billing System</a>
+          <a href="#" class="block py-2 px-3 rounded-lg hover:bg-fuel-black transition">👤 Profile</a>
+        </nav>
+
+        <hr class="my-6 border-fuel-black">
+
+        <!-- Vehicles Section -->
+        <div>
+          <div class="flex justify-between items-center mb-3">
+            <h3 class="text-sm font-semibold text-gray-300">Your Vehicles</h3>
+            <button id="addVehicleBtn" class="text-fuel-orange text-sm font-semibold hover:text-orange-600 transition">+ Add</button>
+          </div>
+          <ul id="vehicleList" class="space-y-2 text-gray-300">
+            {% for v in vehicles %}
+              <li class="bg-fuel-black p-2 rounded-lg flex justify-between items-center">
+                <span>{{ v.name }} ({{ v.type }})</span>
+                <form method="POST" action="{{ url_for('remove_vehicle', vehicle_id=v.id) }}" class="ml-2">
+                  <button type="submit" class="bg-fuel-red hover:bg-red-600 px-2 py-1 rounded text-sm">Remove</button>
+                </form>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+
+      <div class="mt-10">
+        <p class="text-sm text-gray-400 mb-2">Logged in as</p>
+        <p class="font-semibold">{{ user.email }}</p>
+      </div>
+    </aside>
+
+    <!-- Mobile Sidebar -->
+    <div id="mobileSidebar" class="fixed inset-0 bg-black bg-opacity-70 z-40 lg:hidden opacity-0 invisible transition-opacity duration-300">
+      <aside class="w-64 bg-fuel-gray h-full p-6 overflow-y-auto">
+        <button id="closeMobileSidebar" class="mb-4 px-3 py-2 bg-fuel-orange rounded-lg font-semibold">Close</button>
+
+        <!-- Menu -->
+        <nav class="space-y-4 mb-6">
+          <a href="#" class="block py-2 px-3 rounded-lg hover:bg-fuel-black transition">💳 Billing System</a>
+          <a href="#" class="block py-2 px-3 rounded-lg hover:bg-fuel-black transition">👤 Profile</a>
+        </nav>
+
+        <hr class="my-4 border-fuel-black">
+
+        <!-- Vehicles Section -->
+        <div class="mb-6">
+          <div class="flex justify-between items-center mb-3">
+            <h3 class="text-sm font-semibold text-gray-300">Your Vehicles</h3>
+            <button id="addVehicleBtnMobile" class="text-fuel-orange text-sm font-semibold hover:text-orange-600 transition">+ Add</button>
+          </div>
+          <ul id="vehicleListMobile" class="space-y-2 text-gray-300">
+            {% for v in vehicles %}
+              <li class="bg-fuel-black p-2 rounded-lg flex justify-between items-center">
+                <span>{{ v.name }} ({{ v.type }})</span>
+                <form method="POST" action="{{ url_for('remove_vehicle', vehicle_id=v.id) }}" class="ml-2">
+                  <button type="submit" class="bg-fuel-red hover:bg-red-600 px-2 py-1 rounded text-sm">Remove</button>
+                </form>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+
+        <hr class="my-4 border-fuel-black">
+
+        <!-- Recent Bookings Section -->
+        <div>
+          <h3 class="text-sm font-semibold text-gray-300 mb-3">🕒 Recent Bookings</h3>
+          <ul class="space-y-2 text-gray-300">
+            <li class="bg-fuel-black p-2 rounded-lg text-sm">Cab #3 → Pump C (Yesterday, 4:00 PM)</li>
+            <li class="bg-fuel-black p-2 rounded-lg text-sm">Cab #8 → Pump A (Today, 8:30 AM)</li>
+            <li class="bg-fuel-black p-2 rounded-lg text-sm">Cab #5 → Pump B (Today, 9:15 AM)</li>
+          </ul>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Main Content -->
+    <main class="flex-1 bg-fuel-black p-6 flex flex-col overflow-y-auto">
+      <header class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-fuel-orange">Welcome, {{ user.full_name }} 🎉</h1>
+      </header>
+
+      <div class="flex-1 bg-fuel-gray rounded-xl shadow-lg p-6 flex flex-col overflow-y-auto text-gray-300" id="mainWorkspace">
+        <p>Select an option from the left menu.</p>
+      </div>
+    </main>
+
+    <!-- Right Panel (Desktop Recent Bookings) -->
+    <aside class="w-72 bg-fuel-gray p-6 hidden lg:block">
+      <h2 class="text-xl font-bold text-fuel-orange mb-4">🕒 Recent Bookings</h2>
+      <ul class="space-y-3 text-gray-300">
+        <li class="bg-fuel-black p-3 rounded-lg">Cab #3 → Pump C (Yesterday, 4:00 PM)</li>
+        <li class="bg-fuel-black p-3 rounded-lg">Cab #8 → Pump A (Today, 8:30 AM)</li>
+        <li class="bg-fuel-black p-3 rounded-lg">Cab #5 → Pump B (Today, 9:15 AM)</li>
+      </ul>
+    </aside>
+
+  </div>
+
+  <!-- Vehicle Modal -->
+  <div id="vehicleModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center opacity-0 invisible transition-opacity duration-300 z-50">
+    <div class="bg-fuel-gray rounded-xl p-6 w-96 relative">
+      <h3 class="text-xl font-bold text-fuel-orange mb-4">Add Vehicle</h3>
+      <form id="vehicleForm" class="flex flex-col space-y-3" method="POST" action="{{ url_for('add_vehicle') }}">
+        <input type="text" name="name" id="vehicleNameInput" placeholder="Vehicle Name/Number" class="p-2 rounded bg-fuel-black text-white focus:outline-none" required>
+        <input type="text" name="type" id="vehicleTypeInput" placeholder="Vehicle Type" class="p-2 rounded bg-fuel-black text-white focus:outline-none" required>
+        <div class="flex justify-end space-x-2">
+          <button type="button" id="cancelVehicleBtn" class="px-4 py-2 rounded bg-gray-700 hover:bg-gray-600">Cancel</button>
+          <button type="submit" class="px-4 py-2 rounded bg-fuel-orange hover:bg-orange-600 text-white">Add</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Toast
+    function showToast(message, type) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.className = "";
+      toast.classList.add("px-6","py-3","rounded-lg","text-white","font-semibold",
+        "shadow-lg","fixed","transition-all","duration-500","ease-in-out");
+      if(type === "success") toast.classList.add("bg-fuel-green");
+      else if(type === "error") toast.classList.add("bg-fuel-red");
+      else toast.classList.add("bg-fuel-gray");
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 3000);
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            showToast("{{ message }}", "{{ category }}");
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+    });
+
+    // Modal logic
+    const vehicleModal = document.getElementById('vehicleModal');
+    const addVehicleBtn = document.getElementById('addVehicleBtn');
+    const addVehicleBtnMobile = document.getElementById('addVehicleBtnMobile');
+    const cancelVehicleBtn = document.getElementById('cancelVehicleBtn');
+
+    function openModal() {
+      vehicleModal.classList.remove('opacity-0','invisible');
+      vehicleModal.classList.add('opacity-100','visible');
+    }
+    addVehicleBtn.addEventListener('click', openModal);
+    addVehicleBtnMobile.addEventListener('click', openModal);
+    cancelVehicleBtn.addEventListener('click', () => {
+      vehicleModal.classList.remove('opacity-100','visible');
+      vehicleModal.classList.add('opacity-0','invisible');
+      document.getElementById('vehicleForm').reset();
+    });
+    vehicleModal.addEventListener('click', (e) => {
+      if(e.target === vehicleModal) {
+        vehicleModal.classList.remove('opacity-100','visible');
+        vehicleModal.classList.add('opacity-0','invisible');
+        document.getElementById('vehicleForm').reset();
+      }
+    });
+
+    // Mobile Sidebar toggle
+    const mobileSidebar = document.getElementById('mobileSidebar');
+    const openMobileSidebarBtn = document.getElementById('openMobileSidebar');
+    const closeMobileSidebarBtn = document.getElementById('closeMobileSidebar');
+
+    openMobileSidebarBtn.addEventListener('click', () => {
+      mobileSidebar.classList.remove('opacity-0','invisible');
+      mobileSidebar.classList.add('opacity-100','visible');
+    });
+    closeMobileSidebarBtn.addEventListener('click', () => {
+      mobileSidebar.classList.remove('opacity-100','visible');
+      mobileSidebar.classList.add('opacity-0','invisible');
+    });
+
+    // Dynamic main content
+    const mainContent = document.getElementById('mainWorkspace');
+    const menuLinks = document.querySelectorAll('nav a');
+
+    function updateMainContent(selected) {
+      let content = '';
+      switch(selected){
+        case '💳 Billing System':
+          content = `<h2 class="text-2xl font-bold text-fuel-orange mb-4">Billing System</h2>
+                     <p>View and manage your billing details here.</p>`;
+          break;
+        case '👤 Profile':
+          content = `<h2 class="text-2xl font-bold text-fuel-orange mb-4">Profile</h2>
+                     <p>Update your profile information here.</p>`;
+          break;
+        default:
+          content = `<p>Select an option from the left menu.</p>`;
+      }
+      mainContent.innerHTML = content;
+    }
+
+    menuLinks.forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const selected = e.target.textContent.trim();
+        updateMainContent(selected);
+        // Close mobile sidebar after selection
+        if(!link.closest('.lg\\:flex')) {
+          mobileSidebar.classList.remove('opacity-100','visible');
+          mobileSidebar.classList.add('opacity-0','invisible');
+        }
+      });
+    });
+
+    // Set default content to Profile
+    updateMainContent('👤 Profile');
+  </script>
+
+</body>
+</html>
