@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fuel Flux</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'fuel-orange': '#FF6B35',
+            'fuel-black': '#1A1A1A',
+            'fuel-gray': '#2D2D2D',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .animate-fade-in { animation: fadeIn 1s ease-in-out; }
+    .animate-fade-in-delay { animation: fadeIn 1s ease-in-out 0.3s both; }
+    .animate-fade-in-delay-2 { animation: fadeIn 1s ease-in-out 0.6s both; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="bg-fuel-black text-white min-h-screen flex flex-col">
+    <!-- Navigation -->
+
+<nav class="bg-fuel-gray p-4">
+    <div class="w-full flex justify-between items-center">
+        <!-- Left: Logo -->
+        <div class="flex items-center">
+            <img src="{{ url_for('static', filename='images/logo2.png') }}" 
+                 alt="Fuel Flux Logo" 
+                 class="h-10 w-auto">
+        </div>
+
+        <!-- Right: Links + Menu -->
+        <div class="flex items-center space-x-6">
+            <!-- Home link (only desktop/tablet) -->
+            <a href="/" class="hidden md:inline-block text-fuel-orange hover:text-white transition-colors">
+                Home
+            </a>
+
+            <!-- Mobile menu button (only mobile) -->
+            <button id="mobile-menu-btn" class="md:hidden text-white">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" 
+                          stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Mobile dropdown menu -->
+    <div id="mobile-menu" class="hidden md:hidden mt-4 space-y-2">
+        <a href="/" class="block text-fuel-orange hover:text-white transition-colors py-2">Home</a>
+    </div>
+</nav>
+  <!-- Main Content -->
+  <main class="flex-1 flex items-center justify-center px-4 py-12">
+    <div class="max-w-7xl mx-auto text-center">
+      <h2 class="text-3xl font-bold text-white mb-10">Select Your Subscription Type</h2>
+
+      <div class="flex flex-row flex-wrap justify-center gap-6 items-stretch">
+
+        <!-- Subscription Card Template -->
+        <!-- Silver -->
+        <div class="w-full sm:w-[300px] md:w-[320px] lg:w-[340px]">
+          <div class="bg-fuel-gray flex flex-col justify-between min-h-[600px] transition-all duration-300 rounded-xl p-8 border-2 border-fuel-orange hover:scale-105 hover:shadow-2xl">
+            <div class="text-center">
+              <div class="text-6xl mb-4 group-hover:animate-bounce">⚪</div>
+              <h3 class="text-2xl font-bold mb-3 text-fuel-orange">Silver</h3>
+              <ul class="flex flex-wrap justify-center gap-3 bg-fuel-gray rounded-md p-3 font-semibold text-white">
+                <li class="cursor-pointer px-1 py-1 rounded-md hover:bg-fuel-orange transition">1 Month</li>
+                <li class="cursor-pointer px-1 py-1 rounded-md hover:bg-fuel-orange transition">6 Months</li>
+                <li class="cursor-pointer px-1 py-1 rounded-md hover:bg-fuel-orange transition">Annual</li>
+              </ul>
+              <div class="text-gray-300 mb-4" data-base-price="5000">
+                <h1 class="font-bold text-3xl price-display">₹5,000</h1>
+                <h2 class="duration-display">per month</h2>
+              </div>
+              <ul class="flex flex-col space-y-2 text-base text-white">
+                <li class="flex items-start gap-2">
+            <span>🔸</span>
+            <span>Smoke and fire detection</span>
+        </li>
+          <li class="flex items-start gap-2">
+            <span>🔸</span>
+            <span>Number plate detection </span>
+        </li>
+          <li class="flex items-start gap-2">
+            <span>🔸</span>
+            <span>Billing system</span></li>
+              </ul>
+            </div>
+            <button class="mt-6 bg-fuel-orange font-bold rounded-xl w-full py-2 transition-all duration-300 rounded-xl p-8 border-2 border-fuel-orange hover:scale-105 hover:shadow-2xl">Subscribe</button>
+            </div>
+        </div>
+
+        <!-- Gold -->
+        <div class="w-full sm:w-[300px] md:w-[320px] lg:w-[340px]">
+          <div class="bg-fuel-gray flex flex-col justify-between min-h-[600px] transition-all duration-300 rounded-xl p-8 border-2 border-fuel-orange hover:scale-105 hover:shadow-2xl">
+            <div class="text-center">
+              <div class="text-6xl mb-4 group-hover:animate-bounce">🪙</div>
+              <h3 class="text-2xl font-bold mb-3 text-fuel-orange">Gold</h3>
+              <ul class="flex flex-wrap justify-center gap-3 bg-fuel-gray rounded-md p-3 font-semibold text-white">
+                <li class="cursor-pointer px-1 py-1 rounded-md hover:bg-fuel-orange transition">1 Month</li>
+                <li class="cursor-pointer px-1 py-1 rounded-md hover:bg-fuel-orange transition">6 Months</li>
+                <li class="cursor-pointer px-1 py-1 rounded-md hover:bg-fuel-orange transition">Annual</li>
+              </ul>
+              <div class="text-gray-300 mb-4" data-base-price="10000">
+                <h1 class="font-bold text-3xl price-display">₹10,000</h1>
+                <h2 class="duration-display">per month</h2>
+              </div>
+              <ul class="flex flex-col space-y-2 text-base text-white">
+                <li class="flex items-start gap-2"><span>🔸</span><span>All Silver features</span></li>
+                <li class="flex items-start gap-2"><span>🔸</span><span>Vehicle verification</span></li>
+                <li class="flex items-start gap-2"><span>🔸</span><span>Station vehicle data</span></li>
+              </ul>
+            </div>
+            <button class="mt-6 bg-fuel-orange font-bold rounded-xl w-full py-2 transition-all duration-300 rounded-xl p-8 border-2 border-fuel-orange hover:scale-105 hover:shadow-2xl">Subscribe</button>
+          </div>
+        </div>
+
+        <!-- Platinum -->
+        <div class="w-full sm:w-[300px] md:w-[320px] lg:w-[340px]">
+          <div class="bg-fuel-gray flex flex-col justify-between min-h-[600px] transition-all duration-300 rounded-xl p-8 border-2 border-fuel-orange hover:scale-105 hover:shadow-2xl">
+            <div class="text-center">
+              <div class="text-6xl mb-4 group-hover:animate-bounce">💎</div>
+              <h3 class="text-2xl font-bold mb-3 text-fuel-orange">Platinum</h3>
+              <ul class="flex flex-wrap justify-center gap-3 bg-fuel-gray rounded-md p-3 font-semibold text-white">
+                <li class="cursor-pointer px-1 py-1 rounded-md hover:bg-fuel-orange transition">1 Month</li>
+                <li class="cursor-pointer px-1 py-1 rounded-md hover:bg-fuel-orange transition">6 Months</li>
+                <li class="cursor-pointer px-1 py-1 rounded-md hover:bg-fuel-orange transition">Annual</li>
+              </ul>
+              <div class="text-gray-300 mb-4" data-base-price="15000">
+                <h1 class="font-bold text-3xl price-display">₹15,000</h1>
+                <h2 class="duration-display">per month</h2>
+              </div>
+              <ul class="flex flex-col space-y-2 text-base text-white">
+                <li class="flex items-start gap-2"><span>🔸</span><span>All Silver & Gold features</span></li>
+                <li class="flex items-start gap-2"><span>🔸</span><span>Real-time hour-wise data</span></li>
+                <li class="flex items-start gap-2"><span>🔸</span><span>Work monitoring</span></li>
+                <li class="flex items-start gap-2"><span>🔸</span><span>Working method analysis</span></li>
+                <li class="flex items-start gap-2"><span>🔸</span><span>Hydrotesting system</span></li>
+              </ul>
+            </div>
+            <button class="mt-6 bg-fuel-orange font-bold rounded-xl w-full py-2 transition-all duration-300 rounded-xl p-8 border-2 border-fuel-orange hover:scale-105 hover:shadow-2xl">Subscribe</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+    <script>
+    document.querySelectorAll('.flex.flex-wrap.justify-center.gap-3 li').forEach(option => {
+      option.addEventListener('click', function () {
+        const duration = this.textContent.trim();
+        const priceContainer = this.closest('.text-center').querySelector('[data-base-price]');
+        const basePrice = parseInt(priceContainer.getAttribute('data-base-price'), 10);
+        const priceDisplay = priceContainer.querySelector('.price-display');
+        const durationDisplay = priceContainer.querySelector('.duration-display');
+
+        let multiplier = 1;
+        if (duration === '6 Months') multiplier = 6;
+        else if (duration === 'Annual') multiplier = 12;
+
+        const totalPrice = basePrice * multiplier;
+        priceDisplay.textContent = `₹${totalPrice.toLocaleString()}`;
+        durationDisplay.textContent = `for ${duration}`;
+      });
+    });
+  </script>
+
+  <!-- Mobile Menu Toggle -->
+  <script>
+    document.getElementById('mobile-menu-btn').addEventListener('click', function () {
+      const menu = document.getElementById('mobile-menu');
+      menu.classList.toggle('hidden');
+    });
+  </script>
+</body>
+</html>
