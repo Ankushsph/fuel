@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About Us - Fuel Flux</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+
+  <style>
+    .animate-fade-in { animation: fadeIn 1s ease-in-out; }
+    .animate-fade-in-delay { animation: fadeIn 1s ease-in-out 0.3s both; }
+    .animate-fade-in-delay-2 { animation: fadeIn 1s ease-in-out 0.6s both; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="bg-fuel-black text-white min-h-screen flex flex-col">
+  <!-- Navigation -->
+  <nav class="bg-fuel-gray p-4">
+    <div class="w-full flex justify-between items-center">
+      <!-- Left: Logo -->
+      <div class="flex items-center">
+        <img src="{{ url_for('static', filename='images/logo2.png') }}" 
+             alt="Fuel Flux Logo" 
+             class="h-10 w-auto">
+      </div>
+
+      <!-- Right: Links + Menu -->
+      <div class="flex items-center space-x-6">
+        <a href="/" class="hidden md:inline-block text-fuel-orange hover:text-white transition-colors">
+          Home
+        </a>
+        <a href="/aboutus" class="hidden md:inline-block text-fuel-orange hover:text-white transition-colors">
+          About Us
+        </a>
+
+        <!-- Mobile menu button -->
+        <button id="mobile-menu-btn" class="md:hidden text-white">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" 
+                  stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile dropdown menu -->
+    <div id="mobile-menu" class="hidden md:hidden mt-4 space-y-2">
+      <a href="/" class="block text-fuel-orange hover:text-white transition-colors py-2">Home</a>
+      <a href="/aboutus" class="block text-fuel-orange hover:text-white transition-colors py-2">About Us</a>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="flex-1 flex items-center justify-center px-4 py-12">
+    <div class="max-w-4xl mx-auto text-center">
+      <!-- Title -->
+      <div class="mb-8 animate-fade-in">
+        <h1 class="text-4xl md:text-6xl font-bold mb-6">
+          About <span class="text-fuel-orange">Fuel Flux</span>
+        </h1>
+        <div class="w-24 h-1 bg-fuel-orange mx-auto mb-8"></div>
+      </div>
+
+      <!-- About Us Content -->
+      <div class="animate-fade-in-delay text-lg text-gray-300 leading-relaxed space-y-6 max-w-3xl mx-auto">
+        <p>
+          Fuel Flux is an innovative startup transforming how people fuel their vehicles. 
+          With a focus on convenience and efficiency, we offer on-demand refuelling services 
+          through a user-friendly mobile app. Vehicle owners can easily schedule and manage 
+          fuel booking by application (pre-booking slot), eliminating the need for long queues 
+          and inconvenient fuelling stations.
+        </p>
+
+        <p>
+          Our mission is to provide a reliable, eco-friendly alternative to traditional 
+          refuelling methods, saving customers valuable time while enhancing their overall 
+          experience. Committed to sustainability, Fuel Flux promotes energy-efficient 
+          solutions while ensuring top-tier customer satisfaction, making refuelling seamless 
+          and stress-free.
+        </p>
+
+        <p>
+          Beyond convenience, we also provide advanced AI models for the automation of 
+          stations, empowering pump owners with smarter operations and streamlined 
+          fuel management.
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-fuel-gray text-gray-300 py-6 mt-12">
+    <div class="max-w-4xl mx-auto px-4 text-center space-y-3">
+      <p class="text-lg font-semibold text-fuel-orange">Fuel Flux</p>
+      <p>Fueling Connections, Powering Progress</p>
+      <p>
+        Contact us: 
+        <a href="mailto:info@fuelflux.in" class="text-fuel-orange hover:underline">
+          info@fuelflux.in
+        </a>
+      </p>
+      <p class="text-sm text-gray-500">© 2025 Fuel Flux. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script>
+    // Mobile menu toggle
+    document.getElementById('mobile-menu-btn').addEventListener('click', function() {
+      const menu = document.getElementById('mobile-menu');
+      menu.classList.toggle('hidden');
+    });
+  </script>
+</body>
+</html>

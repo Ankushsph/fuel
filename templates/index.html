@@ -1,133 +1,134 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fuel Flux</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fuel Flux</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
 
-    <style>
-        .animate-fade-in { animation: fadeIn 1s ease-in-out; }
-        .animate-fade-in-delay { animation: fadeIn 1s ease-in-out 0.3s both; }
-        .animate-fade-in-delay-2 { animation: fadeIn 1s ease-in-out 0.6s both; }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-    </style>
+  <style>
+    .animate-fade-in { animation: fadeIn 1s ease-in-out; }
+    .animate-fade-in-delay { animation: fadeIn 1s ease-in-out 0.3s both; }
+    .animate-fade-in-delay-2 { animation: fadeIn 1s ease-in-out 0.6s both; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
 </head>
 <body class="bg-fuel-black text-white min-h-screen flex flex-col">
-    <!-- Navigation -->
-
-<nav class="bg-fuel-gray p-4">
+  <!-- Navigation -->
+  <nav class="bg-fuel-gray p-4">
     <div class="w-full flex justify-between items-center">
-        <!-- Left: Logo -->
-        <div class="flex items-center">
-            <img src="{{ url_for('static', filename='images/logo2.png') }}" 
-                 alt="Fuel Flux Logo" 
-                 class="h-10 w-auto">
-        </div>
+      <!-- Left: Logo -->
+      <div class="flex items-center">
+        <img src="{{ url_for('static', filename='images/logo2.png') }}" 
+             alt="Fuel Flux Logo" 
+             class="h-10 w-auto">
+      </div>
 
-        <!-- Right: Links + Menu -->
-        <div class="flex items-center space-x-6">
-            <!-- Home link (only desktop/tablet) -->
-            <a href="/" class="hidden md:inline-block text-fuel-orange hover:text-white transition-colors">
-                Home
-            </a>
+      <!-- Right: Links + Menu -->
+      <div class="flex items-center space-x-6">
+        <!-- Home link (only desktop/tablet) -->
+        <a href="/" class="hidden md:inline-block text-fuel-orange hover:text-white transition-colors">
+          Home
+        </a>
 
-            <!-- Mobile menu button (only mobile) -->
-            <button id="mobile-menu-btn" class="md:hidden text-white">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" 
-                          stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-                </svg>
-            </button>
-        </div>
+        <!-- About Us link (desktop/tablet) -->
+        <a href="/aboutus" class="hidden md:inline-block text-fuel-orange hover:text-white transition-colors">
+          About Us
+        </a>
+
+        <!-- Mobile menu button (only mobile) -->
+        <button id="mobile-menu-btn" class="md:hidden text-white">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" 
+                  stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+        </button>
+      </div>
     </div>
 
     <!-- Mobile dropdown menu -->
     <div id="mobile-menu" class="hidden md:hidden mt-4 space-y-2">
-        <a href="/" class="block text-fuel-orange hover:text-white transition-colors py-2">Home</a>
+      <a href="/" class="block text-fuel-orange hover:text-white transition-colors py-2">Home</a>
+      <a href="/aboutus" class="block text-fuel-orange hover:text-white transition-colors py-2">About Us</a>
     </div>
-</nav>
+  </nav>
 
+  <!-- Main Content -->
+  <main class="flex-1 flex items-center justify-center px-4 py-12">
+    <div class="max-w-4xl mx-auto text-center">
+      <!-- Welcome Message -->
+      <div class="mb-8 animate-fade-in">
+        <h1 class="text-4xl md:text-6xl font-bold mb-6">
+          Welcome to <span class="text-fuel-orange">Fuel Flux</span>
+        </h1>
+        <div class="w-24 h-1 bg-fuel-orange mx-auto mb-8"></div>
+      </div>
 
+      <!-- Motto -->
+      <div class="mb-12 animate-fade-in-delay">
+        <p class="text-xl md:text-3xl text-gray-300 font-light mb-4">
+          "Fueling Connections, Powering Progress"
+        </p>
+        <p class="text-lg text-gray-400 max-w-2xl mx-auto">
+          Your trusted platform for seamless gas filling slot booking. 
+          Connecting pump owners with cab owners for efficient fuel management.
+        </p>
+      </div>
 
-    <!-- Main Content -->
-    <main class="flex-1 flex items-center justify-center px-4 py-12">
-        <div class="max-w-4xl mx-auto text-center">
-            <!-- Welcome Message -->
-            <div class="mb-8 animate-fade-in">
-                <h1 class="text-4xl md:text-6xl font-bold mb-6">
-                    Welcome to <span class="text-fuel-orange">Fuel Flux</span>
-                </h1>
-                <div class="w-24 h-1 bg-fuel-orange mx-auto mb-8"></div>
+      <!-- Role Selection -->
+      <div class="animate-fade-in-delay-2">
+        <h2 class="text-2xl md:text-3xl font-semibold mb-8 text-white">
+          Select Your Role
+        </h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+          <!-- Pump Owner Button -->
+          <a href="/pump-owner" class="group block">
+            <div class="bg-fuel-gray hover:bg-fuel-orange transition-all duration-300 rounded-xl p-8 border-2 border-fuel-orange hover:border-fuel-orange transform hover:scale-105 hover:shadow-2xl">
+              <div class="text-6xl mb-4 group-hover:animate-bounce">⛽</div>
+              <h3 class="text-2xl font-bold mb-3 text-fuel-orange group-hover:text-white">Pump Owner</h3>
+              <p class="text-gray-300 group-hover:text-gray-100 mb-4">
+                Manage your fuel stations, set availability, and connect with cab owners
+              </p>
+              <div class="inline-flex items-center text-fuel-orange group-hover:text-white font-semibold">
+                Get Started
+                <svg class="ml-2 w-5 h-5 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+              </div>
             </div>
+          </a>
 
-            <!-- Motto -->
-            <div class="mb-12 animate-fade-in-delay">
-                <p class="text-xl md:text-3xl text-gray-300 font-light mb-4">
-                    "Fueling Connections, Powering Progress"
-                </p>
-                <p class="text-lg text-gray-400 max-w-2xl mx-auto">
-                    Your trusted platform for seamless gas filling slot booking. 
-                    Connecting pump owners with cab owners for efficient fuel management.
-                </p>
+          <!-- Cab Owner Button -->
+          <a href="/cab-owner-auth" class="group block">
+            <div class="bg-fuel-gray hover:bg-fuel-orange transition-all duration-300 rounded-xl p-8 border-2 border-fuel-orange hover:border-fuel-orange transform hover:scale-105 hover:shadow-2xl">
+              <div class="text-6xl mb-4 group-hover:animate-bounce">🚕</div>
+              <h3 class="text-2xl font-bold mb-3 text-fuel-orange group-hover:text-white">Cab Owner</h3>
+              <p class="text-gray-300 group-hover:text-gray-100 mb-4">
+                Book fuel slots, manage your fleet, and optimize your operations
+              </p>
+              <div class="inline-flex items-center text-fuel-orange group-hover:text-white font-semibold">
+                Get Started
+                <svg class="ml-2 w-5 h-5 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+              </div>
             </div>
-
-            <!-- Role Selection -->
-            <div class="animate-fade-in-delay-2">
-                <h2 class="text-2xl md:text-3xl font-semibold mb-8 text-white">
-                    Select Your Role
-                </h2>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
-                    <!-- Pump Owner Button -->
-                    <a href="/pump-owner" class="group block">
-                        <div class="bg-fuel-gray hover:bg-fuel-orange transition-all duration-300 rounded-xl p-8 border-2 border-fuel-orange hover:border-fuel-orange transform hover:scale-105 hover:shadow-2xl">
-                            <div class="text-6xl mb-4 group-hover:animate-bounce">⛽</div>
-                            <h3 class="text-2xl font-bold mb-3 text-fuel-orange group-hover:text-white">Pump Owner</h3>
-                            <p class="text-gray-300 group-hover:text-gray-100 mb-4">
-                                Manage your fuel stations, set availability, and connect with cab owners
-                            </p>
-                            <div class="inline-flex items-center text-fuel-orange group-hover:text-white font-semibold">
-                                Get Started
-                                <svg class="ml-2 w-5 h-5 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                                </svg>
-                            </div>
-                        </div>
-                    </a>
-
-                    <!-- Cab Owner Button -->
-                    <a href="/cab-owner-auth" class="group block">
-                        <div class="bg-fuel-gray hover:bg-fuel-orange transition-all duration-300 rounded-xl p-8 border-2 border-fuel-orange hover:border-fuel-orange transform hover:scale-105 hover:shadow-2xl">
-                            <div class="text-6xl mb-4 group-hover:animate-bounce">🚕</div>
-                            <h3 class="text-2xl font-bold mb-3 text-fuel-orange group-hover:text-white">Cab Owner</h3>
-                            <p class="text-gray-300 group-hover:text-gray-100 mb-4">
-                                Book fuel slots, manage your fleet, and optimize your operations
-                            </p>
-                            <div class="inline-flex items-center text-fuel-orange group-hover:text-white font-semibold">
-                                Get Started
-                                <svg class="ml-2 w-5 h-5 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                                </svg>
-                            </div>
-                        </div>
-                    </a>
-                </div>
-            </div>
+          </a>
         </div>
-    </main>
+      </div>
+    </div>
+  </main>
 
-
-
-    <script>
-        // Mobile menu toggle
-        document.getElementById('mobile-menu-btn').addEventListener('click', function() {
-            const menu = document.getElementById('mobile-menu');
-            menu.classList.toggle('hidden');
-        });
-    </script>
+  <script>
+    // Mobile menu toggle
+    document.getElementById('mobile-menu-btn').addEventListener('click', function() {
+      const menu = document.getElementById('mobile-menu');
+      menu.classList.toggle('hidden');
+    });
+  </script>
 </body>
 </html>

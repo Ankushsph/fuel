@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>Cab Owner - Fuel Flux</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
   <style>
@@ -61,6 +62,15 @@
     .relative-input {
       position: relative;
     }
+
+                .terms-content::-webkit-scrollbar {
+              display: none;
+            }
+
+            .terms-content {
+              scrollbar-width: none;
+              -ms-overflow-style: none; /* IE 10+ */
+            }
   </style>
 </head>
 <body class="bg-fuel-black text-white min-h-screen flex flex-col">
@@ -112,10 +122,10 @@
       <div id="forms-container" class="relative w-full overflow-hidden">
 
         <!-- Login Form -->
-        <form method="POST" action="/login" id="login-form"
+        <form method="POST" action="{{ url_for('auth.login') }}" id="login-form"
               class="absolute top-0 left-0 w-full space-y-4 transition-transform duration-500 ease-in-out"
-              onsubmit="return validateLogin()">
-
+              >
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <input type="email" name="email" placeholder="Email" required
                  class="w-full p-3 rounded-lg bg-fuel-black text-white border border-gray-600"/>
           <div class="relative-input">
@@ -124,7 +134,7 @@
             <span class="password-toggle" onclick="togglePassword(this)">Show</span>
           </div>
           <div class="text-right">
-            <a href="/forgot-password" class="text-fuel-orange text-sm hover:underline">Forgot Password?</a>
+            <a href="{{ url_for('password_bp.forgot_password') }}" class="text-fuel-orange text-sm hover:underline">Forgot Password?</a>
           </div>
           <button type="submit" class="w-full bg-fuel-orange hover:bg-orange-600 text-white py-3 rounded-lg font-semibold transition">
             Login
@@ -138,7 +148,7 @@
           </div>
 
             <!-- Google Login -->
-            <a href="/auth/google"
+            <a href="{{ url_for('auth.auth_google') }}"
               class="flex items-center justify-center space-x-2 w-full border border-gray-600 bg-fuel-black hover:bg-gray-800 text-white py-3 rounded-lg font-semibold transition">
               <img src="https://www.svgrepo.com/show/355037/google.svg" alt="Google Logo" class="h-5 w-5"/>
               <span>Login with Google</span>
@@ -146,10 +156,10 @@
         </form>
 
         <!-- Register Form -->
-        <form method="POST" action="/register" id="register-form"
+        <form method="POST" action="{{ url_for('auth.register') }}" id="register-form"
               class="absolute top-0 left-0 w-full space-y-4 transition-transform duration-500 ease-in-out"
-              onsubmit="return validateRegister()">
-
+              >
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <input type="text" name="full_name" placeholder="Full Name" required
                  class="w-full p-3 rounded-lg bg-fuel-black text-white border border-gray-600"/>
           <input type="email" name="email" placeholder="Email" required
@@ -176,10 +186,20 @@
 
             <!-- Modal -->
             <div id="terms-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
-              <div class="bg-fuel-gray p-6 rounded-xl max-w-lg w-full relative">
+              <div class="bg-fuel-gray p-6 rounded-xl max-w-lg w-full relative  border-2 border-fuel-orange">
                 <h2 class="text-fuel-orange text-xl mb-4">Terms and Conditions</h2>
-                <div class="text-white max-h-96 overflow-y-auto">
-                  <p>Your terms content goes here...</p>
+                <div class="text-white max-h-96 overflow-y-auto terms-content">
+                  <p>1. Acceptance of Terms<br>
+                      By downloading, accessing, or using the Fuel Flux application, you agree to be bound by these terms and conditions, as well as our Privacy Policy. If you do not agree with any part of these terms, you should not use the application.<br><br>
+
+                      2. User Registration<br>
+                      To use certain features of the Fuel Flux application, you may need to register for an account. You agree to provide accurate, current, and complete information during the registration process and keep your account information updated.<br><br>
+
+                      3. Intellectual Property<br>
+                      All content, trademarks, and data on the Fuel Flux application, including but not limited to text, software, code, designs, graphics, and logos, are the property of Fuel Flux or its licensors. You may not use, copy, reproduce, or distribute any content without our prior written consent.<br><br>
+
+                      4. Service Availability<br>
+                      We strive to keep the Fuel Flux application operational at all times. However, we do not guarantee that the application will always be available or that it will function without errors or interruptions. We reserve the right to modify, suspend, or discontinue any part of the application at any time without notice.<br><br></p>
                 </div>
                 <button onclick="closeTerms()" class="absolute top-3 right-3 text-fuel-orange font-bold text-lg">X</button>
               </div>
@@ -207,7 +227,7 @@
           </div>
 
           <!-- Google Signup -->
-          <a href="/auth/google"
+          <a href="{{ url_for('auth.auth_google') }}"
             class="flex items-center justify-center space-x-2 w-full border border-gray-600 bg-fuel-black hover:bg-gray-800 text-white py-3 rounded-lg font-semibold transition">
             <img src="https://www.svgrepo.com/show/355037/google.svg" alt="Google Logo" class="h-5 w-5"/>
             <span>Sign up with Google</span>
@@ -230,10 +250,11 @@
     const formsContainer = document.getElementById("forms-container");
     const loginInfo = document.getElementById("login-info");
     const registerInfo = document.getElementById("register-info");
-
+    
     loginForm.style.transform = "translateX(0)";
     registerForm.style.transform = "translateX(100%)";
     formsContainer.style.height = loginForm.offsetHeight + "px";
+
 
     function clearForm(form) {
       form.querySelectorAll("input").forEach(input => input.value = "");
@@ -279,6 +300,10 @@
       loginInfo.classList.add("hidden");
       registerInfo.classList.remove("hidden");
 
+      // Get CSRF token from meta tag
+      const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+
       clearForm(loginForm);
       resetPasswords(loginForm);
     });
@@ -308,20 +333,7 @@
       return true;
     }
 
-    function validateRegister() {
-      const fullName = registerForm.full_name.value.trim();
-      const email = registerForm.email.value.trim();
-      const password = registerForm.password.value.trim();
-      const confirm = registerForm.confirm_password.value.trim();
-      const emailRegex = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/;
 
-      if(!fullName) { showToast("Full name is required", "error"); return false; }
-      if(!emailRegex.test(email)) { showToast("Invalid email address", "error"); return false; }
-      if(password.length < 6) { showToast("Password must be at least 6 characters", "error"); return false; }
-      if(password !== confirm) { showToast("Passwords do not match", "error"); return false; }
-
-      return true;
-    }
 
     document.querySelectorAll("input").forEach(input => {
       input.classList.add("bg-fuel-black","text-white");
@@ -356,26 +368,95 @@
     }
 
 
-      document.addEventListener("DOMContentLoaded", () => {
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            {% for category, message in messages %}
-              {% if category == "error" %}
-                showToast("{{ message }}", "error");
-              {% endif %}
-            {% endfor %}
-          {% endif %}
-        {% endwith %}
-      });
+    document.addEventListener("DOMContentLoaded", () => {
+  // Flash messages
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        showToast("{{ message }}", "{{ category }}");
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
 
+  // Initial tab
+  loginTab.click();
+  if(window.location.hash === "#register") {
+    registerTab.click();
+  }
+});
 
-    window.addEventListener("DOMContentLoaded", () => {
-      loginTab.click();
+  // CSRF token from meta
+const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-      if(window.location.hash === "#register") {
-        registerTab.click();
-      }
+// AJAX Login
+loginForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if(!validateLogin()) return;
+
+  const data = {
+    email: loginForm.email.value.trim(),
+    password: loginForm.password.value.trim()
+  };
+
+  try {
+    const response = await fetch("{{ url_for('auth.login') }}", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrfToken
+      },
+      credentials: "same-origin",
+      body: JSON.stringify(data)
     });
+    const result = await response.json();
+    if(result.success){
+      showToast(result.message, "success");
+      setTimeout(() => window.location.href = result.redirect_url || "/dashboard", 1000);
+    } else {
+      showToast(result.message, "error");
+    }
+  } catch(err) {
+    console.error(err);
+    showToast("Server error. Try again.", "error");
+  }
+});
+
+// AJAX Register
+registerForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if(!validateRegister()) return;
+
+  const data = {
+    full_name: registerForm.full_name.value.trim(),
+    email: registerForm.email.value.trim(),
+    password: registerForm.password.value.trim(),
+    confirm_password: registerForm.confirm_password.value.trim(),
+    terms: document.getElementById("terms").checked
+  };
+
+  try {
+    const response = await fetch("{{ url_for('auth.register') }}", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrfToken
+      },
+      credentials: "same-origin",
+      body: JSON.stringify(data)
+    });
+    const result = await response.json();
+    if(result.success){
+      showToast(result.message, "success");
+      setTimeout(() => window.location.href = result.redirect_url || "/dashboard", 1000);
+    } else {
+      showToast(result.message, "error");
+    }
+  } catch(err) {
+    console.error(err);
+    showToast("Server error. Try again.", "error");
+  }
+});
+
   </script>
 
 </body>
