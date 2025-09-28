@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  <title>Pump Owner - Fuel Flux</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+  <style>
+    /* Toast animation */
+    #toast {
+      transform: translateY(-20px);
+      opacity: 0;
+      transition: all 0.5s ease-in-out;
+      pointer-events: none;
+    }
+    #toast.show {
+      transform: translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+  </style>
+</head>
+<body class="bg-fuel-black text-white min-h-screen flex flex-col">
+
+  <!-- Navigation -->
+  <nav class="bg-fuel-gray p-4 flex justify-between items-center">
+    <h1 class="text-2xl font-bold text-fuel-orange">Pump Owner Dashboard</h1>
+    <a href="/" class="text-gray-300 hover:text-fuel-orange">Logout</a>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="flex-1 flex flex-col items-center justify-center px-4 py-12">
+    <div class="bg-fuel-gray rounded-2xl shadow-lg p-8 max-w-lg w-full">
+      <h2 class="text-2xl font-semibold mb-6 text-center text-fuel-orange">
+        Deduct Fuel Charges
+      </h2>
+
+      <!-- Deduction Form -->
+      <form id="deductForm" class="space-y-4">
+        <div>
+          <label class="block text-gray-300 mb-2">Cab Owner Email</label>
+          <input type="email" id="cabEmail"
+                 class="w-full px-4 py-2 rounded-lg bg-fuel-black text-white border border-gray-600 focus:ring-2 focus:ring-fuel-orange outline-none"
+                 placeholder="cab@example.com" required>
+        </div>
+
+        <div>
+          <label class="block text-gray-300 mb-2">Amount (₹)</label>
+          <input type="number" id="amount" step="0.01" min="1"
+                 class="w-full px-4 py-2 rounded-lg bg-fuel-black text-white border border-gray-600 focus:ring-2 focus:ring-fuel-orange outline-none"
+                 placeholder="Enter amount" required>
+        </div>
+
+        <button type="submit"
+                class="w-full bg-fuel-orange hover:bg-orange-600 transition-colors py-3 rounded-xl font-semibold">
+          Deduct from Wallet
+        </button>
+      </form>
+    </div>
+  </main>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed top-5 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg text-white font-semibold shadow-lg z-50"></div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+  const form = document.getElementById("deductForm");
+  const toast = document.getElementById("toast");
+
+  // Show toast function
+  function showToast(message, type="info") {
+    toast.textContent = message;
+
+    // Keep center transform and position
+    toast.className = "fixed top-5 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg text-white font-semibold shadow-lg z-50 transition-all duration-500 ease-in-out";
+
+    // Apply theme color
+    if(type === "success") toast.classList.add("bg-fuel-green");
+    else if(type === "error") toast.classList.add("bg-fuel-red");
+    else toast.classList.add("bg-fuel-gray");
+
+    // Show toast
+    toast.classList.add("show");
+
+    // Hide after 3 seconds
+    setTimeout(() => toast.classList.remove("show"), 3000);
+  }
+
+  // Handle Flask flash messages
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        showToast("{{ message }}", "{{ category }}");
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  // Form submit event
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const email = document.getElementById("cabEmail").value;
+    const amount = parseFloat(document.getElementById("amount").value);
+
+    if (!email || amount <= 0) {
+      showToast("Enter valid email and amount.", "error");
+      return;
+    }
+
+    try {
+      const response = await fetch("/deduct_funds", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrfToken
+        },
+        body: JSON.stringify({ email, amount })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        showToast(`${data.message} New Balance: ₹${data.new_balance}`, "success");
+        form.reset();
+      } else {
+        showToast(data.message, "error");
+      }
+    } catch (err) {
+      showToast(`Server error: ${err}`, "error");
+    }
+  });
+});
+</script>
+
+</body>
+</html>
