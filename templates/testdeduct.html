@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="csrf-token" content="{{ csrf_token }}">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>Pump Owner - Fuel Flux</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
   <style>
@@ -38,6 +38,7 @@
 
       <!-- Deduction Form -->
       <form id="deductForm" class="space-y-4">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div>
           <label class="block text-gray-300 mb-2">Cab Owner Email</label>
           <input type="email" id="cabEmail"
