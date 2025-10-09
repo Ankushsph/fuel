@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fuel Flux Form</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'fuel-orange': '#FF6B35',
+            'fuel-black': '#1A1A1A',
+            'fuel-gray': '#2D2D2D',
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-fuel-black text-white">
+
+  <!-- ✅ Responsive Navbar -->
+<nav class="bg-fuel-gray p-4">
+    <div class="w-full flex justify-between items-center">
+        <!-- Left: Logo -->
+        <div class="flex items-center">
+            <img src="{{ url_for('static', filename='images/logo2.png') }}" 
+                 alt="Fuel Flux Logo" 
+                 class="h-10 w-auto">
+        </div>
+
+        <!-- Right: Links + Menu -->
+        <div class="flex items-center space-x-6">
+            <!-- Home link (only desktop/tablet) -->
+            <a href="/" class="hidden md:inline-block text-fuel-orange hover:text-white transition-colors">
+                Home
+            </a>
+
+            <!-- Mobile menu button (only mobile) -->
+            <button id="mobile-menu-btn" class="md:hidden text-white">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" 
+                          stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Mobile dropdown menu -->
+    <div id="mobile-menu" class="hidden md:hidden mt-4 space-y-2">
+        <a href="/" class="block text-fuel-orange hover:text-white transition-colors py-2">Home</a>
+    </div>
+</nav>
+
+  <!-- 💡 Form Section -->
+  <main class="flex justify-center items-center min-h-screen px-4 py-8">
+    <div class="bg-fuel-gray p-6 rounded-xl w-full max-w-md shadow-lg">
+      <form class="flex flex-col space-y-4">
+        <h2 class="text-lg font-semibold text-fuel-orange mb-2 text-center">Pump Details</h2>
+        <div class="space-y-1">
+          <label class="text-fuel-orange">Username</label>
+          <input type="text" class="block w-full text-sm text-gray-900 border border-gray-300 rounded-md cursor-pointer bg-gray-50" />
+        </div>
+        <div class="space-y-1">
+          <label class="text-fuel-orange">Mobile no.</label>
+          <input type="tel" class="block w-full text-sm text-gray-900 border border-gray-300 rounded-md cursor-pointer bg-gray-50" />
+        </div>
+        <div class="space-y-1">
+          <label class="text-fuel-orange">Address</label>
+          <textarea class="w-full h-[150px] p-2 rounded-md bg-fuel-black text-gray-200 resize-none" placeholder="Enter Pump Address"></textarea>
+        </div>
+
+        <div class="space-y-1">
+          <label class="text-fuel-orange">Ownership Document</label>
+          <input type="file" multiple accept=".pdf,.doc,.docx,image/*" class="block w-full text-sm text-gray-900 border border-gray-300 rounded-md cursor-pointer bg-gray-50" />
+        </div>
+
+        <div class="flex justify-end space-x-2">
+          <button type="submit" class="bg-fuel-orange text-white hover:bg-orange-600 px-4 py-1 rounded">Submit</button>
+          <button type="button" onclick="closeModel()" class="bg-fuel-orange text-white hover:bg-orange-600 px-4 py-1 rounded">Close</button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <!-- 🔧 Toggle Script -->
+  <script>
+    const toggleBtn = document.getElementById('menu-toggle');
+    const mobileMenu = document.getElementById('mobile-menu');
+
+    toggleBtn.addEventListener('click', () => {
+      mobileMenu.classList.toggle('hidden');
+    });
+
+    function closeModel() {
+      document.getElementById('addmodal')?.classList.add('hidden');
+    }
+  </script>
+
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

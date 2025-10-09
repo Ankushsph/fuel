@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'fuel-orange': '#FF6B35',
+            'fuel-black': '#1A1A1A',
+            'fuel-gray': '#2D2D2D',
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-fuel-black text-white" id="mainBody">
+
+  <!-- Navigation -->
+  <nav class="bg-fuel-gray p-4 flex justify-between items-center md:justify-between md:flex-row" id="navbar">
+    <!-- Hamburger Menu -->
+    <button id="sidebarToggle" class="md:hidden text-white">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+    </button>
+
+    <!-- Logo -->
+    <img src="{{ url_for('static', filename='images/logo2.png') }}" alt="Fuel Flux Logo" class="h-10 w-auto" />
+
+    <!-- Right-side Icons -->
+    <div class="relative flex items-center gap-4">
+      <!-- Theme Toggle Button -->
+      <button class="hover:rotate-180 transition-transform" onclick="togglebutton()" id="themebtn">
+        🌙
+      </button>
+
+      <!-- User Profile Dropdown -->
+      <div class="relative">
+        <button id="profileToggle" class="flex items-center gap-2 text-white px-3 py-2 rounded-xl hover:bg-fuel-orange">
+          <span>👤</span>
+          <span>User Profile</span>
+        </button>
+        <ul id="profileMenu" class="absolute top-full left-0 mt-2 w-48 bg-gray-800 rounded-xl shadow-lg opacity-0 invisible transition-opacity duration-300 z-10">
+          <li class="px-4 py-2 hover:bg-fuel-orange rounded-xl cursor-pointer">View Profile</li>
+          <li class="px-4 py-2 hover:bg-fuel-orange rounded-xl cursor-pointer">Update Profile</li>
+          <li>
+            <button class="flex items-center gap-2 w-full px-4 py-2 hover:bg-fuel-orange">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1" />
+              </svg>
+              <span>Logout</span>
+            </button>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Sidebar Overlay for Mobile -->
+  <div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden md:hidden"></div>
+
+  <!-- Layout Container -->
+  <div class="flex flex-col md:flex-row min-h-screen">
+
+    <!-- Sidebar -->
+    <aside id="sidebarPanel" class="bg-fuel-gray p-4 w-[250px] md:w-[230px] h-full md:h-screen fixed md:static top-0 left-0 z-40 transform transition-transform duration-300 -translate-x-full md:translate-x-0">
+      <ul class="space-y-2">
+        <li><a href="#" class="block px-2 py-2 rounded-xl hover:bg-fuel-orange">📊 Dashboard</a></li>
+        <li><a href="#" class="block px-2 py-2 rounded-xl hover:bg-fuel-orange">🚕 Vehicle verification</a></li>
+        <li><a href="#" class="block px-2 py-2 rounded-xl hover:bg-fuel-orange">🗂️ Station vehicle data</a></li>
+        <li><a href="#" class="block px-2 py-2 rounded-xl hover:bg-fuel-orange">📃 Billing System</a></li>
+        <li class="bg-fuel-black rounded-md px-1 py-1 text-sm text-gray-300"></li>
+        <div class="flex items-center justify-between">
+          <span>Feedback</span>
+          <span class="text-orange-500 cursor-pointer hover:underline" onclick="openModal()">+ Add</span>
+        </div>
+      </ul>
+
+      <!-- White space divider for mobile -->
+      <div class="h-px bg-white mt-6 rounded md:hidden"></div>
+
+      <!-- Pumps details for mobile only -->
+      <div class="bg-fuel-gray mt-6 block md:hidden">
+        <h3 class="text-fuel-orange font-semibold mb-2">Other Pumps</h3>
+        <ul class="space-y-2">
+          <li class="px-2 py-1 rounded hover:bg-fuel-orange">Pump 1</li>
+          <li class="px-2 py-1 rounded hover:bg-fuel-orange">P2</li>
+          <li class="px-2 py-1 rounded hover:bg-fuel-orange">Pump 2</li>
+        </ul>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 p-4 mt-[80px] md:mt-0">
+      <h1 class="text-xl font-bold mb-4 text-fuel-orange">Welcome Nilesh 🎉</h1>
+      <div class="p-4">
+        <div class="w-full px-4 py-2 rounded-xl bg-fuel-gray min-h-screen">
+          <!-- Your dashboard content goes here -->
+        </div>
+      </div>
+    </main>
+
+    <!-- Pumps details for desktop only -->
+    <aside class="bg-fuel-gray p-4 w-full md:w-[230px] md:border-l border-gray-700 hidden md:flex md:flex-col md:justify-between">
+      <div>
+        <div class="flex items-center justify-between text-orange-500">
+          <span>Other Pumps</span>
+          <span class="cursor-pointer hover:underline" onclick="addpumpModal()">+ Add</span>
+        </div>
+      </div>
+
+      <footer class="text-center bg-fuel-black px-2 py-2 rounded-md mt-4">
+        © 2025 Fuel Flux. All rights reserved.
+      </footer>
+    </aside>
+
+  </div>
+
+  <!-- Feedback Modal -->
+  <div id="feedbackModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-fuel-gray p-6 rounded-xl w-[600px] shadow-lg">
+      <h2 class="text-lg font-semibold text-fuel-orange mb-2">📝 Feedback</h2>
+      <textarea class="w-full h-[150px] p-2 rounded-md bg-fuel-black text-gray-200 resize-none" placeholder="Any Suggestion regarding the product..."></textarea>
+      <div class="flex justify-end mt-4 gap-2">
+        <button onclick="closeModal()" class="px-4 py-1 bg-orange-500 text-white rounded hover:bg-orange-600">Submit</button>
+        <button onclick="closeModal()" class="px-4 py-1 bg-orange-500 text-white rounded hover:bg-orange-600">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Pump Modal -->
+  <div id="addmodal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-fuel-gray p-6 rounded-xl w-[600px] shadow-lg">
+      <form class="flex flex-col space-y-4">
+        <h2 class="text-lg font-semibold text-fuel-orange mb-2 text-center">Pump Details</h2>
+
+        <div class="space-y-1">
+          <label class="text-fuel-orange">Address</label>
+          <textarea class="w-full h-[150px] p-2 rounded-md bg-fuel-black text-gray-200 resize-none" placeholder="Enter Pump Address"></textarea>
+        </div>
+
+        <div class="space-y-1">
+          <label class="text-fuel-orange">Opening Time</label>
+          <input type="time" class="bg-white text-black rounded-md" />
+        </div>
+
+        <div class="space-y-1">
+          <label class="text-fuel-orange">Closing Time</label>
+          <input type="time" class="bg-white text-black rounded-md" />
+        </div>
+
+        <div class="space-y-1">
+          <label class="text-fuel-orange">Ownership Document</label>
+          <input type="file" multiple accept=".pdf,.doc,.docx,image/*" class="block text-sm text-gray-900 border border-gray-300 rounded-md cursor-pointer bg-gray-50" />
+        </div>
+
+        <div class="flex justify-end space-x-2">
+          <button type="submit" class="bg-fuel-orange text-white hover:bg-orange-600 px-4 py-1 rounded" onclick="closeModel()">Submit</button>
+          <button type="button" onclick="closeModel()" class="bg-fuel-orange text-white hover:bg-orange-600 px-4 py-1 rounded">Close</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script>
+    function addpumpModal(){
+      document.getElementById('addmodal').classList.remove('hidden')
+    }
+    function closeModel() {
+      document.getElementById('addmodal').classList.add('hidden');
+    }
+
+    function togglebutton() {
+      const body = document.getElementById('mainBody');
+      const nav = document.getElementById('navbar');
+      const btn = document.getElementById('themebtn');
+      const sidebarPanel = document.getElementById('sidebarPanel');
+
+      body.classList.toggle('bg-white');
+      body.classList.toggle('bg-fuel-black');
+      body.classList.toggle('text-black');
+      body.classList.toggle('text-white');
+
+      nav.classList.toggle('bg-gray-700');
+      sidebarPanel.classList.toggle('bg-gray-700');
+
+      if (body.classList.contains('bg-white')) {
+        btn.textContent = '☀️'; // Light mode active
+      } else {
+        btn.textContent = '🌙'; // Dark mode active
+      }
+    }
+
+    function openModal() {
+      document.getElementById('feedbackModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('feedbackModal').classList.add('hidden');
+    }
+
+    const toggleBtn = document.getElementById('profileToggle');
+    const menu = document.getElementById('profileMenu');
+
+    toggleBtn.addEventListener('click', () => {
+      menu.classList.toggle('opacity-0');
+      menu.classList.toggle('invisible');
+      menu.classList.toggle('opacity-100');
+      menu.classList.toggle('visible');
+    });
+
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebar = document.getElementById('sidebarPanel');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+    sidebarToggle.addEventListener('click', () => {
+      sidebar.classList.toggle('-translate-x-full');
+      sidebar.classList.toggle('translate-x-0');
+      sidebarOverlay.classList.toggle('hidden');
+    });
+
+    sidebarOverlay.addEventListener('click', () => {
+      sidebar.classList.add('-translate-x-full');
+      sidebar.classList.remove('translate-x-0');
+      sidebarOverlay.classList.add('hidden');
+    });
+  </script>
+</body>
+</html>
