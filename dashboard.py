@@ -13,7 +13,7 @@ def dashboard():
     vehicles = Vehicle.query.filter_by(user_id=user.id).all()
     wallet_balance = user.wallet.balance if user.wallet else 0.0
     return render_template(
-        "dashboard.html",
+        "/Cab-Owner/dashboard.html",
         user=user,
         vehicles=vehicles,
         has_password=bool(user.password_hash),

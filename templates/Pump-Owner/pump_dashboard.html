@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <title>Dashboard - Fuel Flux</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+  <style>
+    #toast {
+      position: fixed;
+      top: -100px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 50;
+      padding: 1rem 1.5rem;
+      border-radius: 0.5rem;
+      font-weight: 500;
+      color: white;
+      opacity: 0;
+      transition: all 0.5s ease-in-out;
+      min-width: 250px;
+      text-align: center;
+    }
+    #toast.show { top: 2rem; opacity: 1; }
+
+
+        /* Locked feature styling */
+    .locked {
+    filter: blur(2px);
+    position: relative;
+    }
+
+    .locked::after {
+      content: "🔒";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #FFA500;
+      font-weight: bold;
+      text-align: center;
+      pointer-events: none; 
+    }
+
+    .locked:hover {
+      background-color: #1f1f1f;
+      transform: scale(1.02);
+      transition: all 0.2s;
+    }
+
+    /* hide scrollbars but keep scrolling for desktop sidebar and mobile scroll area */
+    .sidebar,
+    .scrollable {
+      -ms-overflow-style: none;  /* IE and Edge */
+      scrollbar-width: none;     /* Firefox */
+    }
+
+    /* WebKit browsers */
+    .sidebar::-webkit-scrollbar,
+    .scrollable::-webkit-scrollbar {
+      display: none;
+      width: 0;
+      height: 0;
+    }
+
+    /* ensure sidebar actually scrolls if content overflows */
+    .sidebar { overflow-y: auto; }
+
+
+  </style>
+</head>
+<body class="bg-fuel-black text-white min-h-screen flex flex-col">
+
+  <!-- Toast -->
+  <div id="toast"></div>
+
+  <!-- Header -->
+  <header class="bg-fuel-gray p-4 flex justify-between items-center shadow-md">
+    <div class="flex items-center space-x-2">
+      <button id="openMobileSidebar" class="lg:hidden text-fuel-orange text-2xl font-bold">☰</button>
+      <img src="{{ url_for('static', filename='images/logo2.png') }}" alt="Fuel Flux Logo" class="h-10 w-auto" />
+      <span class="text-fuel-orange font-bold text-xl">Dashboard</span>
+    </div>
+    <div class="flex items-center space-x-4">
+      <a href="/logout" class="bg-fuel-orange hover:bg-orange-600 px-4 py-2 rounded-lg font-semibold transition">
+        Logout
+      </a>
+    </div>
+
+  </header>
+
+  <!-- Main Dashboard Layout -->
+  <div class="flex flex-1 min-h-0">
+
+    <!-- Sidebar (Desktop) -->
+    <aside id="desktopSidebar" class="w-64 bg-fuel-gray flex flex-col justify-between p-6 hidden lg:flex sidebar">
+      <div>
+        <nav class="space-y-4">
+            <a href="{{ url_for('pump.select_pump') }}" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition">
+              ⛽ My Pumps
+            </a>
+          <a href="#" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition">💳 Subscriptions</a>
+          <a href="#" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition">👤 Profile</a>
+        </nav>
+
+        <hr class="my-6 border-fuel-black">
+
+        <nav class="space-y-4">
+          <a href="#" data-feature="vehicle-verification" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition locked">🕵️ Vehicle verification</a>
+          <a href="#" data-feature="station-data" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition locked">📊 Station vehicle data</a>
+        </nav>
+
+        <hr class="my-6 border-fuel-black">
+
+        <nav class="space-y-4">
+          <a href="#" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition locked">🚨 Smoke and fire detection</a>
+          <a href="#" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition locked">🔎 Number plate detection</a>
+        </nav>
+      </div>
+
+      <div class="mt-10">
+          <!-- Pump Info -->
+      <div class="mb-4">
+        <p class="text-sm text-gray-400">Pump Name</p>
+        <p class="font-semibold">{{ pump.name }}</p>
+        <p class="text-sm text-gray-400">Location</p>
+        <p class="font-semibold">{{ pump.location }}</p>
+      </div>
+
+      <!-- Subscription Info -->
+    <div  class="subscription-info mb-4 text-sm text-gray-400">
+      Subscription: <span class="font-semibold text-fuel-orange">Loading...</span>
+    </div>
+
+
+      <!-- Logged in User -->
+      <div>
+        <p class="text-sm text-gray-400 mb-2">Logged in as</p>
+        <p class="font-semibold">{{ user.email }}</p>
+      </div>
+          </div>
+        </aside>
+
+    <!-- Mobile Sidebar -->
+<div id="mobileSidebar" class="fixed inset-0 bg-black bg-opacity-70 z-40 lg:hidden opacity-0 invisible transition-opacity duration-300">
+  <aside class="w-64 bg-fuel-gray h-full p-6 flex flex-col">
+    <button id="closeMobileSidebar" class="mb-4 px-3 py-2 bg-fuel-orange rounded-lg font-semibold">Close</button>
+
+    <!-- Scrollable menu -->
+    <div class="flex-1 overflow-y-auto scrollable">
+      <!-- Menu -->
+
+
+      <nav class="space-y-4 mb-6">
+        <a href="{{ url_for('pump.select_pump') }}" 
+          class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition">
+          ⛽ My Pumps</a>
+        <a href="#" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition">💳 Subscriptions</a>
+        <a href="#" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition">👤 Profile</a>
+      </nav>
+
+      <hr class="my-4 border-fuel-black">
+
+      <nav class="space-y-4">
+        <a href="#" data-feature="vehicle-verification" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition locked">🕵️ Vehicle verification</a>
+        <a href="#" data-feature="station-data" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition locked">📊 Station vehicle data</a>
+      </nav>
+
+      <hr class="my-6 border-fuel-black">
+
+      <nav class="space-y-4">
+        <a href="#" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition locked">🚨 Smoke and fire detection</a>
+        <a href="#" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition locked">🔎 Number plate detection</a>
+      </nav>
+    </div>
+
+    <!-- Bottom info: Pump + User -->
+    <div class="mt-auto border-t border-fuel-black pt-4 px-3">
+      <!-- Pump Info -->
+      <div class="mb-3">
+        <p class="text-sm text-gray-400">Pump Name</p>
+        <p class="font-semibold">{{ pump.name }}</p>
+        <p class="text-sm text-gray-400 mt-2">Location</p>
+        <p class="font-semibold">{{ pump.location }}</p>
+      </div>
+
+      <!-- Subscription Info -->
+      <div class="subscription-info mb-4 text-sm text-gray-400">
+        Subscription: <span class="font-semibold text-fuel-orange">Loading...</span>
+      </div>
+
+
+      <!-- Logged-in User -->
+      <div>
+        <p class="text-sm text-gray-400">Logged in as</p>
+        <p class="font-semibold">{{ user.email }}</p>
+      </div>
+    </div>
+  </aside>
+</div>
+
+
+        <!-- Main Content -->
+        <main class="flex-1 bg-fuel-black p-6 flex flex-col overflow-y-auto">
+          <header class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-fuel-orange">Welcome, {{ user.full_name }} 🎉</h1>
+          </header>
+
+          <div class="flex-1 bg-fuel-gray rounded-xl shadow-lg p-6 flex flex-col overflow-y-auto text-gray-300" 
+              id="mainWorkspace"
+              data-wallet-balance="{{ user.wallet_balance or 0.00 }}"
+              data-add-funds-url="{{ url_for('wallet.add_funds') }}"
+              data-balance-url="{{ url_for('wallet.get_balance') }}">
+            <!-- Profile content will be loaded here by default -->
+          </div>
+        </main>
+
+
+
+  </div>
+
+
+  <script>
+    // Toast
+    function showToast(message, type) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.className = "";
+      toast.classList.add("px-6","py-3","rounded-lg","text-white","font-semibold",
+        "shadow-lg","fixed","transition-all","duration-500","ease-in-out");
+      if(type === "success") toast.classList.add("bg-fuel-green");
+      else if(type === "error") toast.classList.add("bg-fuel-red");
+      else toast.classList.add("bg-fuel-gray");
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 3000);
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            showToast("{{ message }}", "{{ category }}");
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+    });
+
+
+
+    // Mobile Sidebar toggle
+    const mobileSidebar = document.getElementById('mobileSidebar');
+    const openMobileSidebarBtn = document.getElementById('openMobileSidebar');
+    const closeMobileSidebarBtn = document.getElementById('closeMobileSidebar');
+
+    openMobileSidebarBtn.addEventListener('click', () => {
+      mobileSidebar.classList.remove('opacity-0','invisible');
+      mobileSidebar.classList.add('opacity-100','visible');
+    });
+    closeMobileSidebarBtn.addEventListener('click', () => {
+      mobileSidebar.classList.remove('opacity-100','visible');
+      mobileSidebar.classList.add('opacity-0','invisible');
+    });
+
+    // Dynamic main content
+    const mainContent = document.getElementById('mainWorkspace');
+    const menuLinks = document.querySelectorAll('nav a');
+    const walletBalance = mainContent.dataset.walletBalance;
+
+    function updateMainContent(selected) {
+      let content = '';
+      switch(selected){
+case '💳 Subscriptions':
+  mainContent.innerHTML = `
+<style>
+  /* Animation for fade-in */
+  .animate-fade-in { animation: fadeIn 0.8s ease-in-out; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Highlight selected duration */
+  .selected-duration { background-color: #FFA500; color: black; }
+
+  /* Bouncing emoji */
+  .emoji-bounce {
+    animation: bounce 1.2s infinite;
+  }
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-15px); }
+  }
+
+  /* Responsive Emoji size */
+  .emoji-big {
+    font-size: 6rem; /* default for medium screens */
+    line-height: 1;
+  }
+
+  @media (min-width: 768px) {
+    .emoji-big { font-size: 8rem; } /* larger screens */
+  }
+  @media (min-width: 1200px) {
+    .emoji-big { font-size: 9rem; } /* extra large screens */
+  }
+
+  /* Wrapper for all plans */
+  .plans-wrapper {
+    display: flex;
+    flex-wrap: wrap;       /* wrap to next line if not enough space */
+    justify-content: space-between;
+    gap: 1.5rem;
+  }
+
+  /* Each plan card */
+  .plan-card {
+    flex: 1 1 300px;       /* grow, shrink, base width */
+    min-width: 250px;      /* minimum width before wrapping */
+    display: flex;
+    flex-direction: column;
+    background-color: #2A2A2A; /* bg-fuel-gray */
+    border: 2px solid #FF6B35; /* border-fuel-orange */
+    border-radius: 1rem;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+  }
+
+  .plan-card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.25);
+  }
+
+  /* Inner content of each card */
+  .plan-card-inner {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    justify-content: space-between;
+    text-align: center;
+  }
+
+  /* Subscribe button */
+  .subscribe-btn {
+    background-color: #2A2A2A;   /* dark background */
+    color: #FF6B35;               /* fuel-orange text */
+    font-weight: bold;
+    border-radius: 1rem;
+    border: 2px solid #FF6B35;    /* fuel-orange border */
+    padding: 0.75rem 0;
+    width: 100%;
+    font-size: 1.125rem;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    margin-top: auto;
+  }
+
+  .subscribe-btn:hover {
+    background-color: #FFA500;    /* orange on hover */
+    color: black;
+    transform: scale(1.05);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.25);
+  }
+
+  /* Optional: vertical stack on small screens */
+  @media (max-width: 600px) {
+    .plans-wrapper {
+      flex-direction: column;
+      align-items: center;
+    }
+  }
+</style>
+
+<div class="w-full max-w-6xl mx-auto px-4">
+  <div class="plans-wrapper">
+
+    <!-- Silver Plan -->
+    <div class="plan-card">
+      <div class="plan-card-inner">
+        <div>
+          <div class="emoji-big mb-4 emoji-bounce">⚪</div>
+          <h3 class="text-2xl font-bold text-fuel-orange mb-4">Silver</h3>
+          <ul class="flex justify-center flex-wrap gap-2 mb-5 duration-options">
+            <li class="cursor-pointer px-3 py-1 rounded-md hover:bg-fuel-orange transition">1 Month</li>
+            <li class="cursor-pointer px-3 py-1 rounded-md hover:bg-fuel-orange transition">6 Months</li>
+            <li class="cursor-pointer px-3 py-1 rounded-md hover:bg-fuel-orange transition">Annual</li>
+          </ul>
+          <div class="text-gray-300 mb-5" data-base-price="5000">
+            <h1 class="font-bold text-3xl price-display">₹5,000</h1>
+            <h2 class="text-sm duration-display">per month</h2>
+          </div>
+          <ul class="space-y-2 text-base text-white text-left mb-6">
+            <li class="flex items-start gap-2"><span>🔸</span><span>Smoke and fire detection</span></li>
+            <li class="flex items-start gap-2"><span>🔸</span><span>Number plate detection</span></li>
+            <li class="flex items-start gap-2"><span>🔸</span><span>Basic billing system</span></li>
+            <li class="flex items-start gap-2"><span>🔸</span><span><del>Vehicle verification</del></span></li>
+            <li class="flex items-start gap-2"><span>🔸</span><span><del>Station vehicle data</del></span></li>
+            <li class="flex items-start gap-2"><span>🔸</span><span><del>Work monitoring</del></span></li>
+            <li class="flex items-start gap-2"><span>🔸</span><span><del>Hydrotesting system</del></span></li>
+          </ul>
+        </div>
+        <button class="subscribe-btn">Subscribe</button>
+      </div>
+    </div>
+
+    <!-- Gold Plan -->
+    <div class="plan-card">
+      <div class="plan-card-inner">
+        <div>
+          <div class="emoji-big mb-4 emoji-bounce">🪙</div>
+          <h3 class="text-2xl font-bold text-fuel-orange mb-4">Gold</h3>
+          <ul class="flex justify-center flex-wrap gap-2 mb-5 duration-options">
+            <li class="cursor-pointer px-3 py-1 rounded-md hover:bg-fuel-orange transition">1 Month</li>
+            <li class="cursor-pointer px-3 py-1 rounded-md hover:bg-fuel-orange transition">6 Months</li>
+            <li class="cursor-pointer px-3 py-1 rounded-md hover:bg-fuel-orange transition">Annual</li>
+          </ul>
+          <div class="text-gray-300 mb-5" data-base-price="10000">
+            <h1 class="font-bold text-3xl price-display">₹10,000</h1>
+            <h2 class="text-sm duration-display">per month</h2>
+          </div>
+          <ul class="space-y-2 text-base text-white text-left mb-6">
+            <li class="flex items-start gap-2"><span>🔸</span><span>Smoke and fire detection</span></li>
+            <li class="flex items-start gap-2"><span>🔸</span><span>Number plate detection</span></li>
+            <li class="flex items-start gap-2"><span>🔸</span><span>Basic billing system</span></li>
+            <li class="flex items-start gap-2"><span>🔸</span><span>Vehicle verification</span></li>
+            <li class="flex items-start gap-2"><span>🔸</span><span>Station vehicle data</span></li>
+            <li class="flex items-start gap-2"><span>🔸</span><span><del>Work monitoring</del></span></li>
+            <li class="flex items-start gap-2"><span>🔸</span><span><del>Hydrotesting system</del></span></li>
+          </ul>
+        </div>
+        <button class="subscribe-btn">Subscribe</button>
+      </div>
+    </div>
+
+    <!-- Diamond Plan -->
+    <div class="plan-card">
+      <div class="plan-card-inner">
+        <div>
+          <div class="emoji-big mb-4 emoji-bounce">💎</div>
+          <h3 class="text-2xl font-bold text-fuel-orange mb-4">Diamond</h3>
+          <ul class="flex justify-center flex-wrap gap-2 mb-5 duration-options">
+            <li class="cursor-pointer px-3 py-1 rounded-md hover:bg-fuel-orange transition">1 Month</li>
+            <li class="cursor-pointer px-3 py-1 rounded-md hover:bg-fuel-orange transition">6 Months</li>
+            <li class="cursor-pointer px-3 py-1 rounded-md hover:bg-fuel-orange transition">Annual</li>
+          </ul>
+          <div class="text-gray-300 mb-5" data-base-price="15000">
+            <h1 class="font-bold text-3xl price-display">₹15,000</h1>
+            <h2 class="text-sm duration-display">per month</h2>
+          </div>
+          <ul class="space-y-2 text-base text-white text-left mb-6">
+            <li class="flex items-start gap-2"><span>🔸</span><span>Smoke and fire detection</span></li>
+            <li class="flex items-start gap-2"><span>🔸</span><span>Number plate detection</span></li>
+            <li class="flex items-start gap-2"><span>🔸</span><span>Basic billing system</span></li>
+            <li class="flex items-start gap-2"><span>🔸</span><span>Vehicle verification</span></li>
+            <li class="flex items-start gap-2"><span>🔸</span><span>Station vehicle data</span></li>
+            <li class="flex items-start gap-2"><span>🔸</span><span>Work monitoring</span></li>
+            <li class="flex items-start gap-2"><span>🔸</span><span>Hydrotesting system</span></li>
+          </ul>
+        </div>
+        <button class="subscribe-btn">Subscribe</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+`;
+
+          function initSubscriptionCardInteractions() {
+          const planCards = document.querySelectorAll('.plan-card');
+
+          planCards.forEach(card => {
+            const durationOptions = card.querySelectorAll('.duration-options li');
+            const priceContainer = card.querySelector('[data-base-price]');
+            const priceDisplay = priceContainer.querySelector('.price-display');
+            const durationDisplay = priceContainer.querySelector('.duration-display');
+            const basePrice = parseInt(priceContainer.getAttribute('data-base-price'), 10);
+
+            durationOptions.forEach(option => {
+              option.addEventListener('click', function () {
+                durationOptions.forEach(li => li.classList.remove('selected-duration'));
+                this.classList.add('selected-duration');
+
+                let multiplier = 1;
+                const duration = this.textContent.trim();
+                if (duration === '6 Months') multiplier = 6;
+                else if (duration === 'Annual') multiplier = 12;
+
+                const totalPrice = basePrice * multiplier;
+                priceDisplay.textContent = '₹' + totalPrice.toLocaleString();
+                durationDisplay.textContent = duration === '1 Month' ? 'per month' : 'for ' + duration;
+              });
+            });
+
+            // Subscribe button
+            const btn = card.querySelector('.subscribe-btn');
+            btn.addEventListener('click', async () => {
+              const planType = card.querySelector('h3').textContent.trim();
+              const selectedDuration = card.querySelector('.selected-duration')?.textContent.trim() || '1 Month';
+              const pumpId = "{{ pump.id }}";
+
+              await handleSubscribe({ plan_type: planType, duration: selectedDuration, pump_id: pumpId });
+            });
+          });
+        }
+
+
+
+  // --- Duration selection logic ---
+          // Select all plan cards
+          const planCards = document.querySelectorAll('.plan-card');
+
+          planCards.forEach(card => {
+            const durationOptions = card.querySelectorAll('.duration-options li');
+            const priceContainer = card.querySelector('[data-base-price]');
+            const priceDisplay = priceContainer.querySelector('.price-display');
+            const durationDisplay = priceContainer.querySelector('.duration-display');
+            const basePrice = parseInt(priceContainer.getAttribute('data-base-price'), 10);
+
+            durationOptions.forEach(option => {
+              option.addEventListener('click', function () {
+                // Remove selection from all options in this card
+                durationOptions.forEach(li => li.classList.remove('selected-duration'));
+                this.classList.add('selected-duration');
+
+                // Calculate price
+                const duration = this.textContent.trim();
+                let multiplier = 1;
+                if (duration === '6 Months') multiplier = 6;
+                else if (duration === 'Annual') multiplier = 12;
+
+                const totalPrice = basePrice * multiplier;
+                priceDisplay.textContent = '₹' + totalPrice.toLocaleString();
+                durationDisplay.textContent = duration === '1 Month' ? 'per month' : 'for ' + duration;
+              });
+            });
+          });
+
+   
+        // ---------------------------
+      // 🔹 Unlock features if user has Silver plan
+      // ---------------------------
+        async function unlockFeatures() {
+          const pumpId = "{{ pump.id }}"; // Jinja renders this
+          if (!pumpId) {
+            console.log('[unlockFeatures] no pumpId in template');
+            return;
+          }
+
+          try {
+            const res = await fetch(`/subscription/current-subscription/${pumpId}`, {
+              credentials: 'same-origin'
+            });
+
+            if (!res.ok) {
+              console.log('[unlockFeatures] subscription endpoint returned not ok', res.status);
+              return;
+            }
+
+            const data = await res.json();
+            console.log('[unlockFeatures] response:', data);
+
+            // raw plan string (may be empty)
+            const rawPlan = (data.plan || '').toString().trim();
+            const displayPlan = rawPlan ? (rawPlan.charAt(0).toUpperCase() + rawPlan.slice(1)) : 'Free Trial';
+
+            // update all subscription display spans (desktop + mobile)
+            document.querySelectorAll('.subscription-info span').forEach(span => {
+              span.textContent = displayPlan;
+            });
+
+            // unlock features only for eligible plans
+            const allowed = ['silver','gold','diamond'];
+            if (rawPlan && allowed.includes(rawPlan.toLowerCase())) {
+              document.querySelectorAll('[data-feature="vehicle-verification"], [data-feature="station-data"]')
+                .forEach(el => {
+                  el.classList.remove('locked');
+                  el.classList.add('border-fuel-orange'); // visual hint
+                  el.style.pointerEvents = 'auto';        // ensure clickable
+                  el.style.filter = 'none';
+                });
+              console.log('[unlockFeatures] unlocked for', rawPlan);
+            } else {
+              console.log('[unlockFeatures] not eligible/unlocked:', rawPlan || '(none)');
+            }
+          } catch (err) {
+            console.error('[unlockFeatures] fetch error', err);
+          }
+        }
+
+
+
+      initSubscriptionCardInteractions();
+      unlockFeatures();
+      break;
+
+
+
+
+
+
+        case '👤 Profile':
+          content = `
+            <h2 class="text-2xl font-bold text-fuel-orange mb-4">Profile</h2>
+            <div class="space-y-6">
+
+              <!-- User Info -->
+              <div class="bg-fuel-black p-4 rounded-lg shadow mb-6">
+                <h3 class="text-lg font-semibold text-gray-200 mb-2">Your Information</h3>
+                <p><span class="font-semibold">Full Name:</span> {{ user.full_name }}</p>
+                <p><span class="font-semibold">Email:</span> {{ user.email }}</p>
+              </div>
+
+              <!-- Update Profile Form -->
+              <div class="bg-fuel-black p-4 rounded-lg shadow mb-6">
+                <h3 class="text-lg font-semibold text-gray-200 mb-3">Update Profile</h3>
+                <form method="POST" action="{{ url_for('dashboard.update_profile') }}" class="space-y-3">
+                    
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                  <input type="text" name="full_name" value="{{ user.full_name }}" 
+                         class="w-full p-2 rounded bg-fuel-gray text-white focus:outline-none" required>
+                  <button type="submit" 
+                          class="px-4 py-2 bg-fuel-orange hover:bg-orange-600 rounded-lg font-semibold">
+                    Save Changes
+                  </button>
+                </form>
+              </div>
+
+              <!-- Change Password -->
+              {% if user.password_hash %}
+              <div class="bg-fuel-black p-4 rounded-lg shadow">
+                <h3 class="text-lg font-semibold text-gray-200 mb-3">Change Password</h3>
+                <form method="POST" action="{{ url_for('password_bp.change_password') }}" class="space-y-3">
+                  
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                  <input type="password" name="old_password" placeholder="Current Password" 
+                         class="w-full p-2 rounded bg-fuel-gray text-white focus:outline-none" required>
+                  <input type="password" name="new_password" placeholder="New Password" 
+                         class="w-full p-2 rounded bg-fuel-gray text-white focus:outline-none" required>
+                  <input type="password" name="confirm_password" placeholder="Confirm New Password" 
+                         class="w-full p-2 rounded bg-fuel-gray text-white focus:outline-none" required>
+                  <button type="submit" 
+                          class="px-4 py-2 bg-fuel-orange hover:bg-orange-600 rounded-lg font-semibold">
+                    Update Password
+                  </button>
+                </form>
+              </div>
+              {% else %}
+                <p class="bg-yellow-500 bg-opacity-20 text-yellow-400 px-3 py-2 rounded text-sm">
+                  Password change not available for OAuth users.</p>
+              {% endif %}
+
+            `;
+          mainContent.innerHTML = content;
+          break;
+          
+
+
+          case '📊 Station vehicle data':
+          content = `
+            <style>
+              .animate-fade-in { animation: fadeIn 0.5s ease-in-out; }
+              @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
+              }
+              .btn {
+                background-color: #FF6B35;
+                color: white;
+                padding: 8px 16px;
+                border-radius: 8px;
+                cursor: pointer;
+                transition: 0.3s;
+              }
+              .btn:hover { background-color: #E65A24; }
+              .input-field {
+                width: 100%;
+                padding: 8px 12px;
+                border: 1px solid #ccc;
+                border-radius: 8px;
+                margin-bottom: 10px;
+                color: black;
+              }
+            </style>
+
+            <div class="animate-fade-in bg-white p-6 rounded-2xl shadow-md w-full md:w-2/3 mx-auto mt-6">
+              <h2 class="text-2xl font-semibold mb-4 text-gray-800">📡 Station Vehicle Data</h2>
+              <p class="text-gray-600 mb-6">
+                Add or update the RTSP stream URL for your CCTV camera feed.
+              </p>
+
+              <div id="rtspForm">
+                <label class="block mb-2 text-gray-700 font-medium">RTSP Stream URL:</label>
+                <input id="rtspUrl" type="text" class="input-field" placeholder="rtsp://username:password@ip_address:port/stream" />
+                <button class="btn w-full" id="saveRtspBtn">💾 Save RTSP URL</button>
+              </div>
+
+              <div id="currentRtspSection" class="hidden mt-6">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">Current RTSP URL:</h3>
+                <p id="currentRtspValue" class="bg-gray-100 p-3 rounded-lg font-bold  text-gray-800 break-all border" style=" border-color:#FF6B35;"></p>
+                <button class="btn mt-4 w-full" id="editRtspBtn">✏️ Modify RTSP URL</button>
+              </div>
+            </div>
+
+            <div id="vehicleCountSection" class="mt-10 bg-white p-6 rounded-2xl shadow-md">
+            <h3 class="text-xl font-semibold text-gray-800 mb-4">📈 Live Vehicle Count</h3>
+            <canvas id="vehicleChart" height="100"></canvas>
+          </div>
+
+          `;
+
+          mainContent.innerHTML = content;
+          
+
+          (() => {
+  const ctx = document.getElementById('vehicleChart').getContext('2d');
+
+  // Initial empty data
+  const data = {
+    labels: [], // timestamps
+    datasets: [{
+      label: 'Vehicles',
+      data: [],
+      backgroundColor: 'rgba(255,107,53,0.5)',
+      borderColor: 'rgba(255,107,53,1)',
+      borderWidth: 2,
+      tension: 0.3
+    }]
+  };
+
+  const config = {
+    type: 'line',
+    data: data,
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { title: { display: true, text: 'Time' } },
+        y: { beginAtZero: true, title: { display: true, text: 'Vehicle Count' } }
+      }
+    }
+  };
+
+  const vehicleChart = new Chart(ctx, config);
+
+  // Fetch vehicle count periodically (every 5 seconds)
+  async function fetchVehicleCount() {
+    try {
+      const res = await fetch(`/vehicle-count?pump_id={{ pump.id }}`, {
+        credentials: 'same-origin'
+      });
+      if (!res.ok) return;
+      const json = await res.json();
+
+      const now = new Date();
+      const timeLabel = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
+      const count = json.vehicle_count || 0;
+
+      data.labels.push(timeLabel);
+      data.datasets[0].data.push(count);
+
+      // Keep only last 20 points
+      if (data.labels.length > 20) {
+        data.labels.shift();
+        data.datasets[0].data.shift();
+      }
+
+      vehicleChart.update();
+    } catch (err) {
+      console.error('Error fetching vehicle count:', err);
+    }
+  }
+
+  setInterval(fetchVehicleCount, 10000); // update every 5 seconds
+})();
+
+
+
+
+          (() => {
+  const rtspInput = document.getElementById('rtspUrl');
+  const saveBtn = document.getElementById('saveRtspBtn');
+  const formDiv = document.getElementById('rtspForm');
+  const currentDiv = document.getElementById('currentRtspSection');
+  const currentValue = document.getElementById('currentRtspValue');
+  const editBtn = document.getElementById('editRtspBtn');
+
+  // from template
+  const pumpId = "{{ pump.id if pump else '' }}";
+  const stationName = "{{ pump.name if pump else '' }}";
+  const location = "{{ pump.location if pump else '' }}";
+
+  const getRtspUrl = "{{ url_for('pump_dashboard.get_rtsp_streams') }}";
+  const saveRtspUrl = "{{ url_for('pump_dashboard.save_rtsp') }}";
+  const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+  // will hold StationVehicle.id if one already exists for this pump
+  let stationId = null;
+
+  async function fetchCurrentRtsp() {
+    try {
+      const res = await fetch(getRtspUrl, { credentials: 'same-origin' });
+      if (!res.ok) {
+        console.error('Failed to fetch stations:', res.status);
+        return;
+      }
+      const data = await res.json();
+      if (!data.success || !Array.isArray(data.stations)) return;
+
+      // Prefer exact match by station_name + location (safer than comparing pumpId)
+      const matched = data.stations.find(s =>
+        (s.station_name || '').toString().trim() === (stationName || '').toString().trim()
+        && (s.location || '').toString().trim() === (location || '').toString().trim()
+      );
+
+      // If no exact match, optionally pick first station (uncomment if needed)
+      // const matched = data.stations[0];
+
+      if (matched) {
+        stationId = matched.station_id;           // use this id for updates
+        if (matched.rtsp_url) {
+          currentValue.textContent = matched.rtsp_url;
+          formDiv.classList.add('hidden');
+          currentDiv.classList.remove('hidden');
+        }
+      } else {
+        // no existing StationVehicle for this pump - create flow (stationId stays null)
+        stationId = null;
+      }
+    } catch (err) {
+      console.error("Error fetching RTSP streams:", err);
+    }
+  }
+
+  async function saveRtsp() {
+    const rtsp = rtspInput.value.trim();
+    if (!rtsp.startsWith('rtsp://')) {
+      alert('Please enter a valid RTSP URL.');
+      return;
+    }
+
+    // Build payload. Only include station_id when updating.
+    const payload = {
+      station_name: stationName,
+      location: location,
+      rtsp_url: rtsp
+    };
+    if (stationId) payload.station_id = stationId;
+
+    try {
+      const res = await fetch(saveRtspUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify(payload),
+        credentials: 'same-origin'
+      });
+
+      // If server responds with non-JSON (HTML error page), show it in console
+      const text = await res.text();
+      try {
+        // try parse JSON (most common)
+        const data = JSON.parse(text);
+        if (!res.ok) {
+          console.error('Server error response:', data);
+          showToast(data.message || 'Server error saving RTSP', 'error');
+          return;
+        }
+        if (data.success) {
+          // If server created a new station, it may return station_id
+          if (data.station_id) stationId = data.station_id;
+          // If server returned rtsp_url include it
+          currentValue.textContent = data.rtsp_url || rtsp;
+          formDiv.classList.add('hidden');
+          currentDiv.classList.remove('hidden');
+          showToast(data.message || 'RTSP saved', 'success');
+        } else {
+          showToast(data.message || 'Failed to save RTSP', 'error');
+        }
+      } catch (jsonErr) {
+        // not JSON (HTML error), show console and user-friendly message
+        console.error('Non-JSON server response:', text);
+        showToast('Failed to save RTSP (server error)', 'error');
+      }
+    } catch (err) {
+      console.error('Error saving RTSP:', err);
+      showToast('Something went wrong', 'error');
+    }
+  }
+
+  saveBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    saveRtsp();
+  });
+
+  editBtn.addEventListener('click', () => {
+    rtspInput.value = currentValue.textContent;
+    formDiv.classList.remove('hidden');
+    currentDiv.classList.add('hidden');
+  });
+
+  // initial fetch
+  fetchCurrentRtsp();
+})();
+        break;
+
+
+        default:
+      }
+    }
+
+     menuLinks.forEach(link => {
+  link.addEventListener('click', (e) => {
+    const selected = e.target.textContent.trim();
+
+          // If the feature is locked, show a toast and do nothing
+          if (link.classList.contains('locked')) {
+            e.preventDefault();
+            showToast('Feature is locked 🔒', 'error');
+            return;
+          }
+
+          // If it's one of the dynamic sections, load it in main
+          if (["💳 Subscriptions", "👤 Profile", "📊 Station vehicle data"].includes(selected)) {
+            e.preventDefault();
+            updateMainContent(selected);
+            localStorage.setItem('selectedSection', selected);
+
+            // Close mobile sidebar if needed
+            if (!link.closest('.lg\\:flex')) {
+              mobileSidebar.classList.remove('opacity-100', 'visible');
+              mobileSidebar.classList.add('opacity-0', 'invisible');
+            }
+          } 
+          // Otherwise, allow normal navigation (like My Pumps)
+          else {
+            localStorage.removeItem('selectedSection');
+            window.location.href = link.href;
+          }
+        });
+      });
+
+
+
+
+    // Default content
+    const lastSection = localStorage.getItem('selectedSection') || '👤 Profile';
+    updateMainContent(lastSection);
+      </script>
+
+      <script>
+    /* unified unlockFeatures + handleSubscribe */
+    function debugLog(...args) {
+      if (window && window.console) console.log('[unlockFeatures]', ...args);
+    }
+
+    async function unlockFeatures() {
+      const pumpId = "{{ pump.id }}";
+      debugLog('pumpId:', pumpId);
+      if (!pumpId) {
+        debugLog('no pumpId found in template');
+        return;
+      }
+
+      try {
+        const res = await fetch(`/subscription/current-subscription/${pumpId}`, {
+          credentials: 'same-origin'
+        });
+        if (!res.ok) {
+          debugLog('subscription endpoint returned not ok', res.status);
+          return;
+        }
+
+        const data = await res.json();
+        debugLog('response:', data);
+
+        // pick plan value — adjust if your API nests it
+        const rawPlan = (data.plan || '').toString().trim();
+        const displayPlan = rawPlan ? (rawPlan.charAt(0).toUpperCase() + rawPlan.slice(1)) : 'Free Plan';
+
+        // update all subscription display spans (desktop + mobile)
+        document.querySelectorAll('.subscription-info span').forEach(span => {
+          span.textContent = displayPlan;
+        });
+
+        // unlock features if eligible
+        const allowed = ['silver', 'gold', 'diamond'];
+        if (rawPlan && allowed.includes(rawPlan.toLowerCase())) {
+          document.querySelectorAll('[data-feature="vehicle-verification"], [data-feature="station-data"]')
+            .forEach(el => {
+              el.classList.remove('locked');
+              el.classList.add('border-fuel-orange');
+              el.style.pointerEvents = 'auto';
+              el.style.filter = 'none';
+            });
+          debugLog('unlocked for', rawPlan);
+        } else {
+          debugLog('not eligible to unlock:', rawPlan || '(none)');
+        }
+
+      } catch (err) {
+        console.error('[unlockFeatures] fetch error', err);
+      }
+    }
+
+    async function handleSubscribe(bodyData) {
+      try {
+        const response = await fetch("/subscription/subscribe", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": document.querySelector('meta[name="csrf-token"]').content
+          },
+          body: JSON.stringify(bodyData),
+          credentials: 'same-origin'
+        });
+        const result = await response.json();
+        if (result.success) {
+          showToast(result.message, "success");
+          // re-check subscription and update the sidebar immediately
+          await unlockFeatures();
+        } else {
+          showToast(result.error || "Subscription failed", "error");
+        }
+      } catch (err) {
+        console.error('subscribe error', err);
+        showToast("Something went wrong", "error");
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      unlockFeatures();
+    });
+    </script>
+
+
+</body>
+</html>
