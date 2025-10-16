@@ -33,9 +33,9 @@ def forgot_password():
             flash("Error sending email. Please try again later.", "error")
             return redirect(url_for("password_bp.forgot_password"))
 
-        return render_template("forgot_password.html", step="otp", email=email)
+        return render_template("/Cab-Owner/forgot_password.html", step="otp", email=email)
 
-    return render_template("forgot_password.html", step="email")
+    return render_template("/Cab-Owner/forgot_password.html", step="email")
 
 @password_bp.route("/verify-otp", methods=["POST"])
 def verify_otp():
@@ -44,7 +44,7 @@ def verify_otp():
 
     if email not in otp_store or str(otp_store[email]) != entered_otp:
         flash("Invalid OTP! Try again.", "error")
-        return render_template("forgot_password.html", step="otp", email=email)
+        return render_template("/Cab-Owner/forgot_password.html", step="otp", email=email)
 
     flash("OTP verified! Please set your new password.", "success")
     return render_template("reset_password.html", email=email)
@@ -57,7 +57,7 @@ def reset_password():
 
     if password != confirm:
         flash("Passwords do not match!", "error")
-        return render_template("reset_password.html", email=email)
+        return render_template("/Cab-Owner/reset_password.html", email=email)
 
     user = User.query.filter_by(email=email).first()
     if not user:

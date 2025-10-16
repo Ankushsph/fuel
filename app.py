@@ -1,74 +1,82 @@
-#app.py
 from flask import Flask, redirect, url_for, request, jsonify, render_template
 from config import Config
-from extensions import db, mail, oauth,csrf
+from extensions import db, mail, oauth, csrf, migrate
 from flask_login import LoginManager
-from models import User
-from flask_wtf import CSRFProtect    
+from models import User, PumpOwner
 from flask_cors import CORS
-from flask_wtf.csrf import generate_csrf 
+from pump import pump_bp
 
 app = Flask(__name__)
 app.config.from_object(Config)
 
-#  Session cookie settings
+# --- Session cookie settings ---
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = "Lax"
-app.config['SESSION_COOKIE_SECURE'] = False  # True if running HTTPS
+app.config['SESSION_COOKIE_SECURE'] = False  # set to True for HTTPS
 
-
+# --- Allow CORS for frontend ---
 CORS(app, supports_credentials=True, origins=["http://127.0.0.1:5001"])
 
-
-# Initialize extensions
+# --- Initialize extensions ---
 db.init_app(app)
 mail.init_app(app)
 oauth.init_app(app)
 csrf.init_app(app)
+migrate.init_app(app, db)
 
-
-# Initialize Flask-Login
+# --- Flask-Login setup ---
 login_manager = LoginManager()
-login_manager.login_view = 'auth.login'  # your login route endpoint
+login_manager.login_view = 'auth.login'
 login_manager.init_app(app)
+
 
 @app.route('/aboutus')
 def aboutus():
     return render_template('aboutus.html')
 
 
-
-
-# User loader
+# --- User loader ---
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    if "_" not in str(user_id):
+        return User.query.get(int(user_id))
+    user_type, real_id = user_id.split("_", 1)
+    if user_type == "user":
+        return User.query.get(int(real_id))
+    elif user_type == "pump":
+        return PumpOwner.query.get(int(real_id))
+    return None
+
+
 
 @login_manager.unauthorized_handler
 def unauthorized_callback():
     return jsonify({"success": False, "message": "Login required."}), 401
 
-# Import and register blueprints
+
+# --- Import and register blueprints ---
 from auth import auth_bp
 from dashboard import dashboard_bp
+from pump_dashboard import pump_dashboard_bp
 from vehicle import vehicle_bp
 from wallet import wallet_bp
 from password_reset import password_bp
-
-
+from subscription import subscription_bp
+from vehicle_count import vehicle_count_bp
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(dashboard_bp)
+app.register_blueprint(pump_dashboard_bp, url_prefix="/pump")
 app.register_blueprint(vehicle_bp)
 app.register_blueprint(wallet_bp)
 app.register_blueprint(password_bp)
+app.register_blueprint(pump_bp)
+app.register_blueprint(subscription_bp, url_prefix="/subscription")
+app.register_blueprint(vehicle_count_bp)
 
-#testing deduct
-@app.route('/pump-owner')
-def pumpowner():
-    return render_template('testdeduct.html')
 
+# --- Create all tables and run app ---
 if __name__ == "__main__":
     with app.app_context():
-        db.create_all()  # create tables after init_app
+        db.create_all()
     app.run(debug=True, host='0.0.0.0', port=5001)

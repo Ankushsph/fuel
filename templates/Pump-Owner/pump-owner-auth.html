@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>Pump Owner - Fuel Flux</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+  <style>
+    /* Toast */
+    #toast { position: fixed; top: -100px; left: 50%; transform: translateX(-50%);
+      z-index: 50; padding: 1rem 1.5rem; border-radius: 0.5rem; font-weight: 500;
+      color: white; opacity: 0; transition: all 0.5s ease-in-out; min-width: 250px;
+      text-align: center;
+    }
+    #toast.show { top: 2rem; opacity: 1; }
+
+    /* Forms */
+    #forms-container { transition: height 0.5s ease-in-out; }
+    #login-form { transform: translateX(0); transition: transform 0.5s ease; }
+    #register-form { transform: translateX(100%); transition: transform 0.5s ease; }
+
+    input { transition: background-color 0.3s, color 0.3s, border-color 0.3s; }
+    input:focus { outline: none; border-color: #FF6B35; background-color: #2D2D2D; color: white; }
+
+    .password-toggle { position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);
+      cursor: pointer; font-size: 0.9rem; color: #FFF; user-select: none;
+    }
+    .relative-input { position: relative; }
+
+    .terms-content::-webkit-scrollbar { display: none; }
+    .terms-content { scrollbar-width: none; -ms-overflow-style: none; }
+  </style>
+</head>
+<body class="bg-fuel-black text-white min-h-screen flex flex-col">
+
+  <!-- Toast -->
+  <div id="toast"></div>
+
+  <!-- Navigation -->
+  <nav class="bg-fuel-gray p-4 flex justify-between items-center relative">
+    <div class="flex items-center space-x-4">
+      <img src="{{ url_for('static', filename='images/logo2.png') }}" alt="Fuel Flux Logo" class="h-10 w-auto" />
+      <span class="text-fuel-orange font-bold text-xl">Pump Owner</span>
+    </div>
+        <button id="menu-btn" class="md:hidden text-white text-2xl focus:outline-none">☰</button>
+    <div id="menu-links" class="hidden md:flex space-x-6 absolute md:static top-full left-0 w-full md:w-auto bg-fuel-gray md:bg-transparent p-4 md:p-0 flex-col md:flex-row">
+      <a href="/" class="text-fuel-orange hover:text-white transition-colors">Home</a>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <main class="flex-1 flex items-center justify-center px-4 py-8 flex-col">
+
+    <!-- Info Text -->
+    <div id="form-info" class="mb-4 text-center font-semibold text-3xl">
+      <span id="login-info"><span class="text-fuel-orange">Welcome back!</span> <span class="text-white">Please login.</span></span>
+      <span id="register-info" class="hidden"><span class="text-fuel-orange">New here?</span> <span class="text-white">Please register.</span></span>
+    </div>
+
+    <!-- Form Box -->
+    <div id="form-box" class="w-full max-w-md bg-fuel-gray p-8 rounded-2xl shadow-lg overflow-hidden relative transition-all duration-500 ease-in-out">
+      
+      <!-- Tabs -->
+      <div class="flex justify-center mb-6">
+        <button id="login-tab" class="w-1/2 py-2 text-center text-fuel-orange font-bold border-b-2 border-fuel-orange transition">Login</button>
+        <button id="register-tab" class="w-1/2 py-2 text-center text-gray-400 hover:text-white transition">Register</button>
+      </div>
+
+      <!-- Forms container -->
+      <div id="forms-container" class="relative w-full overflow-hidden">
+
+<!-- Login Form -->
+<form method="POST" action="{{ url_for('auth.login') }}" id="login-form" class="absolute top-0 left-0 w-full space-y-4 transition-transform duration-500 ease-in-out">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+   <input type="hidden" name="owner_type" value="pump">
+  <input type="email" name="email" placeholder="Email" required class="w-full p-3 rounded-lg bg-fuel-black text-white border border-gray-600"/>
+  <div class="relative-input">
+    <input type="password" name="password" placeholder="Password" required class="w-full p-3 rounded-lg bg-fuel-black text-white border border-gray-600"/>
+    <span class="password-toggle" onclick="togglePassword(this)">Show</span>
+  </div>
+  <div class="text-right">
+    <a href="{{ url_for('password_bp.forgot_password') }}" class="text-fuel-orange text-sm hover:underline">Forgot Password?</a>
+  </div>
+  <button type="submit" class="w-full bg-fuel-orange hover:bg-orange-600 text-white py-3 rounded-lg font-semibold transition">Login</button>
+
+  <!-- OR Divider -->
+  <div class="flex items-center my-4">
+    <div class="flex-grow h-px bg-gray-600"></div>
+    <span class="px-3 text-gray-400 text-sm">OR</span>
+    <div class="flex-grow h-px bg-gray-600"></div>
+  </div>
+
+  <!-- Google Login -->
+  <a href="{{ url_for('auth.auth_google',owner_type='pump') }}" 
+     class="flex items-center justify-center space-x-2 w-full border border-gray-600 bg-fuel-black hover:bg-gray-800 text-white py-3 rounded-lg font-semibold transition">
+    <img src="https://www.svgrepo.com/show/355037/google.svg" alt="Google Logo" class="h-5 w-5"/>
+    <span>Login with Google</span>
+  </a>
+</form>
+
+        <!-- Register Form -->
+        <form method="POST" action="{{ url_for('auth.register') }}" id="register-form" class="absolute top-0 left-0 w-full space-y-4 transition-transform duration-500 ease-in-out">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+           <input type="hidden" name="owner_type" value="pump">
+          <input type="text" name="full_name" placeholder="Full Name" required class="w-full p-3 rounded-lg bg-fuel-black text-white border border-gray-600"/>
+          <input type="email" name="email" placeholder="Email" required class="w-full p-3 rounded-lg bg-fuel-black text-white border border-gray-600"/>
+          <div class="relative-input">
+            <input type="password" name="password" placeholder="Password" pattern=".{6,}" required class="w-full p-3 rounded-lg bg-fuel-black text-white border border-gray-600"/>
+            <span class="password-toggle" onclick="togglePassword(this)">Show</span>
+          </div>
+          <div class="relative-input">
+            <input type="password" name="confirm_password" placeholder="Confirm Password" required class="w-full p-3 rounded-lg bg-fuel-black text-white border border-gray-600"/>
+            <span class="password-toggle" onclick="togglePassword(this)">Show</span>
+          </div>
+
+          <!-- Terms & Conditions -->
+          <div class="flex items-center mb-4">
+            <input type="checkbox" id="terms" name="terms" class="mr-2 accent-fuel-orange" required>
+            <label for="terms" class="text-white text-sm">
+              I agree with 
+              <span class="text-fuel-orange hover:underline cursor-pointer" onclick="openTerms()">Terms and Conditions</span>
+            </label>
+          </div>
+
+                      <!-- Modal -->
+            <div id="terms-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+              <div class="bg-fuel-gray p-6 rounded-xl max-w-lg w-full relative  border-2 border-fuel-orange">
+                <h2 class="text-fuel-orange text-xl mb-4">Terms and Conditions</h2>
+                <div class="text-white max-h-96 overflow-y-auto terms-content">
+                  <p>1. Acceptance of Terms<br>
+                      By downloading, accessing, or using the Fuel Flux application, you agree to be bound by these terms and conditions, as well as our Privacy Policy. If you do not agree with any part of these terms, you should not use the application.<br><br>
+
+                      2. User Registration<br>
+                      To use certain features of the Fuel Flux application, you may need to register for an account. You agree to provide accurate, current, and complete information during the registration process and keep your account information updated.<br><br>
+
+                      3. Intellectual Property<br>
+                      All content, trademarks, and data on the Fuel Flux application, including but not limited to text, software, code, designs, graphics, and logos, are the property of Fuel Flux or its licensors. You may not use, copy, reproduce, or distribute any content without our prior written consent.<br><br>
+
+                      4. Service Availability<br>
+                      We strive to keep the Fuel Flux application operational at all times. However, we do not guarantee that the application will always be available or that it will function without errors or interruptions. We reserve the right to modify, suspend, or discontinue any part of the application at any time without notice.<br><br></p>
+                </div>
+                <button onclick="closeTerms()" class="absolute top-3 right-3 text-fuel-orange font-bold text-lg">X</button>
+              </div>
+            </div>
+
+            <script>
+            function openTerms() {
+              document.getElementById('terms-modal').classList.remove('hidden');
+            }
+            function closeTerms() {
+              document.getElementById('terms-modal').classList.add('hidden');
+            }
+            </script>
+
+          <button type="submit" class="w-full bg-fuel-orange hover:bg-orange-600 text-white py-3 rounded-lg font-semibold transition">Register</button>
+
+          <!-- OR Divider -->
+          <div class="flex items-center my-4">
+            <div class="flex-grow h-px bg-gray-600"></div>
+            <span class="px-3 text-gray-400 text-sm">OR</span>
+            <div class="flex-grow h-px bg-gray-600"></div>
+          </div>
+
+          <!-- Google Signup -->
+          <a href="{{ url_for('auth.auth_google',owner_type='pump') }}" 
+            class="flex items-center justify-center space-x-2 w-full border border-gray-600 bg-fuel-black hover:bg-gray-800 text-white py-3 rounded-lg font-semibold transition">
+            <img src="https://www.svgrepo.com/show/355037/google.svg" alt="Google Logo" class="h-5 w-5"/>
+            <span>Sign up with Google</span>
+          </a>
+        </form>
+
+
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Tabs
+    const loginTab = document.getElementById("login-tab");
+    const registerTab = document.getElementById("register-tab");
+    const loginForm = document.getElementById("login-form");
+    const registerForm = document.getElementById("register-form");
+    const formsContainer = document.getElementById("forms-container");
+    const loginInfo = document.getElementById("login-info");
+    const registerInfo = document.getElementById("register-info");
+
+    loginTab.addEventListener("click", () => {
+      loginTab.classList.add("text-fuel-orange","font-bold","border-b-2","border-fuel-orange");
+      loginTab.classList.remove("text-gray-400");
+      registerTab.classList.remove("text-fuel-orange","font-bold","border-b-2","border-fuel-orange");
+      registerTab.classList.add("text-gray-400");
+
+      loginForm.style.transform = "translateX(0)";
+      registerForm.style.transform = "translateX(100%)";
+      formsContainer.style.height = loginForm.offsetHeight + "px";
+
+      loginInfo.classList.remove("hidden");
+      registerInfo.classList.add("hidden");
+    });
+
+    registerTab.addEventListener("click", () => {
+      registerTab.classList.add("text-fuel-orange","font-bold","border-b-2","border-fuel-orange");
+      registerTab.classList.remove("text-gray-400");
+      loginTab.classList.remove("text-fuel-orange","font-bold","border-b-2","border-fuel-orange");
+      loginTab.classList.add("text-gray-400");
+
+      loginForm.style.transform = "translateX(-100%)";
+      registerForm.style.transform = "translateX(0)";
+      formsContainer.style.height = registerForm.offsetHeight + "px";
+
+      loginInfo.classList.add("hidden");
+      registerInfo.classList.remove("hidden");
+    });
+
+    // Password toggle
+    function togglePassword(span) {
+      const input = span.previousElementSibling;
+      if(input.type === "password") { input.type = "text"; span.textContent = "Hide"; }
+      else { input.type = "password"; span.textContent = "Show"; }
+    }
+
+    // Set initial height for forms container on page load
+  window.addEventListener("DOMContentLoaded", () => {
+    const activeForm = loginForm; // login is default active
+    formsContainer.style.height = activeForm.offsetHeight + "px";
+  });
+  </script>
+
+</body>
+</html>
