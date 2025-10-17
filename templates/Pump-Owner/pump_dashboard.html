@@ -492,7 +492,6 @@ case '💳 Subscriptions':
     });
   });
 
-  // ---- Razorpay Integration ----
   document.querySelectorAll('.subscribe-btn').forEach(button => {
     button.addEventListener('click', function () {
       const card = this.closest('.plan-card');
@@ -504,8 +503,8 @@ case '💳 Subscriptions':
       const planName = this.dataset.plan;
 
       const options = {
-        key: "rzp_test_RLoVxeTmO0idx0", // Replace with your Razorpay Key ID
-        amount: totalPrice * 100, // amount in paise
+        key: "rzp_test_RLoVxeTmO0idx0", 
+        amount: totalPrice * 100, 
         currency: "INR",
         name: "Fuel Flux",
         description: `${planName} Subscription - ${durationText}`,
