@@ -467,135 +467,94 @@ case '💳 Subscriptions':
 </div>
 
 `;
+  // ---- Duration Selection Logic ----
+  document.querySelectorAll('.plan-card').forEach(card => {
+    const durationOptions = card.querySelectorAll('.duration-options li');
+    const priceContainer = card.querySelector('[data-base-price]');
+    const priceDisplay = priceContainer.querySelector('.price-display');
+    const durationDisplay = priceContainer.querySelector('.duration-display');
+    const basePrice = parseInt(priceContainer.getAttribute('data-base-price'), 10);
 
-          function initSubscriptionCardInteractions() {
-          const planCards = document.querySelectorAll('.plan-card');
+    durationOptions.forEach(option => {
+      option.addEventListener('click', function () {
+        durationOptions.forEach(li => li.classList.remove('selected-duration'));
+        this.classList.add('selected-duration');
 
-          planCards.forEach(card => {
-            const durationOptions = card.querySelectorAll('.duration-options li');
-            const priceContainer = card.querySelector('[data-base-price]');
-            const priceDisplay = priceContainer.querySelector('.price-display');
-            const durationDisplay = priceContainer.querySelector('.duration-display');
-            const basePrice = parseInt(priceContainer.getAttribute('data-base-price'), 10);
+        let multiplier = 1;
+        const duration = this.textContent.trim();
+        if (duration === '6 Months') multiplier = 6;
+        else if (duration === 'Annual') multiplier = 12;
 
-            durationOptions.forEach(option => {
-              option.addEventListener('click', function () {
-                durationOptions.forEach(li => li.classList.remove('selected-duration'));
-                this.classList.add('selected-duration');
+        const totalPrice = basePrice * multiplier;
+        priceDisplay.textContent = '₹' + totalPrice.toLocaleString();
+        durationDisplay.textContent = duration === '1 Month' ? 'per month' : 'for ' + duration;
+      });
+    });
+  });
 
-                let multiplier = 1;
-                const duration = this.textContent.trim();
-                if (duration === '6 Months') multiplier = 6;
-                else if (duration === 'Annual') multiplier = 12;
+  document.querySelectorAll('.subscribe-btn').forEach(button => {
+    button.addEventListener('click', function () {
+      const card = this.closest('.plan-card');
+      const priceContainer = card.querySelector('[data-base-price]');
+      const basePrice = parseInt(priceContainer.getAttribute('data-base-price'), 10);
+      const durationText = priceContainer.querySelector('.duration-display').textContent.trim();
+      const duration = durationText.includes('6 Months') ? 6 : durationText.includes('Annual') ? 12 : 1;
+      const totalPrice = basePrice * duration;
+      const planName = this.dataset.plan;
 
-                const totalPrice = basePrice * multiplier;
-                priceDisplay.textContent = '₹' + totalPrice.toLocaleString();
-                durationDisplay.textContent = duration === '1 Month' ? 'per month' : 'for ' + duration;
-              });
-            });
+      const options = {
+        key: "rzp_test_RLoVxeTmO0idx0", 
+        amount: totalPrice * 100, 
+        currency: "INR",
+        name: "Fuel Flux",
+        description: `${planName} Subscription - ${durationText}`,
+        image: "https://yourdomain.com/static/images/logo2.png",
+        handler: function (response) {
+          alert("✅ Payment successful! Razorpay ID: " + response.razorpay_payment_id);
+        },
+        prefill: {
+          name: "Customer Name",
+          email: "customer@example.com",
+          contact: "9999999999"
+        },
+        theme: { color: "#FF6B35" }
+      };
 
-            // Subscribe button
-            const btn = card.querySelector('.subscribe-btn');
-            btn.addEventListener('click', async () => {
-              const planType = card.querySelector('h3').textContent.trim();
-              const selectedDuration = card.querySelector('.selected-duration')?.textContent.trim() || '1 Month';
-              const pumpId = "{{ pump.id }}";
+      const rzp = new Razorpay(options);
+      rzp.open();
+    });
+  });
 
-              await handleSubscribe({ plan_type: planType, duration: selectedDuration, pump_id: pumpId });
-            });
-          });
-        }
+  // ---- Unlock Feature Logic ----
+  async function unlockFeatures() {
+    const pumpId = "{{ pump.id }}";
+    if (!pumpId) return;
 
+    try {
+      const res = await fetch(`/subscription/current-subscription/${pumpId}`, {
+        credentials: 'same-origin'
+      });
+      if (!res.ok) return;
 
+      const data = await res.json();
+      const rawPlan = (data.plan || '').toString().trim();
+      const displayPlan = rawPlan ? (rawPlan.charAt(0).toUpperCase() + rawPlan.slice(1)) : 'Free Trial';
+      document.querySelectorAll('.subscription-info span').forEach(span => span.textContent = displayPlan);
 
-  // --- Duration selection logic ---
-          // Select all plan cards
-          const planCards = document.querySelectorAll('.plan-card');
+      const allowed = ['silver', 'gold', 'diamond'];
+      if (allowed.includes(rawPlan.toLowerCase())) {
+        document.querySelectorAll('[data-feature="vehicle-verification"], [data-feature="station-data"]').forEach(el => {
+          el.classList.remove('locked');
+          el.classList.add('border-fuel-orange');
+          el.style.pointerEvents = 'auto';
+          el.style.filter = 'none';
+        });
+      }
+    } catch (err) { console.error(err); }
+  }
 
-          planCards.forEach(card => {
-            const durationOptions = card.querySelectorAll('.duration-options li');
-            const priceContainer = card.querySelector('[data-base-price]');
-            const priceDisplay = priceContainer.querySelector('.price-display');
-            const durationDisplay = priceContainer.querySelector('.duration-display');
-            const basePrice = parseInt(priceContainer.getAttribute('data-base-price'), 10);
-
-            durationOptions.forEach(option => {
-              option.addEventListener('click', function () {
-                // Remove selection from all options in this card
-                durationOptions.forEach(li => li.classList.remove('selected-duration'));
-                this.classList.add('selected-duration');
-
-                // Calculate price
-                const duration = this.textContent.trim();
-                let multiplier = 1;
-                if (duration === '6 Months') multiplier = 6;
-                else if (duration === 'Annual') multiplier = 12;
-
-                const totalPrice = basePrice * multiplier;
-                priceDisplay.textContent = '₹' + totalPrice.toLocaleString();
-                durationDisplay.textContent = duration === '1 Month' ? 'per month' : 'for ' + duration;
-              });
-            });
-          });
-
-   
-        // ---------------------------
-      // 🔹 Unlock features if user has Silver plan
-      // ---------------------------
-        async function unlockFeatures() {
-          const pumpId = "{{ pump.id }}"; // Jinja renders this
-          if (!pumpId) {
-            console.log('[unlockFeatures] no pumpId in template');
-            return;
-          }
-
-          try {
-            const res = await fetch(`/subscription/current-subscription/${pumpId}`, {
-              credentials: 'same-origin'
-            });
-
-            if (!res.ok) {
-              console.log('[unlockFeatures] subscription endpoint returned not ok', res.status);
-              return;
-            }
-
-            const data = await res.json();
-            console.log('[unlockFeatures] response:', data);
-
-            // raw plan string (may be empty)
-            const rawPlan = (data.plan || '').toString().trim();
-            const displayPlan = rawPlan ? (rawPlan.charAt(0).toUpperCase() + rawPlan.slice(1)) : 'Free Trial';
-
-            // update all subscription display spans (desktop + mobile)
-            document.querySelectorAll('.subscription-info span').forEach(span => {
-              span.textContent = displayPlan;
-            });
-
-            // unlock features only for eligible plans
-            const allowed = ['silver','gold','diamond'];
-            if (rawPlan && allowed.includes(rawPlan.toLowerCase())) {
-              document.querySelectorAll('[data-feature="vehicle-verification"], [data-feature="station-data"]')
-                .forEach(el => {
-                  el.classList.remove('locked');
-                  el.classList.add('border-fuel-orange'); // visual hint
-                  el.style.pointerEvents = 'auto';        // ensure clickable
-                  el.style.filter = 'none';
-                });
-              console.log('[unlockFeatures] unlocked for', rawPlan);
-            } else {
-              console.log('[unlockFeatures] not eligible/unlocked:', rawPlan || '(none)');
-            }
-          } catch (err) {
-            console.error('[unlockFeatures] fetch error', err);
-          }
-        }
-
-
-
-      initSubscriptionCardInteractions();
-      unlockFeatures();
-      break;
-
+  unlockFeatures();
+  break;
 
 
 
@@ -1230,6 +1189,6 @@ case '🕵️ Vehicle verification':
     });
     </script>
 
-
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </body>
 </html>
