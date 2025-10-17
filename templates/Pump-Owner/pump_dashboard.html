@@ -911,6 +911,197 @@ case '💳 Subscriptions':
         break;
 
 
+case '🕵️ Vehicle verification':
+  content = `
+    <style>
+      .animate-fade-in { animation: fadeIn 0.5s ease-in-out; }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .btn {
+        background-color: #FF6B35;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: 0.3s;
+      }
+      .btn:hover { background-color: #E65A24; }
+      .input-field {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        color: black;
+      }
+    </style>
+
+    <div class="animate-fade-in bg-white p-6 rounded-2xl shadow-md w-full md:w-2/3 mx-auto mt-6">
+      <h2 class="text-2xl font-semibold mb-4 text-gray-800">🕵️ Vehicle Verification</h2>
+      <p class="text-gray-600 mb-6">
+        Add or update your vehicle verification video feed (RTSP URL for vehicle camera).
+      </p>
+
+      <div id="verificationForm">
+        <label class="block mb-2 text-gray-700 font-medium">Vehicle Verification RTSP URL:</label>
+        <input id="verificationRtspUrl" type="text" class="input-field" placeholder="rtsp://username:password@ip_address:port/vehicle_stream" />
+        <button class="btn w-full" id="saveVerificationBtn">💾 Save Verification RTSP</button>
+      </div>
+
+      <div id="currentVerificationSection" class="hidden mt-6">
+        <h3 class="text-lg font-semibold text-gray-700 mb-2">Current Verification RTSP:</h3>
+        <p id="currentVerificationValue" class="bg-gray-100 p-3 rounded-lg font-bold text-gray-800 break-all border" style="border-color:#FF6B35;"></p>
+        <button class="btn mt-4 w-full" id="editVerificationBtn">✏️ Modify Verification RTSP</button>
+      </div>
+
+    </div>
+
+    <!-- --- Vehicle Detection Log --- -->
+        <div id="vehicleLogSection" class="mt-6 bg-gray-50 p-4 rounded-lg border border-gray-300 max-h-64 overflow-y-auto">
+          <h3 class="text-lg font-semibold text-gray-700 mb-2">Detected Number Plates:</h3>
+          <ul id="vehicleLogList" class="text-gray-800 text-sm"></ul>
+        </div>
+  `;
+
+  mainContent.innerHTML = content;
+
+  (() => {
+  const rtspInput = document.getElementById('verificationRtspUrl');
+  const saveBtn = document.getElementById('saveVerificationBtn');
+  const formDiv = document.getElementById('verificationForm');
+  const currentDiv = document.getElementById('currentVerificationSection');
+  const currentValue = document.getElementById('currentVerificationValue');
+  const editBtn = document.getElementById('editVerificationBtn');
+
+  const getVerificationUrl = "{{ url_for('pump_dashboard.get_vehicle_verifications') }}";
+  const saveVerificationUrl = "{{ url_for('pump_dashboard.save_vehicle_verification') }}";
+  const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+  let verificationId = null;
+
+  // Fetch current RTSP URL from server
+  async function fetchCurrentVerification() {
+    try {
+      const res = await fetch(getVerificationUrl, { credentials: 'same-origin' });
+      if (!res.ok) return console.error('Failed to fetch vehicle verifications:', res.status);
+
+      const data = await res.json();
+      if (!data.success || !Array.isArray(data.verifications)) return;
+
+      const latest = data.verifications[0]; // pick the first station
+      if (latest) {
+        verificationId = latest.id; // store database id
+        if (latest.rtsp_url) {
+          currentValue.textContent = latest.rtsp_url;
+          formDiv.classList.add('hidden');
+          currentDiv.classList.remove('hidden');
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching verification RTSP:", err);
+    }
+  }
+
+  // Save or update RTSP URL
+  async function saveVerification() {
+    const rtsp = rtspInput.value.trim();
+    if (!rtsp.startsWith('rtsp://')) return alert('Please enter a valid RTSP URL.');
+
+    const payload = { rtsp_url: rtsp };
+    if (verificationId) payload.id = verificationId; // include id for update
+
+    try {
+      const res = await fetch(saveVerificationUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify(payload),
+        credentials: 'same-origin'
+      });
+
+      const text = await res.text();
+      try {
+        const data = JSON.parse(text);
+        if (!res.ok) {
+          console.error('Server error response:', data);
+          return showToast(data.message || 'Server error saving verification RTSP', 'error');
+        }
+
+        if (data.success) {
+          verificationId = data.id || verificationId;
+          currentValue.textContent = data.rtsp_url || rtsp;
+          formDiv.classList.add('hidden');
+          currentDiv.classList.remove('hidden');
+          showToast(data.message || 'Verification RTSP saved', 'success');
+        } else {
+          showToast(data.message || 'Failed to save verification RTSP', 'error');
+        }
+      } catch (jsonErr) {
+        console.error('Non-JSON server response:', text);
+        showToast('Failed to save verification RTSP (server error)', 'error');
+      }
+    } catch (err) {
+      console.error('Error saving verification RTSP:', err);
+      showToast('Something went wrong', 'error');
+    }
+  }
+
+  saveBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    saveVerification();
+  });
+
+  editBtn.addEventListener('click', () => {
+    rtspInput.value = currentValue.textContent;
+    formDiv.classList.remove('hidden');
+    currentDiv.classList.add('hidden');
+  });
+
+  // Initial fetch
+  fetchCurrentVerification();
+
+  // ------------------------------
+  // Vehicle detection log handling
+  // ------------------------------
+  const vehicleLogList = document.getElementById('vehicleLogList');
+
+  function logDetectedPlate(plate) {
+    if (!vehicleLogList) return;
+
+    const li = document.createElement('li');
+    li.textContent = `${new Date().toLocaleTimeString()} - ${plate}`;
+    vehicleLogList.prepend(li);
+
+    // Limit log entries to 50
+    if (vehicleLogList.children.length > 50) {
+      vehicleLogList.removeChild(vehicleLogList.lastChild);
+    }
+  }
+
+  // Polling endpoint for latest detected plates every 2 seconds
+  setInterval(async () => {
+    try {
+      const res = await fetch("/vehicle-details", { credentials: "same-origin" });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.success && Array.isArray(data.plates)) {
+        data.plates.forEach(plate => logDetectedPlate(plate));
+      }
+    } catch (err) {
+      console.error("Error fetching vehicle details:", err);
+    }
+  }, 2000);
+
+})();
+
+  break;
+
+
+
         default:
       }
     }
@@ -927,7 +1118,7 @@ case '💳 Subscriptions':
           }
 
           // If it's one of the dynamic sections, load it in main
-          if (["💳 Subscriptions", "👤 Profile", "📊 Station vehicle data"].includes(selected)) {
+          if (["💳 Subscriptions", "👤 Profile", "📊 Station vehicle data","🕵️ Vehicle verification"].includes(selected)) {
             e.preventDefault();
             updateMainContent(selected);
             localStorage.setItem('selectedSection', selected);

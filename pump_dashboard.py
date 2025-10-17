@@ -1,6 +1,7 @@
 # pump_dashboard.py
 from flask import Blueprint, redirect, url_for, render_template, request, flash, jsonify
-from models import PumpOwner, db, StationVehicle,Pump
+from models import Pump, PumpOwner, StationVehicle, VehicleVerification
+
 from flask_login import current_user, login_required
 
 pump_dashboard_bp = Blueprint("pump_dashboard", __name__)
@@ -128,3 +129,100 @@ def save_rtsp():
     except Exception as e:
         current_app.logger.exception("save_rtsp error")
         return jsonify({"success": False, "message": "Server error saving RTSP"}), 500
+    
+
+# --------------------------
+# Vehicle Verification Routes
+# --------------------------
+
+@pump_dashboard_bp.route("/get_vehicle_verifications")
+@login_required
+def get_vehicle_verifications():
+    """Fetch all vehicle verification records for the logged-in owner."""
+    owner = current_user
+    verifications = VehicleVerification.query.filter_by(owner_id=owner.id).all()
+
+    data = [
+        {
+            "id": v.id,
+            "vehicle_number": v.vehicle_number,
+            "verification_status": v.verification_status,
+            "verification_date": v.verification_date.strftime("%Y-%m-%d %H:%M:%S") if v.verification_date else None,
+            "document_url": v.document_url,
+        }
+        for v in verifications
+    ]
+
+    return jsonify({"success": True, "verifications": data})
+
+
+@pump_dashboard_bp.route("/save_vehicle_verification", methods=["POST"])
+@login_required
+def save_vehicle_verification():
+    """Add or update a vehicle verification record for the current owner."""
+    owner = current_user
+
+    # Accept JSON or form data
+    json_data = request.get_json(silent=True) or {}
+    verification_id = json_data.get("verification_id") or request.form.get("verification_id")
+    vehicle_number = json_data.get("vehicle_number") or request.form.get("vehicle_number")
+    verification_status = json_data.get("verification_status") or request.form.get("verification_status")
+    document_url = json_data.get("document_url") or request.form.get("document_url")
+
+    if not vehicle_number:
+        return jsonify({"success": False, "message": "Vehicle number is required"}), 400
+
+    try:
+        if verification_id:
+            # Update existing record (ensure it belongs to the owner)
+            verification = VehicleVerification.query.filter_by(
+                id=int(verification_id), owner_id=owner.id
+            ).first()
+
+            if not verification:
+                return jsonify({"success": False, "message": "Verification record not found"}), 404
+
+            verification.vehicle_number = vehicle_number or verification.vehicle_number
+            verification.verification_status = verification_status or verification.verification_status
+            verification.document_url = document_url or verification.document_url
+
+            # Record timestamp if status updated to "Verified"
+            if verification_status and verification_status.lower() == "verified":
+                from datetime import datetime
+                verification.verification_date = datetime.utcnow()
+
+            db.session.commit()
+            return jsonify({
+                "success": True,
+                "message": "Vehicle verification updated successfully",
+                "verification_id": verification.id
+            })
+
+        else:
+            # Add a new record
+            from datetime import datetime
+            new_verification = VehicleVerification(
+                owner_id=owner.id,
+                vehicle_number=vehicle_number,
+                verification_status=verification_status or "Pending",
+                verification_date=(
+                    datetime.utcnow()
+                    if verification_status and verification_status.lower() == "verified"
+                    else None
+                ),
+                document_url=document_url,
+            )
+
+            db.session.add(new_verification)
+            db.session.commit()
+
+            return jsonify({
+                "success": True,
+                "message": "Vehicle verification added successfully",
+                "verification_id": new_verification.id
+            })
+
+    except Exception as e:
+        current_app.logger.exception("save_vehicle_verification error")
+        db.session.rollback()
+        return jsonify({"success": False, "message": "Server error saving vehicle verification"}), 500

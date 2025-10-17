@@ -125,3 +125,33 @@ class StationVehicle(db.Model):
 
     def __repr__(self):
         return f"<StationVehicle {self.station_name} | Owner ID: {self.owner_id}>"
+
+
+class VehicleVerification(db.Model):
+    __tablename__ = "vehicle_verifications"
+
+    id = db.Column(db.Integer, primary_key=True)
+    owner_id = db.Column(db.Integer, db.ForeignKey("pump_owners.id"), nullable=False)
+    station_name = db.Column(db.String(150), nullable=False)
+    location = db.Column(db.String(200), nullable=False)
+    rtsp_url = db.Column(db.String(500), nullable=False)  # RTSP stream URL
+
+    # Relationship to PumpOwner
+    owner = db.relationship("PumpOwner", backref="vehicle_verifications")
+
+    def __repr__(self):
+        return f"<StationVehicle {self.station_name} | Owner ID: {self.owner_id}>"
+    
+    
+class VehicleDetails(db.Model):
+    __tablename__ = "vehicle_details"
+
+    plate_number = db.Column(db.String(20), primary_key=True)  # license plate as primary key
+    pump_id = db.Column(db.Integer, db.ForeignKey("pump_owners.id"), nullable=False)
+    detected_at = db.Column(db.DateTime, nullable=False, default=db.func.current_timestamp())
+
+    # Relationship to PumpOwner
+    pump = db.relationship("PumpOwner", backref="detected_vehicles")
+
+    def __repr__(self):
+        return f"<VehicleDetails {self.plate_number} | Pump ID: {self.pump_id} | Detected at: {self.detected_at}>"
