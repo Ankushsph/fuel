@@ -43,7 +43,7 @@
       <!-- Header -->
       <div class="flex justify-between items-center mb-4">
         <h1 class="text-2xl font-bold text-fuel-orange">Your Pumps</h1>
-        <button id="addPumpBtn" class="bg-fuel-orange hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold transition">
+        <button id="addPumpBtn" class="bg-fuel-orange hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold transition" onclick="document.getElementById('pumpModal').classList.remove('hidden')">
           + Add Pump
         </button>
       </div>
@@ -165,6 +165,74 @@ document.querySelectorAll('.pump-item').forEach(item => {
 });
 
 </script>
+
+<!--PUMP REGISTRATION FORM-->
+
+<!-- Trigger Button -->
+  <!-- Modal -->
+ <div id="pumpModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50 px-4 overflow-y-auto">
+  <div class="bg-fuel-gray text-fuel-orange font-bold rounded-xl w-full max-w-md p-4 relative">
+
+    <!-- Close Button -->
+    <button onclick="document.getElementById('pumpModal').classList.add('hidden')"
+            class="absolute top-2 right-2 text-black text-2xl font-bold" aria-label="Close Modal">
+      &times;
+    </button>
+
+    <h1 class="text-orange-500 text-center text-2xl mb-4">Pump Registration Form</h1>
+
+    <form action="/submit" method="POST" enctype="multipart/form-data" class="space-y-3">
+      <div>
+        <label for="ownerName" class="text-orange-500 block mb-1 text-sm">Pump Owner Name:</label>
+        <input type="text" id="ownerName" name="ownerName"
+               class="rounded-md w-full border p-1.5 text-sm text-orange-500 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500 "
+               placeholder="Enter owner's name" required>
+      </div>
+
+      <div>
+        <label for="address" class="text-orange-500 block mb-1 text-sm">Pump Address:</label>
+        <textarea id="address" name="address" rows="2"
+                  class="w-full rounded-sm border p-1.5 text-sm text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  placeholder="Enter pump address" required></textarea>
+      </div>
+
+      <div>
+        <label for="contact" class="text-orange-500 block mb-1 text-sm">Owner Contact Number:</label>
+        <input type="tel" id="contact" name="contact" pattern="[0-9]{10}"
+               class="rounded-sm w-full border p-1.5 text-sm text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500"
+               placeholder="10-digit mobile number" required>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label for="openTime" class="text-orange-500 block mb-1 text-sm">Opening Time:</label>
+          <input type="time" id="openTime" name="openTime"
+                 class="rounded-sm w-full border p-1.5 text-sm text-black focus:outline-none focus:ring-2 focus:ring-orange-500" required>
+        </div>
+
+        <div>
+          <label for="closeTime" class="text-orange-500 block mb-1 text-sm">Closing Time:</label>
+          <input type="time" id="closeTime" name="closeTime"
+                 class="rounded-sm w-full border p-1.5 text-sm text-black focus:outline-none focus:ring-2 focus:ring-orange-500" required>
+        </div>
+      </div>
+
+      <div>
+        <label for="documents" class="text-orange-500 block mb-1 text-sm">Upload Documents:</label>
+        <input type="file" id="documents" name="documents[]" multiple
+               accept=".pdf,.doc,.docx,image/*"
+               class="w-full text-sm text-black file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-white file:bg-orange-500 hover:file:bg-orange-600">
+      </div>
+
+      <div class="text-center">
+        <input type="submit" value="Submit"
+               class="bg-fuel-orange text-white px-4 py-2 w-full rounded-xl hover:scale-105 transition-transform focus:outline-none focus:ring-2 focus:ring-white cursor-pointer text-sm">
+      </div>
+    </form>
+  </div>
+</div>
+
+
 
 </body>
 </html>
