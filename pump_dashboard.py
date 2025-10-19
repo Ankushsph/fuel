@@ -1,4 +1,5 @@
 # pump_dashboard.py
+from extensions import db 
 from flask import Blueprint, redirect, url_for, render_template, request, flash, jsonify
 from models import Pump, PumpOwner, StationVehicle, VehicleVerification
 
