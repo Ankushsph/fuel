@@ -306,16 +306,16 @@ case '💳 Billing System':
     <!-- Add Funds Modal -->
     <div id="addFundsModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center opacity-0 invisible transition-opacity duration-300 z-50">
       <div class="bg-fuel-gray rounded-xl p-6 w-96 relative">
-        <h3 class="text-xl font-bold text-fuel-orange mb-4">Add Funds</h3>
+        <h3 class="text-xl font-bold text-fuel-orange mb-4" >Add Funds</h3>
         <form id="addFundsForm" class="flex flex-col space-y-3">
 
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-          <input type="number" name="amount" placeholder="Enter amount" min="1" 
+          <input type="number" id="razorpayAmountInput" name="amount" placeholder="Enter amount" min="1" 
                  class="p-2 rounded bg-fuel-black text-white focus:outline-none" required>
           <div class="flex justify-end space-x-2">
             <button type="button" id="cancelAddFundsBtn" class="px-4 py-2 rounded bg-gray-700 hover:bg-gray-600">Cancel</button>
-            <button type="submit" class="px-4 py-2 rounded bg-fuel-green hover:bg-green-600 text-white">Add</button>
+            <button type="submit" class="px-4 py-2 rounded bg-fuel-green hover:bg-green-600 text-white"  onclick="launchRazorpay()">Add</button>
           </div>
         </form>
       </div>
@@ -513,6 +513,45 @@ case '💳 Billing System':
     const lastSection = localStorage.getItem('selectedSection') || '👤 Profile';
     updateMainContent(lastSection);
   </script>
+  <!-- Razorpay Script -->
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+
+<script>
+function launchRazorpay() {
+  const amountInput = document.getElementById("razorpayAmountInput");
+  const amountValue = parseFloat(amountInput.value);
+
+  if (!amountValue || amountValue < 1) {
+    alert("Please enter a valid amount.");
+    return;
+  }
+
+  const amountInPaise = amountValue * 100;
+  const options = {
+    key: "rzp_test_RLoVxeTmO0idx0", // Replace with your Razorpay Test Key
+    amount: amountInPaise,
+    currency: "INR",
+    name: "Fuel Flux Wallet",
+    description: "Add Funds",
+    image: "https://yourdomain.com/logo.png",
+    handler: function (response) {
+      alert("Payment successful! Payment ID: " + response.razorpay_payment_id);
+    },
+    prefill: {
+      name: "Nilesh Saraswat",
+      email: "nilesh@example.com",
+      contact: "9999999999"
+    },
+    theme: {
+      color: "#F97316"
+    }
+  };
+
+  const rzp = new Razorpay(options);
+  rzp.open();
+}
+</script>
 
 </body>
 </html>
