@@ -8,13 +8,34 @@
   <title>Select Pump - Fuel Flux</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
   <style>
-    #toast {
-      position: fixed; top: -100px; left: 50%; transform: translateX(-50%);
-      z-index: 50; padding: 1rem 1.5rem; border-radius: 0.5rem;
-      font-weight: 500; color: white; opacity: 0;
-      transition: all 0.5s ease-in-out; min-width: 250px; text-align: center;
-    }
-    #toast.show { top: 2rem; opacity: 1; }
+      #toast {
+    position: fixed;
+    top: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    padding: 1rem 1.5rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    color: white;
+    opacity: 0;
+    transition: all 0.5s ease-in-out;
+    min-width: 250px;
+    text-align: center;
+  }
+
+  #toast.show {
+    top: 2rem;
+    opacity: 1;
+  }
+
+  #toast.success {
+    background-color: #16a34a; /* green */
+  }
+
+  #toast.error {
+    background-color: #dc2626; /* red */
+  }
   </style>
 </head>
 <body class="bg-fuel-black text-white min-h-screen flex flex-col">
@@ -82,39 +103,68 @@
 
     </div>
   </div>
-
 <script>
   const toast = document.getElementById('toast');
-  function showToast(message) {
+
+  // Toast helper: messageType can be 'success' or 'error'
+  function showToast(message, messageType = 'success') {
     toast.textContent = message;
-    toast.classList.add('show');
-    setTimeout(() => toast.classList.remove('show'), 3000);
+    toast.className = 'show ' + messageType; // add class for background color
+    setTimeout(() => toast.className = '', 3000);
   }
 
   // Toggle Add Pump Form
   const addPumpBtn = document.getElementById('addPumpBtn');
   const addPumpForm = document.getElementById('addPumpForm');
-  addPumpBtn.addEventListener('click', () => {
-    addPumpForm.classList.toggle('hidden');
-  });
+  addPumpBtn.addEventListener('click', () => addPumpForm.classList.toggle('hidden'));
 
-  // Handle pump deletion
-  document.querySelectorAll('.delete-pump').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const pumpId = btn.dataset.pumpId;
-      if (confirm("Are you sure you want to remove this pump?")) {
-        const res = await fetch(`/pump/remove/${pumpId}`, { method: 'DELETE' });
-        if (res.ok) location.reload();
-        else showToast("Failed to remove pump.");
-      }
-    });
-  });
-
-  // ✅ Fetch CSRF token safely
+  // CSRF token
   const csrfMeta = document.querySelector('meta[name="csrf-token"]');
   const csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : '';
 
-  // Handle adding new pump via AJAX
+  const pumpsList = document.getElementById('pumpsList');
+
+  // Event delegation for Remove & Select
+  pumpsList.addEventListener('click', async (event) => {
+    const deleteBtn = event.target.closest('.delete-pump');
+    if (deleteBtn) {
+      event.stopPropagation(); // prevent parent click
+      const pumpId = deleteBtn.dataset.pumpId;
+
+      if (!confirm("Are you sure you want to remove this pump?")) return;
+
+      try {
+        const res = await fetch(`/pump/remove/${pumpId}`, {
+          method: 'DELETE',
+          headers: {
+            'X-CSRFToken': csrfToken
+          }
+        });
+        const result = await res.json();
+        if (res.ok && result.success) {
+          showToast(result.message, 'success');
+          setTimeout(() => location.reload(), 800);
+        } else {
+          showToast(result.message || "Failed to remove pump.", 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast("Network error. Try again.", 'error');
+      }
+      return;
+    }
+
+    const pumpItem = event.target.closest('.pump-item');
+    if (pumpItem) {
+      document.querySelectorAll('.pump-item').forEach(i => i.classList.remove('ring-2', 'ring-fuel-orange'));
+      pumpItem.classList.add('ring-2', 'ring-fuel-orange');
+
+      const pumpId = pumpItem.dataset.pumpId;
+      window.location.href = `/pump/${pumpId}/dashboard`;
+    }
+  });
+
+  // Add Pump via AJAX
   addPumpForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -125,46 +175,31 @@
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken   // ✅ Send CSRF token properly
+          'X-CSRFToken': csrfToken
         },
         body: JSON.stringify(formData)
       });
 
-      const text = await res.text(); // read as text (for debugging)
+      const text = await res.text();
       try {
         const result = JSON.parse(text);
         if (res.ok && result.success) {
-          showToast(result.message);
+          showToast(result.message, 'success');
           setTimeout(() => location.reload(), 1000);
         } else {
-          showToast(result.message || "Failed to add pump.");
+          showToast(result.message || "Failed to add pump.", 'error');
         }
       } catch {
         console.error("Non-JSON response:", text);
-        showToast("Server error: Invalid response.");
+        showToast("Server error: Invalid response.", 'error');
       }
     } catch (err) {
       console.error(err);
-      showToast("Network error. Try again.");
+      showToast("Network error. Try again.", 'error');
     }
   });
-
-
-  // Handle selecting a pump (highlight)
-document.querySelectorAll('.pump-item').forEach(item => {
-  item.addEventListener('click', () => {
-    // Remove highlight from all
-    document.querySelectorAll('.pump-item').forEach(i => i.classList.remove('ring-2', 'ring-fuel-orange'));
-    // Highlight clicked one
-    item.classList.add('ring-2', 'ring-fuel-orange');
-    
-    // Optional: redirect to dashboard on click
-    const pumpId = item.dataset.pumpId;
-    window.location.href = `/pump/${pumpId}/dashboard`;
-  });
-});
-
 </script>
+
 
 <!--PUMP REGISTRATION FORM-->
 

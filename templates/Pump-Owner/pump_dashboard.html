@@ -9,6 +9,8 @@
   <title>Dashboard - Fuel Flux</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
   <style>
+
+ 
     #toast {
       position: fixed;
       top: -100px;
@@ -93,7 +95,7 @@
   </header>
 
   <!-- Main Dashboard Layout -->
-  <div class="flex flex-1 min-h-0">
+  <div class="flex flex-1 min-h-0 ">
 
     <!-- Sidebar (Desktop) -->
     <aside id="desktopSidebar" class="w-64 bg-fuel-gray flex flex-col justify-between p-6 hidden lg:flex sidebar">
@@ -392,11 +394,11 @@ case '💳 Subscriptions':
             <h2 class="text-sm duration-display">per month</h2>
           </div>
           <ul class="space-y-2 text-base text-white text-left mb-6">
-            <li class="flex items-start gap-2"><span>🔸</span><span>Smoke and fire detection</span></li>
-            <li class="flex items-start gap-2"><span>🔸</span><span>Number plate detection</span></li>
+            <li class="flex items-start gap-2"><span>🔸</span><span>Vehicle verification</span></li>
+            <li class="flex items-start gap-2"><span>🔸</span><span>Station vehicle data</span></li>
             <li class="flex items-start gap-2"><span>🔸</span><span>Basic billing system</span></li>
-            <li class="flex items-start gap-2"><span>🔸</span><span><del>Vehicle verification</del></span></li>
-            <li class="flex items-start gap-2"><span>🔸</span><span><del>Station vehicle data</del></span></li>
+            <li class="flex items-start gap-2"><span>🔸</span><span><del>Smoke and fire detection</del></span></li>
+            <li class="flex items-start gap-2"><span>🔸</span><span><del>Number plate detection</del></span></li>
             <li class="flex items-start gap-2"><span>🔸</span><span><del>Work monitoring</del></span></li>
             <li class="flex items-start gap-2"><span>🔸</span><span><del>Hydrotesting system</del></span></li>
           </ul>
@@ -421,11 +423,11 @@ case '💳 Subscriptions':
             <h2 class="text-sm duration-display">per month</h2>
           </div>
           <ul class="space-y-2 text-base text-white text-left mb-6">
-            <li class="flex items-start gap-2"><span>🔸</span><span>Smoke and fire detection</span></li>
-            <li class="flex items-start gap-2"><span>🔸</span><span>Number plate detection</span></li>
-            <li class="flex items-start gap-2"><span>🔸</span><span>Basic billing system</span></li>
             <li class="flex items-start gap-2"><span>🔸</span><span>Vehicle verification</span></li>
             <li class="flex items-start gap-2"><span>🔸</span><span>Station vehicle data</span></li>
+            <li class="flex items-start gap-2"><span>🔸</span><span>Basic billing system</span></li>
+            <li class="flex items-start gap-2"><span>🔸</span><span>Smoke and fire detection</span></li>
+            <li class="flex items-start gap-2"><span>🔸</span><span>Number plate detection</span></li>
             <li class="flex items-start gap-2"><span>🔸</span><span><del>Work monitoring</del></span></li>
             <li class="flex items-start gap-2"><span>🔸</span><span><del>Hydrotesting system</del></span></li>
           </ul>
@@ -450,11 +452,11 @@ case '💳 Subscriptions':
             <h2 class="text-sm duration-display">per month</h2>
           </div>
           <ul class="space-y-2 text-base text-white text-left mb-6">
-            <li class="flex items-start gap-2"><span>🔸</span><span>Smoke and fire detection</span></li>
-            <li class="flex items-start gap-2"><span>🔸</span><span>Number plate detection</span></li>
-            <li class="flex items-start gap-2"><span>🔸</span><span>Basic billing system</span></li>
             <li class="flex items-start gap-2"><span>🔸</span><span>Vehicle verification</span></li>
             <li class="flex items-start gap-2"><span>🔸</span><span>Station vehicle data</span></li>
+            <li class="flex items-start gap-2"><span>🔸</span><span>Basic billing system</span></li>
+            <li class="flex items-start gap-2"><span>🔸</span><span>Smoke and fire detection</span></li>
+            <li class="flex items-start gap-2"><span>🔸</span><span>Number plate detection</span></li>
             <li class="flex items-start gap-2"><span>🔸</span><span>Work monitoring</span></li>
             <li class="flex items-start gap-2"><span>🔸</span><span>Hydrotesting system</span></li>
           </ul>
@@ -617,224 +619,240 @@ case '💳 Subscriptions':
           mainContent.innerHTML = content;
           break;
           
+case '📊 Station vehicle data':
+  content = `
+    <style>
+      .animate-fade-in { animation: fadeIn 0.5s ease-in-out; }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .btn {
+        background-color: #FF6B35;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: 0.3s;
+      }
+      .btn:hover { background-color: #E65A24; }
+      .input-field {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        color: black;
+      }
+      .stat-card {
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+        padding: 20px;
+        text-align: center;
+        transition: all 0.25s ease-in-out;
+      }
+      .stat-card:hover {
+        background: #fff7f3;
+        border-color: #FF6B35;
+        box-shadow: 0 2px 10px rgba(255,107,53,0.15);
+        transform: translateY(-3px);
+      }
+      .stat-title { font-size: 1rem; color: #555; font-weight: 600; }
+      .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #333;
+        margin-top: 6px;
+        transition: color 0.25s ease-in-out;
+      }
+      .stat-card:hover .stat-value { color: #FF6B35; }
+      .stat-status {
+        font-weight: 600;
+        font-size: 1rem;
+        margin-top: 8px;
+        color: #666;
+        transition: color 0.25s ease-in-out;
+      }
+      .stat-card:hover .stat-status { color: #E65A24; }
+    </style>
 
+    <div class="animate-fade-in bg-white p-6 rounded-2xl shadow-md w-full md:w-2/3 mx-auto mt-6">
+      <h2 class="text-2xl font-semibold mb-4 text-gray-800">📡 Station Vehicle Data</h2>
+      <p class="text-gray-600 mb-6">Add or update the RTSP stream URL for your CCTV camera feed.</p>
 
-          case '📊 Station vehicle data':
-          content = `
-            <style>
-              .animate-fade-in { animation: fadeIn 0.5s ease-in-out; }
-              @keyframes fadeIn {
-                from { opacity: 0; transform: translateY(10px); }
-                to { opacity: 1; transform: translateY(0); }
-              }
-              .btn {
-                background-color: #FF6B35;
-                color: white;
-                padding: 8px 16px;
-                border-radius: 8px;
-                cursor: pointer;
-                transition: 0.3s;
-              }
-              .btn:hover { background-color: #E65A24; }
-              .input-field {
-                width: 100%;
-                padding: 8px 12px;
-                border: 1px solid #ccc;
-                border-radius: 8px;
-                margin-bottom: 10px;
-                color: black;
-              }
-            </style>
+      <div id="rtspForm">
+        <label class="block mb-2 text-gray-700 font-medium">RTSP Stream URL:</label>
+        <input id="rtspUrl" type="text" class="input-field" placeholder="rtsp://username:password@ip_address:port/stream" />
+        <button class="btn w-full" id="saveRtspBtn">💾 Save RTSP URL</button>
+      </div>
 
-            <div class="animate-fade-in bg-white p-6 rounded-2xl shadow-md w-full md:w-2/3 mx-auto mt-6">
-              <h2 class="text-2xl font-semibold mb-4 text-gray-800">📡 Station Vehicle Data</h2>
-              <p class="text-gray-600 mb-6">
-                Add or update the RTSP stream URL for your CCTV camera feed.
-              </p>
+      <div id="currentRtspSection" class="hidden mt-6">
+        <h3 class="text-lg font-semibold text-gray-700 mb-2">Current RTSP URL:</h3>
+        <p id="currentRtspValue" class="bg-gray-100 p-3 rounded-lg font-bold text-gray-800 break-all border" style="border-color:#FF6B35;"></p>
+        <button class="btn mt-4 w-full" id="editRtspBtn">✏️ Modify RTSP URL</button>
+      </div>
+    </div>
 
-              <div id="rtspForm">
-                <label class="block mb-2 text-gray-700 font-medium">RTSP Stream URL:</label>
-                <input id="rtspUrl" type="text" class="input-field" placeholder="rtsp://username:password@ip_address:port/stream" />
-                <button class="btn w-full" id="saveRtspBtn">💾 Save RTSP URL</button>
-              </div>
+    <div id="vehicleCountSection" class="mt-10 bg-white p-6 rounded-2xl shadow-lg">
+      <h3 class="text-2xl font-semibold text-gray-800 mb-6">📈 Live Vehicle Statistics</h3>
 
-              <div id="currentRtspSection" class="hidden mt-6">
-                <h3 class="text-lg font-semibold text-gray-700 mb-2">Current RTSP URL:</h3>
-                <p id="currentRtspValue" class="bg-gray-100 p-3 rounded-lg font-bold  text-gray-800 break-all border" style=" border-color:#FF6B35;"></p>
-                <button class="btn mt-4 w-full" id="editRtspBtn">✏️ Modify RTSP URL</button>
-              </div>
-            </div>
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+        <div class="stat-card">
+          <div class="stat-title">🚗 Current Vehicles</div>
+          <div id="liveVehicleCount" class="stat-value">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-title">📶 Station Status</div>
+          <div id="liveStatus" class="stat-status">Loading...</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-title">⏱ Last Updated</div>
+          <div id="lastUpdated" class="stat-status">--:--:--</div>
+        </div>
+      </div>
 
-            <div id="vehicleCountSection" class="mt-10 bg-white p-6 rounded-2xl shadow-md">
-            <h3 class="text-xl font-semibold text-gray-800 mb-4">📈 Live Vehicle Count</h3>
-            <canvas id="vehicleChart" height="100"></canvas>
-          </div>
+      <div class="bg-gradient-to-br from-orange-50 to-white p-4 rounded-xl shadow-inner">
+        <h4 class="text-lg font-semibold text-gray-700 mb-2">🚦 Vehicle Count Trend</h4>
+        <canvas id="vehicleLineChart" height="180"></canvas>
+      </div>
+    </div>
+  `;
 
-          `;
+  mainContent.innerHTML = content;
 
-          mainContent.innerHTML = content;
-          
+  (() => {
+    const lineCtx = document.getElementById('vehicleLineChart').getContext('2d');
+    const vehicleCountEl = document.getElementById('liveVehicleCount');
+    const statusEl = document.getElementById('liveStatus');
+    const lastUpdatedEl = document.getElementById('lastUpdated');
 
-          (() => {
-  const ctx = document.getElementById('vehicleChart').getContext('2d');
+    const lineData = {
+      labels: [],
+      datasets: [{
+        label: 'Vehicle Count',
+        data: [],
+        fill: true,
+        backgroundColor: 'rgba(255,107,53,0.2)',
+        borderColor: 'rgba(255,107,53,1)',
+        borderWidth: 2,
+        tension: 0.4,
+        pointRadius: 3
+      }]
+    };
 
-  // Initial empty data
-  const data = {
-    labels: [], // timestamps
-    datasets: [{
-      label: 'Vehicles',
-      data: [],
-      backgroundColor: 'rgba(255,107,53,0.5)',
-      borderColor: 'rgba(255,107,53,1)',
-      borderWidth: 2,
-      tension: 0.3
-    }]
-  };
+    const lineChart = new Chart(lineCtx, {
+      type: 'line',
+      data: lineData,
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { display: false },
+          y: { title: { display: true, text: 'Vehicle Count' }, beginAtZero: true }
+        }
+      }
+    });
 
-  const config = {
-    type: 'line',
-    data: data,
-    options: {
-      responsive: true,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { title: { display: true, text: 'Time' } },
-        y: { beginAtZero: true, title: { display: true, text: 'Vehicle Count' } }
+    function getStatusFromCount(count) {
+      if (count > 15) return { text: '🚨 Busy', color: 'red' };
+      if (count > 7) return { text: '⚡ Moderate', color: 'orange' };
+      return { text: '🟢 Idle', color: 'green' };
+    }
+
+    async function fetchVehicleCount() {
+      try {
+        const res = await fetch(`/vehicle-count?pump_id={{ pump.id }}`, { credentials: 'same-origin' });
+        if (!res.ok) return;
+        const json = await res.json();
+        const count = json.vehicle_count || 0;
+
+        lineData.labels.push('');
+        lineData.datasets[0].data.push(count);
+        if (lineData.labels.length > 15) {
+          lineData.labels.shift();
+          lineData.datasets[0].data.shift();
+        }
+        lineChart.update();
+
+        vehicleCountEl.textContent = count;
+        const status = getStatusFromCount(count);
+        statusEl.textContent = status.text;
+        statusEl.style.color = status.color;
+        lastUpdatedEl.textContent = new Date().toLocaleTimeString();
+      } catch (err) {
+        console.error('Error fetching vehicle count:', err);
       }
     }
-  };
 
-  const vehicleChart = new Chart(ctx, config);
+    setInterval(fetchVehicleCount, 10000);
+    fetchVehicleCount();
+  })();
 
-  // Fetch vehicle count periodically (every 5 seconds)
-  async function fetchVehicleCount() {
-    try {
-      const res = await fetch(`/vehicle-count?pump_id={{ pump.id }}`, {
-        credentials: 'same-origin'
-      });
-      if (!res.ok) return;
-      const json = await res.json();
+  (() => {
+    const rtspInput = document.getElementById('rtspUrl');
+    const saveBtn = document.getElementById('saveRtspBtn');
+    const formDiv = document.getElementById('rtspForm');
+    const currentDiv = document.getElementById('currentRtspSection');
+    const currentValue = document.getElementById('currentRtspValue');
+    const editBtn = document.getElementById('editRtspBtn');
 
-      const now = new Date();
-      const timeLabel = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0') + ':' + String(now.getSeconds()).padStart(2, '0');
-      const count = json.vehicle_count || 0;
+    const pumpId = "{{ pump.id if pump else '' }}";
+    const stationName = "{{ pump.name if pump else '' }}";
+    const location = "{{ pump.location if pump else '' }}";
+    const getRtspUrl = "{{ url_for('pump_dashboard.get_rtsp_streams') }}";
+    const saveRtspUrl = "{{ url_for('pump_dashboard.save_rtsp') }}";
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
-      data.labels.push(timeLabel);
-      data.datasets[0].data.push(count);
+    let stationId = null;
 
-      // Keep only last 20 points
-      if (data.labels.length > 20) {
-        data.labels.shift();
-        data.datasets[0].data.shift();
+    async function fetchCurrentRtsp() {
+      try {
+        const res = await fetch(getRtspUrl, { credentials: 'same-origin' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.success || !Array.isArray(data.stations)) return;
+
+        const matched = data.stations.find(s =>
+          (s.station_name || '').trim() === (stationName || '').trim() &&
+          (s.location || '').trim() === (location || '').trim()
+        );
+
+        if (matched) {
+          stationId = matched.station_id;
+          if (matched.rtsp_url) {
+            currentValue.textContent = matched.rtsp_url;
+            formDiv.classList.add('hidden');
+            currentDiv.classList.remove('hidden');
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching RTSP streams:', err);
       }
-
-      vehicleChart.update();
-    } catch (err) {
-      console.error('Error fetching vehicle count:', err);
     }
-  }
 
-  setInterval(fetchVehicleCount, 10000); // update every 5 seconds
-})();
-
-
-
-
-          (() => {
-  const rtspInput = document.getElementById('rtspUrl');
-  const saveBtn = document.getElementById('saveRtspBtn');
-  const formDiv = document.getElementById('rtspForm');
-  const currentDiv = document.getElementById('currentRtspSection');
-  const currentValue = document.getElementById('currentRtspValue');
-  const editBtn = document.getElementById('editRtspBtn');
-
-  // from template
-  const pumpId = "{{ pump.id if pump else '' }}";
-  const stationName = "{{ pump.name if pump else '' }}";
-  const location = "{{ pump.location if pump else '' }}";
-
-  const getRtspUrl = "{{ url_for('pump_dashboard.get_rtsp_streams') }}";
-  const saveRtspUrl = "{{ url_for('pump_dashboard.save_rtsp') }}";
-  const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-
-  // will hold StationVehicle.id if one already exists for this pump
-  let stationId = null;
-
-  async function fetchCurrentRtsp() {
-    try {
-      const res = await fetch(getRtspUrl, { credentials: 'same-origin' });
-      if (!res.ok) {
-        console.error('Failed to fetch stations:', res.status);
+    async function saveRtsp() {
+      const rtsp = rtspInput.value.trim();
+      if (!rtsp.startsWith('rtsp://')) {
+        alert('Please enter a valid RTSP URL.');
         return;
       }
-      const data = await res.json();
-      if (!data.success || !Array.isArray(data.stations)) return;
 
-      // Prefer exact match by station_name + location (safer than comparing pumpId)
-      const matched = data.stations.find(s =>
-        (s.station_name || '').toString().trim() === (stationName || '').toString().trim()
-        && (s.location || '').toString().trim() === (location || '').toString().trim()
-      );
+      const payload = { station_name: stationName, location: location, rtsp_url: rtsp };
+      if (stationId) payload.station_id = stationId;
 
-      // If no exact match, optionally pick first station (uncomment if needed)
-      // const matched = data.stations[0];
-
-      if (matched) {
-        stationId = matched.station_id;           // use this id for updates
-        if (matched.rtsp_url) {
-          currentValue.textContent = matched.rtsp_url;
-          formDiv.classList.add('hidden');
-          currentDiv.classList.remove('hidden');
-        }
-      } else {
-        // no existing StationVehicle for this pump - create flow (stationId stays null)
-        stationId = null;
-      }
-    } catch (err) {
-      console.error("Error fetching RTSP streams:", err);
-    }
-  }
-
-  async function saveRtsp() {
-    const rtsp = rtspInput.value.trim();
-    if (!rtsp.startsWith('rtsp://')) {
-      alert('Please enter a valid RTSP URL.');
-      return;
-    }
-
-    // Build payload. Only include station_id when updating.
-    const payload = {
-      station_name: stationName,
-      location: location,
-      rtsp_url: rtsp
-    };
-    if (stationId) payload.station_id = stationId;
-
-    try {
-      const res = await fetch(saveRtspUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken
-        },
-        body: JSON.stringify(payload),
-        credentials: 'same-origin'
-      });
-
-      // If server responds with non-JSON (HTML error page), show it in console
-      const text = await res.text();
       try {
-        // try parse JSON (most common)
-        const data = JSON.parse(text);
-        if (!res.ok) {
-          console.error('Server error response:', data);
-          showToast(data.message || 'Server error saving RTSP', 'error');
-          return;
-        }
+        const res = await fetch(saveRtspUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+          body: JSON.stringify(payload),
+          credentials: 'same-origin'
+        });
+
+        const data = await res.json();
         if (data.success) {
-          // If server created a new station, it may return station_id
           if (data.station_id) stationId = data.station_id;
-          // If server returned rtsp_url include it
           currentValue.textContent = data.rtsp_url || rtsp;
           formDiv.classList.add('hidden');
           currentDiv.classList.remove('hidden');
@@ -842,32 +860,26 @@ case '💳 Subscriptions':
         } else {
           showToast(data.message || 'Failed to save RTSP', 'error');
         }
-      } catch (jsonErr) {
-        // not JSON (HTML error), show console and user-friendly message
-        console.error('Non-JSON server response:', text);
-        showToast('Failed to save RTSP (server error)', 'error');
+      } catch (err) {
+        console.error('Error saving RTSP:', err);
+        showToast('Something went wrong', 'error');
       }
-    } catch (err) {
-      console.error('Error saving RTSP:', err);
-      showToast('Something went wrong', 'error');
     }
-  }
 
-  saveBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    saveRtsp();
-  });
+    saveBtn.addEventListener('click', e => {
+      e.preventDefault();
+      saveRtsp();
+    });
 
-  editBtn.addEventListener('click', () => {
-    rtspInput.value = currentValue.textContent;
-    formDiv.classList.remove('hidden');
-    currentDiv.classList.add('hidden');
-  });
+    editBtn.addEventListener('click', () => {
+      rtspInput.value = currentValue.textContent;
+      formDiv.classList.remove('hidden');
+      currentDiv.classList.add('hidden');
+    });
 
-  // initial fetch
-  fetchCurrentRtsp();
-})();
-        break;
+    fetchCurrentRtsp();
+  })();
+  break;
 
 
 case '🕵️ Vehicle verification':
@@ -917,11 +929,13 @@ case '🕵️ Vehicle verification':
 
     </div>
 
-    <!-- --- Vehicle Detection Log --- -->
-        <div id="vehicleLogSection" class="mt-6 bg-gray-50 p-4 rounded-lg border border-gray-300 max-h-64 overflow-y-auto">
-          <h3 class="text-lg font-semibold text-gray-700 mb-2">Detected Number Plates:</h3>
-          <ul id="vehicleLogList" class="text-gray-800 text-sm"></ul>
-        </div>
+<!-- --- Vehicle Detection Log --- -->
+<div id="vehicleLogSection" class="mt-6 bg-gray-50 p-4 rounded-lg border border-gray-300 flex-1 overflow-y-auto">
+  <h3 class="text-lg font-semibold text-gray-700 mb-2">Detected Number Plates:</h3>
+  <ul id="vehicleLogList" class="text-gray-800 text-sm"></ul>
+</div>
+
+
   `;
 
   mainContent.innerHTML = content;

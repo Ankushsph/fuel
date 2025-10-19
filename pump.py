@@ -66,7 +66,7 @@ def add_pump():
 # -------------------------
 # Remove Pump
 # -------------------------
-@pump_bp.route("/remove/<int:pump_id>", methods=["POST"])
+@pump_bp.route("/remove/<int:pump_id>", methods=["DELETE"])
 @login_required
 def remove_pump(pump_id):
     if not isinstance(current_user, PumpOwner):
@@ -74,14 +74,15 @@ def remove_pump(pump_id):
 
     pump = Pump.query.filter_by(id=pump_id, owner_id=current_user.id).first()
     if not pump:
-        flash("Pump not found.", "error")
-        return redirect(url_for("pump.select_pump"))
+        return jsonify({"success": False, "message": "Pump not found"}), 404
 
-    db.session.delete(pump)
-    db.session.commit()
-    flash(f"Pump '{pump.name}' removed successfully!", "success")
-    return redirect(url_for("pump.select_pump"))
-
+    try:
+        db.session.delete(pump)
+        db.session.commit()
+        return jsonify({"success": True, "message": f"Pump '{pump.name}' removed successfully!"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "message": "Database error: " + str(e)}), 500
 
 # -------------------------
 # Go to Pump Dashboard
