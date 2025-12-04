@@ -1,7 +1,8 @@
 # models.py
 from extensions import db
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_login import UserMixin  
+from flask_login import UserMixin
+from sqlalchemy import func
 
 class User(db.Model, UserMixin):  
     __tablename__ = "users"  # explicit table name
@@ -155,3 +156,24 @@ class VehicleDetails(db.Model):
 
     def __repr__(self):
         return f"<VehicleDetails {self.plate_number} | Pump ID: {self.pump_id} | Detected at: {self.detected_at}>"
+
+
+class PumpReceipt(db.Model):
+    __tablename__ = "pump_receipts"
+
+    id = db.Column(db.Integer, primary_key=True)
+    owner_id = db.Column(db.Integer, db.ForeignKey("pump_owners.id"), nullable=False)
+    pump_id = db.Column(db.Integer, db.ForeignKey("pumps.id"), nullable=False)
+    original_filename = db.Column(db.String(255), nullable=False)
+    stored_filename = db.Column(db.String(255), nullable=False)
+    file_size = db.Column(db.Integer, nullable=True)
+    ocr_data = db.Column(db.JSON, nullable=True)
+    print_date = db.Column(db.DateTime, nullable=True)
+    total_sales = db.Column(db.Float, nullable=True)
+    created_at = db.Column(db.DateTime, server_default=func.now())
+
+    owner = db.relationship("PumpOwner", backref="receipts")
+    pump = db.relationship("Pump", backref="receipts")
+
+    def __repr__(self):
+        return f"<PumpReceipt pump={self.pump_id} date={self.print_date}>"

@@ -113,6 +113,17 @@
     setTimeout(() => toast.className = '', 3000);
   }
 
+  // Show Flask flash messages (if any) using the same toast UI
+  document.addEventListener('DOMContentLoaded', () => {
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          showToast({{ message|tojson }}, "{{ category }}");
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  });
+
   // Toggle Add Pump Form
   const addPumpBtn = document.getElementById('addPumpBtn');
   const addPumpForm = document.getElementById('addPumpForm');
@@ -216,7 +227,9 @@
 
     <h1 class="text-orange-500 text-center text-2xl mb-4">Pump Registration Form</h1>
 
-    <form action="/submit" method="POST" enctype="multipart/form-data" class="space-y-3">
+    <form action="{{ url_for('pump.submit_pump_registration') }}" method="POST" enctype="multipart/form-data" class="space-y-3">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
       <div>
         <label for="ownerName" class="text-orange-500 block mb-1 text-sm">Pump Owner Name:</label>
         <input type="text" id="ownerName" name="ownerName"

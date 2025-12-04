@@ -1,5 +1,5 @@
 # pump.py
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user
 from extensions import db
 from models import Pump, PumpOwner
@@ -101,3 +101,44 @@ def pump_dashboard(pump_id):
 
     # Render a dashboard page for this pump
     return render_template("/Pump-Owner/pump_dashboard.html", pump=pump, user=current_user)
+
+
+# -------------------------
+# Pump registration form submit (modal in select-pump.html)
+# -------------------------
+@pump_bp.route("/submit", methods=["POST"])
+@login_required
+def submit_pump_registration():
+    """
+    Handles the Pump Registration Form POST from the modal in select-pump.html.
+    For now we just log the data and redirect back to the select page with a
+    success message so the route always exists and never 404s.
+    """
+    if not isinstance(current_user, PumpOwner):
+        flash("Access denied.", "error")
+        return redirect(url_for("auth.index"))
+
+    owner_name = request.form.get("ownerName")
+    address = request.form.get("address")
+    contact = request.form.get("contact")
+    open_time = request.form.get("openTime")
+    close_time = request.form.get("closeTime")
+    documents = request.files.getlist("documents[]")
+
+    try:
+        current_app.logger.info(
+            "Pump registration submitted by %s: owner_name=%s, address=%s, contact=%s, open_time=%s, close_time=%s, documents=%s",
+            getattr(current_user, "email", current_user.get_id()),
+            owner_name,
+            address,
+            contact,
+            open_time,
+            close_time,
+            [doc.filename for doc in documents],
+        )
+        flash("Pump registration submitted successfully!", "success")
+    except Exception as e:
+        current_app.logger.error("Error while handling pump registration submit: %s", e)
+        flash("Something went wrong while submitting the form. Please try again.", "error")
+
+    return redirect(url_for("pump.select_pump"))

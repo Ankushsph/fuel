@@ -8,7 +8,14 @@ class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey")
 
     # ---------------- DATABASE ----------------
-    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://fueluser:fuelpass123@localhost:3306/fuelflux'
+    # Use DATABASE_URL from environment (for production) or SQLite for local dev
+    DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///data.db")
+    
+    # Fix for Render's postgres:// URL (SQLAlchemy needs postgresql://)
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    
+    SQLALCHEMY_DATABASE_URI = DATABASE_URL
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # ---------------- MAIL ----------------

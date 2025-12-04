@@ -2,7 +2,9 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_mail import Message
 from models import db, User
-from extensions import mail  
+from extensions import mail
+from werkzeug.security import check_password_hash, generate_password_hash
+from flask_login import current_user, login_required
 import random
 
 password_bp = Blueprint("password_bp", __name__)
@@ -72,6 +74,7 @@ def reset_password():
     return redirect(url_for("auth.cab_owner_auth"))
 
 @password_bp.route("/change_password", methods=["POST"])
+@login_required
 def change_password():
     old_password = request.form.get("old_password")
     new_password = request.form.get("new_password")
@@ -80,19 +83,19 @@ def change_password():
     # Validate input
     if not old_password or not new_password or not confirm_password:
         flash("All fields are required.", "error")
-        return redirect(url_for("dashboard.index"))
+        return redirect(url_for("dashboard.dashboard"))
 
     if new_password != confirm_password:
         flash("New passwords do not match.", "error")
-        return redirect(url_for("dashboard.index"))
+        return redirect(url_for("dashboard.dashboard"))
 
-    if not check_password_hash(current_user.password_hash, old_password):
+    if not current_user.check_password(old_password):
         flash("Current password is incorrect.", "error")
-        return redirect(url_for("dashboard.index"))
+        return redirect(url_for("dashboard.dashboard"))
 
     # Update password
-    current_user.password_hash = generate_password_hash(new_password)
+    current_user.set_password(new_password)
     db.session.commit()
 
     flash("Password updated successfully.", "success")
-    return redirect(url_for("dashboard.index"))
+    return redirect(url_for("dashboard.dashboard"))

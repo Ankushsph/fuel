@@ -9,8 +9,6 @@
   <title>Dashboard - Fuel Flux</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
   <style>
-
- 
     #toast {
       position: fixed;
       top: -100px;
@@ -26,13 +24,15 @@
       min-width: 250px;
       text-align: center;
     }
-    #toast.show { top: 2rem; opacity: 1; }
 
+    #toast.show {
+      top: 2rem;
+      opacity: 1;
+    }
 
-        /* Locked feature styling */
     .locked {
-    filter: blur(2px);
-    position: relative;
+      filter: blur(2px);
+      position: relative;
     }
 
     .locked::after {
@@ -44,7 +44,7 @@
       color: #FFA500;
       font-weight: bold;
       text-align: center;
-      pointer-events: none; 
+      pointer-events: none;
     }
 
     .locked:hover {
@@ -53,14 +53,12 @@
       transition: all 0.2s;
     }
 
-    /* hide scrollbars but keep scrolling for desktop sidebar and mobile scroll area */
     .sidebar,
     .scrollable {
-      -ms-overflow-style: none;  /* IE and Edge */
-      scrollbar-width: none;     /* Firefox */
+      -ms-overflow-style: none;
+      scrollbar-width: none;
     }
 
-    /* WebKit browsers */
     .sidebar::-webkit-scrollbar,
     .scrollable::-webkit-scrollbar {
       display: none;
@@ -68,13 +66,456 @@
       height: 0;
     }
 
-    /* ensure sidebar actually scrolls if content overflows */
-    .sidebar { overflow-y: auto; }
-
-
+    .sidebar {
+      overflow-y: auto;
+    }
   </style>
 </head>
 <body class="bg-fuel-black text-white min-h-screen flex flex-col">
+
+  <script>
+    // Receipt, Comparison, Density functions must be declared before DOM loads
+    function getReceiptTemplate() {
+      return `
+      <div class="animate-fade-in flex flex-col gap-6">
+        <div class="flex flex-col lg:flex-row gap-6">
+          <div class="flex-1 bg-fuel-gray rounded-2xl p-6 shadow">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+              <div>
+                <p class="text-sm uppercase tracking-wide text-gray-400">Receipt Management</p>
+                <h2 class="text-2xl font-bold text-white">Upload Receipt</h2>
+              </div>
+              <button id="selectReceiptBtn" class="mt-4 md:mt-0 px-4 py-2 bg-fuel-orange text-white rounded-lg font-semibold shadow hover:bg-orange-500 transition">
+                Select File
+              </button>
+            </div>
+            <div id="receiptDropZone" class="border-2 border-dashed border-gray-600 rounded-2xl p-8 text-center cursor-pointer transition">
+              <div class="text-5xl mb-4 text-fuel-orange">⬆️</div>
+              <p class="text-gray-200 font-semibold mb-2">Drag and drop your receipt</p>
+              <p class="text-sm text-gray-400 mb-4">or click to browse files</p>
+              <div class="flex justify-center">
+                <div class="bg-fuel-black/40 px-4 py-2 rounded-lg text-sm text-gray-300">Supported: JPG / PNG</div>
+              </div>
+              <div id="selectedReceiptPreview" class="mt-6 hidden">
+                <img id="receiptPreviewImage" src="" class="max-h-72 mx-auto rounded-lg shadow-lg object-contain" alt="Receipt preview">
+                <p id="receiptFileName" class="mt-3 text-gray-300 text-sm"></p>
+                <button id="changeReceiptBtn" type="button" class="mt-2 text-fuel-orange underline">Change File</button>
+              </div>
+              <input type="file" id="receiptFileInput" accept="image/*" class="hidden">
+            </div>
+            <button id="processReceiptBtn" class="mt-6 w-full bg-fuel-orange text-white py-3 rounded-xl font-semibold hover:bg-orange-500 transition disabled:opacity-40" disabled>
+              Process Receipt
+            </button>
+          </div>
+
+          <div class="w-full lg:w-1/3 bg-fuel-gray rounded-2xl p-6 shadow">
+            <h3 class="text-xl font-semibold text-white mb-4">Extracted Data</h3>
+            <div id="extractedDataContent" class="text-gray-300 text-sm">
+              <p>No data yet. Upload a receipt to view details.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-fuel-gray rounded-2xl p-6 shadow">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-semibold text-white">Receipt History</h3>
+            <button id="refreshHistoryBtn" class="text-sm text-fuel-orange underline hover:text-white">Refresh</button>
+          </div>
+          <div id="receiptHistoryList" class="space-y-3 text-sm text-gray-200">
+            <p>No receipts uploaded yet.</p>
+          </div>
+        </div>
+      </div>`;
+    }
+
+    function getComparisonTemplate() {
+      return `
+      <div class="animate-fade-in bg-fuel-gray rounded-2xl p-6 shadow space-y-6">
+        <div id="comparisonSummary" class="grid gap-4 md:grid-cols-3 text-gray-200">
+          <p>Loading comparison data...</p>
+        </div>
+        <div class="overflow-auto">
+          <table class="w-full text-left text-sm text-gray-200">
+            <thead class="text-gray-400 uppercase text-xs border-b border-gray-600">
+              <tr>
+                <th class="py-2">Nozzle</th>
+                <th class="py-2">Latest Sales (₹)</th>
+                <th class="py-2">Previous Sales (₹)</th>
+                <th class="py-2">Net Change (₹)</th>
+              </tr>
+            </thead>
+            <tbody id="comparisonTable">
+              <tr><td colspan="4" class="py-4 text-center text-gray-400">Waiting for data...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+    }
+
+    function getDensityTemplate() {
+      return `
+      <div class="animate-fade-in bg-fuel-gray rounded-2xl p-6 shadow space-y-6">
+        <div>
+          <p class="text-sm uppercase tracking-wide text-gray-400">Density Conversion</p>
+          <h2 class="text-2xl font-bold text-white">Fuel Density Standardization</h2>
+          <p class="text-gray-300 text-sm mt-2">Convert recorded density to standard density at 15°C.</p>
+        </div>
+
+        <form id="densityForm" class="grid gap-4 md:grid-cols-2">
+          <div class="md:col-span-2">
+            <label class="block text-gray-400 text-sm mb-1">Fuel Type</label>
+            <select name="fuel_type" class="w-full bg-fuel-black text-white rounded-lg p-3 focus:outline-none">
+              <option value="Petrol">Petrol</option>
+              <option value="Diesel">Diesel</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-gray-400 text-sm mb-1">Current Density (g/cm³)</label>
+            <input type="number" step="0.0001" name="density" placeholder="0.82" class="w-full bg-fuel-black text-white rounded-lg p-3 focus:outline-none" required>
+          </div>
+          <div>
+            <label class="block text-gray-400 text-sm mb-1">Current Temperature (°C)</label>
+            <input type="number" step="0.1" name="temperature" placeholder="25" class="w-full bg-fuel-black text-white rounded-lg p-3 focus:outline-none" required>
+          </div>
+          <div class="md:col-span-2">
+            <button type="submit" class="w-full bg-fuel-orange hover:bg-orange-500 text-white font-semibold py-3 rounded-xl transition">
+              Calculate Standard Density
+            </button>
+          </div>
+        </form>
+
+        <div class="bg-fuel-black/40 rounded-xl p-4 text-center">
+          <p class="text-sm text-gray-400">Standard Density at 15°C</p>
+          <p id="densityResult" class="text-4xl font-bold text-white mt-2">--</p>
+        </div>
+
+        <div class="bg-fuel-black/30 rounded-xl p-4 text-sm text-gray-300 leading-relaxed">
+          <h3 class="text-white font-semibold mb-2">How density changes with temperature</h3>
+          <p>Petrol density drops by ~0.1% per °C while diesel by ~0.07% per °C. The calculator accounts for this to show the equivalent density at the standard reference temperature (15°C).</p>
+        </div>
+      </div>`;
+    }
+
+    function renderExtractedData(data) {
+      const container = document.getElementById('extractedDataContent');
+      if (!container) return;
+
+      if (!data) {
+        container.innerHTML = '<p>No data yet. Upload a receipt to view details.</p>';
+        return;
+      }
+
+      const nozzleHtml = (data.nozzles || [])
+        .map(nozzle => `
+          <div class="bg-fuel-black/40 rounded-lg p-3 mb-3">
+            <p class="text-white font-semibold">Nozzle ${nozzle.nozzle || ''}</p>
+            <p class="text-sm text-gray-300">A: ${nozzle.a || '--'}</p>
+            <p class="text-sm text-gray-300">V: ${nozzle.v || '--'}</p>
+            <p class="text-sm text-gray-300">Total Sales: ₹${nozzle.totSales || '--'}</p>
+          </div>`).join('');
+
+      container.innerHTML = `
+        <div class="grid grid-cols-2 gap-4 mb-4 text-sm">
+          <div>
+            <p class="text-gray-400">Print Date</p>
+            <p class="text-white font-semibold">${data.printDate || '--'}</p>
+          </div>
+          <div>
+            <p class="text-gray-400">Pump Serial Number</p>
+            <p class="text-white font-semibold">${data.pumpSerialNumber || '--'}</p>
+          </div>
+          <div>
+            <p class="text-gray-400">Model</p>
+            <p class="text-white font-semibold">${data.model || '--'}</p>
+          </div>
+          <div>
+            <p class="text-gray-400">Total Sales</p>
+            <p class="text-white font-semibold">₹${(data.totalSales || 0).toLocaleString()}</p>
+          </div>
+        </div>
+        <div class="space-y-3">${nozzleHtml || '<p class="text-gray-400 text-sm">No nozzle data captured.</p>'}</div>`;
+    }
+
+    async function loadReceiptHistory() {
+      const list = document.getElementById('receiptHistoryList');
+      if (!list || !pumpId) return;
+      list.innerHTML = '<p class="text-gray-400">Loading history...</p>';
+      try {
+        const res = await fetch(`/pump/${pumpId}/receipt/history`, { credentials: 'same-origin' });
+        const data = await res.json();
+        if (res.ok && data.success && data.receipts.length) {
+          list.innerHTML = data.receipts
+            .map(record => {
+              const encoded = encodeURIComponent(JSON.stringify(record));
+              return `
+              <div class="bg-fuel-black/40 rounded-lg p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                <div>
+                  <p class="text-white font-semibold">${record.print_date || 'Unknown date'}</p>
+                  <p class="text-gray-400 text-xs">Total Sales: ₹${(record.total_sales || 0).toLocaleString()}</p>
+                </div>
+                <button data-record='${encoded}' class="px-3 py-1 bg-fuel-orange text-white rounded-lg text-sm history-view-btn">
+                  View
+                </button>
+              </div>
+            `;
+            })
+            .join('');
+          list.querySelectorAll('.history-view-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const payload = JSON.parse(decodeURIComponent(btn.dataset.record || '{}'));
+              renderExtractedData(payload.data);
+              showToast('Loaded receipt snapshot.', 'success');
+            });
+          });
+        } else {
+          list.innerHTML = `<p class="text-gray-400 text-sm">${data.message || 'No receipts uploaded yet.'}</p>`;
+        }
+      } catch (err) {
+        console.error(err);
+        list.innerHTML = '<p class="text-red-400 text-sm">Failed to load history.</p>';
+      }
+    }
+
+    function initReceiptSection() {
+      const dropZone = document.getElementById('receiptDropZone');
+      const fileInput = document.getElementById('receiptFileInput');
+      const selectBtn = document.getElementById('selectReceiptBtn');
+      const changeBtn = document.getElementById('changeReceiptBtn');
+      const processBtn = document.getElementById('processReceiptBtn');
+      const previewWrapper = document.getElementById('selectedReceiptPreview');
+      const previewImage = document.getElementById('receiptPreviewImage');
+      const previewName = document.getElementById('receiptFileName');
+      const refreshBtn = document.getElementById('refreshHistoryBtn');
+      let selectedFile = null;
+
+      const setPreview = () => {
+        if (selectedFile) {
+          previewWrapper.classList.remove('hidden');
+          previewImage.src = URL.createObjectURL(selectedFile);
+          previewName.textContent = selectedFile.name;
+          processBtn.disabled = false;
+        } else {
+          previewWrapper.classList.add('hidden');
+          previewImage.src = '';
+          previewName.textContent = '';
+          processBtn.disabled = true;
+        }
+      };
+
+      const handleFiles = files => {
+        if (files && files.length) {
+          selectedFile = files[0];
+          setPreview();
+        }
+      };
+
+      if (selectBtn) selectBtn.addEventListener('click', () => fileInput.click());
+      if (changeBtn) changeBtn.addEventListener('click', () => fileInput.click());
+      if (refreshBtn) refreshBtn.addEventListener('click', () => loadReceiptHistory());
+
+      dropZone.addEventListener('click', () => fileInput.click());
+      dropZone.addEventListener('dragover', e => {
+        e.preventDefault();
+        dropZone.classList.add('border-fuel-orange');
+      });
+      dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-fuel-orange'));
+      dropZone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropZone.classList.remove('border-fuel-orange');
+        handleFiles(e.dataTransfer.files);
+      });
+
+      fileInput.addEventListener('change', e => handleFiles(e.target.files));
+
+      processBtn.addEventListener('click', async () => {
+        if (!selectedFile) {
+          showToast('Please select a receipt image first.', 'error');
+          return;
+        }
+
+        processBtn.disabled = true;
+        processBtn.textContent = 'Processing...';
+
+        try {
+          const formData = new FormData();
+          formData.append('receipt', selectedFile);
+          
+          // Add CSRF token for file upload
+          const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+          if (csrfToken) {
+            formData.append('csrf_token', csrfToken);
+          }
+          
+          const res = await fetch(`/pump/${pumpId}/receipt/upload`, {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin',
+            headers: {
+              'X-CSRFToken': csrfToken || ''
+            }
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            showToast('Receipt processed successfully!', 'success');
+            renderExtractedData(data.data);
+            await loadReceiptHistory();
+          } else {
+            showToast(data.error || 'Failed to process receipt', 'error');
+          }
+        } catch (err) {
+          console.error(err);
+          showToast('Unable to process receipt. Please try again.', 'error');
+        } finally {
+          processBtn.disabled = false;
+          processBtn.textContent = 'Process Receipt';
+        }
+      });
+
+      loadReceiptHistory();
+      renderExtractedData(null);
+    }
+
+    async function initDailyComparison() {
+      const summary = document.getElementById('comparisonSummary');
+      const table = document.getElementById('comparisonTable');
+      if (!pumpId) return;
+      summary.innerHTML = '<p class="text-gray-400">Loading comparison data...</p>';
+      table.innerHTML = '<tr><td colspan="4" class="py-4 text-center text-gray-400">Loading...</td></tr>';
+
+      try {
+        const res = await fetch(`/pump/${pumpId}/receipt/comparison`, { credentials: 'same-origin' });
+        const data = await res.json();
+        if (!res.ok || !data.success || data.message) {
+          summary.innerHTML = `<p class="text-gray-400">${data.message || data.error || 'Upload at least two receipts to view comparison.'}</p>`;
+          table.innerHTML = '<tr><td colspan="4" class="py-4 text-center text-gray-400">Not enough data.</td></tr>';
+          return;
+        }
+
+        summary.innerHTML = `
+          <div class="bg-fuel-black/40 rounded-xl p-4">
+            <p class="text-xs text-gray-400">Latest Receipt</p>
+            <p class="text-white font-semibold">${data.latest.print_date || '--'}</p>
+            <p class="text-gray-300 text-sm">Total Sales: ₹${(data.latest.total_sales || 0).toLocaleString()}</p>
+          </div>
+          <div class="bg-fuel-black/40 rounded-xl p-4">
+            <p class="text-xs text-gray-400">Previous Receipt</p>
+            <p class="text-white font-semibold">${data.previous.print_date || '--'}</p>
+            <p class="text-gray-300 text-sm">Total Sales: ₹${(data.previous.total_sales || 0).toLocaleString()}</p>
+          </div>
+          <div class="bg-green-600/30 rounded-xl p-4">
+            <p class="text-xs text-gray-200">Net Change</p>
+            <p class="text-2xl font-bold text-white">₹${(data.net_sales || 0).toLocaleString()}</p>
+            <p class="text-gray-200 text-sm">Latest - Previous</p>
+          </div>`;
+
+        table.innerHTML = data.comparison.map(row => `
+          <tr class="border-b border-gray-700">
+            <td class="py-3">${row.nozzle}</td>
+            <td class="py-3 text-green-300">₹${(row.current || 0).toLocaleString()}</td>
+            <td class="py-3 text-gray-300">₹${(row.previous || 0).toLocaleString()}</td>
+            <td class="py-3 ${row.difference >= 0 ? 'text-green-300' : 'text-red-400'}">₹${(row.difference || 0).toLocaleString()}</td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        console.error(err);
+        summary.innerHTML = '<p class="text-red-400">Failed to load comparison data.</p>';
+        table.innerHTML = '<tr><td colspan="4" class="py-4 text-center text-red-400">Error</td></tr>';
+      }
+    }
+
+    function initDensityCalculator() {
+      const form = document.getElementById('densityForm');
+      const resultEl = document.getElementById('densityResult');
+      if (!form) return;
+
+      form.addEventListener('submit', async e => {
+        e.preventDefault();
+        const formData = new FormData(form);
+        const payload = {
+          fuel_type: formData.get('fuel_type'),
+          density: formData.get('density'),
+          temperature: formData.get('temperature')
+        };
+        resultEl.textContent = 'Calculating...';
+        try {
+          const res = await fetch(`/pump/${pumpId}/density/calculate`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify(payload)
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            resultEl.textContent = `${data.standard_density} g/cm³`;
+            showToast('Standard density calculated.', 'success');
+          } else {
+            resultEl.textContent = '--';
+            showToast(data.error || 'Failed to calculate density', 'error');
+          }
+        } catch (err) {
+          console.error(err);
+          resultEl.textContent = '--';
+          showToast('Unable to calculate density.', 'error');
+        }
+      });
+    }
+
+    async function unlockFeatures() {
+      const pumpId = "{{ pump.id }}";
+      if (!pumpId) return;
+
+      try {
+        const res = await fetch(`/subscription/current-subscription/${pumpId}`, {
+          credentials: 'same-origin'
+        });
+        if (!res.ok) return;
+
+        const data = await res.json();
+        const rawPlan = (data.plan || '').toString().trim();
+        const planKey = rawPlan.toLowerCase();
+        const displayPlan = rawPlan ? (rawPlan.charAt(0).toUpperCase() + rawPlan.slice(1)) : 'Free Trial';
+
+        document.querySelectorAll('.subscription-info span').forEach(span => {
+          span.textContent = displayPlan;
+        });
+
+        const baseSelectors = '[data-feature="vehicle-verification"], [data-feature="station-data"]';
+        const premiumSelectors = '[data-feature="receipts"], [data-feature="daily-comparison"], [data-feature="density-calculator"]';
+
+        const activateLinks = selector => {
+          document.querySelectorAll(selector).forEach(el => {
+            el.classList.remove('locked', 'opacity-50', 'pointer-events-none');
+            el.classList.add('border-fuel-orange');
+            el.classList.remove('border-gray-600');
+            el.style.pointerEvents = 'auto';
+            el.style.filter = 'none';
+            el.textContent = el.textContent.replace(' 🔒', '');
+          });
+        };
+
+        const basePlans = ['silver', 'gold', 'diamond'];
+        const premiumPlans = ['gold', 'diamond'];
+
+        if (basePlans.includes(planKey)) {
+          activateLinks(baseSelectors);
+        }
+        if (premiumPlans.includes(planKey)) {
+          activateLinks(premiumSelectors);
+        }
+
+        window.currentSubscriptionPlan = planKey;
+      } catch (err) {
+        console.error('[unlockFeatures] fetch error', err);
+        // Set default text if there was an error
+        document.querySelectorAll('.subscription-info span').forEach(span => {
+          span.textContent = 'Free Trial';
+        });
+      }
+    }
+  </script>
 
   <!-- Toast -->
   <div id="toast"></div>
@@ -100,26 +541,41 @@
     <!-- Sidebar (Desktop) -->
     <aside id="desktopSidebar" class="w-64 bg-fuel-gray flex flex-col justify-between p-6 hidden lg:flex sidebar">
       <div>
-        <nav class="space-y-4">
-            <a href="{{ url_for('pump.select_pump') }}" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition">
-              ⛽ My Pumps
-            </a>
+        <!-- Main navigation -->
+        <nav class="space-y-4 mb-6">
+          <a href="{{ url_for('pump.select_pump') }}" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition">
+            ⛽ My Pumps
+          </a>
           <a href="#" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition">💳 Subscriptions</a>
           <a href="#" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition">👤 Profile</a>
         </nav>
 
         <hr class="my-6 border-fuel-black">
 
-        <nav class="space-y-4">
-          <a href="#" data-feature="vehicle-verification" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition locked">🕵️ Vehicle verification</a>
-          <a href="#" data-feature="station-data" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition locked">📊 Station vehicle data</a>
+        <!-- Gold+ features -->
+        <div class="text-xs text-gray-500 uppercase tracking-wide mb-2 px-3">Gold Features</div>
+        <nav class="space-y-4 mb-6">
+          <a href="#" data-feature="receipts" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">🧾 Receipts 🔒</a>
+          <a href="#" data-feature="daily-comparison" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">📈 Daily Comparison 🔒</a>
+          <a href="#" data-feature="density-calculator" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">🧪 Density Calculator 🔒</a>
         </nav>
 
         <hr class="my-6 border-fuel-black">
 
+        <!-- Silver+ features -->
+        <div class="text-xs text-gray-500 uppercase tracking-wide mb-2 px-3">Silver Features</div>
+        <nav class="space-y-4 mb-6">
+          <a href="#" data-feature="vehicle-verification" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">🕵️ Vehicle verification 🔒</a>
+          <a href="#" data-feature="station-data" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">📊 Station vehicle data 🔒</a>
+        </nav>
+
+        <hr class="my-6 border-fuel-black">
+
+        <!-- Coming soon -->
+        <div class="text-xs text-gray-500 uppercase tracking-wide mb-2 px-3">Coming Soon</div>
         <nav class="space-y-4">
-          <a href="#" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition locked">🚨 Smoke and fire detection</a>
-          <a href="#" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition locked">🔎 Number plate detection</a>
+          <a href="#" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">🚨 Smoke and fire detection 🔒</a>
+          <a href="#" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">🔎 Number plate detection 🔒</a>
         </nav>
       </div>
 
@@ -156,6 +612,7 @@
       <!-- Menu -->
 
 
+      <!-- Main Navigation -->
       <nav class="space-y-4 mb-6">
         <a href="{{ url_for('pump.select_pump') }}" 
           class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition">
@@ -166,16 +623,30 @@
 
       <hr class="my-4 border-fuel-black">
 
-      <nav class="space-y-4">
-        <a href="#" data-feature="vehicle-verification" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition locked">🕵️ Vehicle verification</a>
-        <a href="#" data-feature="station-data" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition locked">📊 Station vehicle data</a>
+      <!-- Premium Features (Gold+) -->
+      <div class="text-xs text-gray-500 uppercase tracking-wide mb-2 px-3">Gold Features</div>
+      <nav class="space-y-4 mb-6">
+        <a href="#" data-feature="receipts" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">🧾 Receipts 🔒</a>
+        <a href="#" data-feature="daily-comparison" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">📈 Daily Comparison 🔒</a>
+        <a href="#" data-feature="density-calculator" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">🧪 Density Calculator 🔒</a>
+      </nav>
+
+      <hr class="my-4 border-fuel-black">
+
+      <!-- Base Paid Features (Silver+) -->
+      <div class="text-xs text-gray-500 uppercase tracking-wide mb-2 px-3">Silver Features</div>
+      <nav class="space-y-4 mb-6">
+        <a href="#" data-feature="vehicle-verification" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">🕵️ Vehicle verification 🔒</a>
+        <a href="#" data-feature="station-data" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">📊 Station vehicle data 🔒</a>
       </nav>
 
       <hr class="my-6 border-fuel-black">
 
+      <!-- Future Features (Coming Soon) -->
+      <div class="text-xs text-gray-500 uppercase tracking-wide mb-2 px-3">Coming Soon</div>
       <nav class="space-y-4">
-        <a href="#" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition locked">🚨 Smoke and fire detection</a>
-        <a href="#" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition locked">🔎 Number plate detection</a>
+        <a href="#" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">🚨 Smoke and fire detection 🔒</a>
+        <a href="#" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">🔎 Number plate detection 🔒</a>
       </nav>
     </div>
 
@@ -240,15 +711,10 @@
       setTimeout(() => toast.classList.remove("show"), 3000);
     }
 
-    document.addEventListener("DOMContentLoaded", () => {
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          {% for category, message in messages %}
-            showToast("{{ message }}", "{{ category }}");
-          {% endfor %}
-        {% endif %}
-      {% endwith %}
-    });
+    const flashedMessages = JSON.parse('{{ get_flashed_messages(with_categories=true)|tojson|safe }}');
+    if (Array.isArray(flashedMessages) && flashedMessages.length) {
+      flashedMessages.forEach(([category, message]) => showToast(message, category));
+    }
 
 
 
@@ -270,6 +736,395 @@
     const mainContent = document.getElementById('mainWorkspace');
     const menuLinks = document.querySelectorAll('nav a');
     const walletBalance = mainContent.dataset.walletBalance;
+    const pumpId = "{{ pump.id }}" || "";
+
+    function getReceiptTemplate() {
+      return `
+      <div class="animate-fade-in flex flex-col gap-6">
+        <div class="flex flex-col lg:flex-row gap-6">
+          <div class="flex-1 bg-fuel-gray rounded-2xl p-6 shadow">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+              <div>
+                <p class="text-sm uppercase tracking-wide text-gray-400">Receipt Management</p>
+                <h2 class="text-2xl font-bold text-white">Upload Receipt</h2>
+              </div>
+              <button id="selectReceiptBtn" class="mt-4 md:mt-0 px-4 py-2 bg-fuel-orange text-white rounded-lg font-semibold shadow hover:bg-orange-500 transition">
+                Select File
+              </button>
+            </div>
+            <div id="receiptDropZone" class="border-2 border-dashed border-gray-600 rounded-2xl p-8 text-center cursor-pointer transition">
+              <div class="text-5xl mb-4 text-fuel-orange">⬆️</div>
+              <p class="text-gray-200 font-semibold mb-2">Drag and drop your receipt</p>
+              <p class="text-sm text-gray-400 mb-4">or click to browse files</p>
+              <div class="flex justify-center">
+                <div class="bg-fuel-black/40 px-4 py-2 rounded-lg text-sm text-gray-300">Supported: JPG / PNG</div>
+              </div>
+              <div id="selectedReceiptPreview" class="mt-6 hidden">
+                <img id="receiptPreviewImage" src="" class="max-h-72 mx-auto rounded-lg shadow-lg object-contain" alt="Receipt preview">
+                <p id="receiptFileName" class="mt-3 text-gray-300 text-sm"></p>
+                <button id="changeReceiptBtn" type="button" class="mt-2 text-fuel-orange underline">Change File</button>
+              </div>
+              <input type="file" id="receiptFileInput" accept="image/*" class="hidden">
+            </div>
+            <button id="processReceiptBtn" class="mt-6 w-full bg-fuel-orange text-white py-3 rounded-xl font-semibold hover:bg-orange-500 transition disabled:opacity-40" disabled>
+              Process Receipt
+            </button>
+          </div>
+
+          <div class="w-full lg:w-1/3 bg-fuel-gray rounded-2xl p-6 shadow">
+            <h3 class="text-xl font-semibold text-white mb-4">Extracted Data</h3>
+            <div id="extractedDataContent" class="text-gray-300 text-sm">
+              <p>No data yet. Upload a receipt to view details.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-fuel-gray rounded-2xl p-6 shadow">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-xl font-semibold text-white">Receipt History</h3>
+            <button id="refreshHistoryBtn" class="text-sm text-fuel-orange underline hover:text-white">Refresh</button>
+          </div>
+          <div id="receiptHistoryList" class="space-y-3 text-sm text-gray-200">
+            <p>No receipts uploaded yet.</p>
+          </div>
+        </div>
+      </div>`;
+    }
+
+    function getComparisonTemplate() {
+      return `
+      <div class="animate-fade-in bg-fuel-gray rounded-2xl p-6 shadow space-y-6">
+        <div id="comparisonSummary" class="grid gap-4 md:grid-cols-3 text-gray-200">
+          <p>Loading comparison data...</p>
+        </div>
+        <div class="overflow-auto">
+          <table class="w-full text-left text-sm text-gray-200">
+            <thead class="text-gray-400 uppercase text-xs border-b border-gray-600">
+              <tr>
+                <th class="py-2">Nozzle</th>
+                <th class="py-2">Latest Sales (₹)</th>
+                <th class="py-2">Previous Sales (₹)</th>
+                <th class="py-2">Net Change (₹)</th>
+              </tr>
+            </thead>
+            <tbody id="comparisonTable">
+              <tr><td colspan="4" class="py-4 text-center text-gray-400">Waiting for data...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+    }
+
+    function getDensityTemplate() {
+      return `
+      <div class="animate-fade-in bg-fuel-gray rounded-2xl p-6 shadow space-y-6">
+        <div>
+          <p class="text-sm uppercase tracking-wide text-gray-400">Density Conversion</p>
+          <h2 class="text-2xl font-bold text-white">Fuel Density Standardization</h2>
+          <p class="text-gray-300 text-sm mt-2">Convert recorded density to standard density at 15°C.</p>
+        </div>
+
+        <form id="densityForm" class="grid gap-4 md:grid-cols-2">
+          <div class="md:col-span-2">
+            <label class="block text-gray-400 text-sm mb-1">Fuel Type</label>
+            <select name="fuel_type" class="w-full bg-fuel-black text-white rounded-lg p-3 focus:outline-none">
+              <option value="Petrol">Petrol</option>
+              <option value="Diesel">Diesel</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-gray-400 text-sm mb-1">Current Density (g/cm³)</label>
+            <input type="number" step="0.0001" name="density" placeholder="0.82" class="w-full bg-fuel-black text-white rounded-lg p-3 focus:outline-none" required>
+          </div>
+          <div>
+            <label class="block text-gray-400 text-sm mb-1">Current Temperature (°C)</label>
+            <input type="number" step="0.1" name="temperature" placeholder="25" class="w-full bg-fuel-black text-white rounded-lg p-3 focus:outline-none" required>
+          </div>
+          <div class="md:col-span-2">
+            <button type="submit" class="w-full bg-fuel-orange hover:bg-orange-500 text-white font-semibold py-3 rounded-xl transition">
+              Calculate Standard Density
+            </button>
+          </div>
+        </form>
+
+        <div class="bg-fuel-black/40 rounded-xl p-4 text-center">
+          <p class="text-sm text-gray-400">Standard Density at 15°C</p>
+          <p id="densityResult" class="text-4xl font-bold text-white mt-2">--</p>
+        </div>
+
+        <div class="bg-fuel-black/30 rounded-xl p-4 text-sm text-gray-300 leading-relaxed">
+          <h3 class="text-white font-semibold mb-2">How density changes with temperature</h3>
+          <p>Petrol density drops by ~0.1% per °C while diesel by ~0.07% per °C. The calculator accounts for this to show the equivalent density at the standard reference temperature (15°C).</p>
+        </div>
+      </div>`;
+    }
+
+    function renderExtractedData(data) {
+      const container = document.getElementById('extractedDataContent');
+      if (!container) return;
+
+      if (!data) {
+        container.innerHTML = '<p>No data yet. Upload a receipt to view details.</p>';
+        return;
+      }
+
+      const nozzleHtml = (data.nozzles || [])
+        .map(nozzle => `
+          <div class="bg-fuel-black/40 rounded-lg p-3 mb-3">
+            <p class="text-white font-semibold">Nozzle ${nozzle.nozzle || ''}</p>
+            <p class="text-sm text-gray-300">A: ${nozzle.a || '--'}</p>
+            <p class="text-sm text-gray-300">V: ${nozzle.v || '--'}</p>
+            <p class="text-sm text-gray-300">Total Sales: ₹${nozzle.totSales || '--'}</p>
+          </div>`).join('');
+
+      container.innerHTML = `
+        <div class="grid grid-cols-2 gap-4 mb-4 text-sm">
+          <div>
+            <p class="text-gray-400">Print Date</p>
+            <p class="text-white font-semibold">${data.printDate || '--'}</p>
+          </div>
+          <div>
+            <p class="text-gray-400">Pump Serial Number</p>
+            <p class="text-white font-semibold">${data.pumpSerialNumber || '--'}</p>
+          </div>
+          <div>
+            <p class="text-gray-400">Model</p>
+            <p class="text-white font-semibold">${data.model || '--'}</p>
+          </div>
+          <div>
+            <p class="text-gray-400">Total Sales</p>
+            <p class="text-white font-semibold">₹${(data.totalSales || 0).toLocaleString()}</p>
+          </div>
+        </div>
+        <div class="space-y-3">${nozzleHtml || '<p class="text-gray-400 text-sm">No nozzle data captured.</p>'}</div>`;
+    }
+
+    async function loadReceiptHistory() {
+      const list = document.getElementById('receiptHistoryList');
+      if (!list || !pumpId) return;
+      list.innerHTML = '<p class="text-gray-400">Loading history...</p>';
+      try {
+        const res = await fetch(`/pump/${pumpId}/receipt/history`, { credentials: 'same-origin' });
+        const data = await res.json();
+        if (res.ok && data.success && data.receipts.length) {
+          list.innerHTML = data.receipts
+            .map(record => {
+              const encoded = encodeURIComponent(JSON.stringify(record));
+              return `
+              <div class="bg-fuel-black/40 rounded-lg p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                <div>
+                  <p class="text-white font-semibold">${record.print_date || 'Unknown date'}</p>
+                  <p class="text-gray-400 text-xs">Total Sales: ₹${(record.total_sales || 0).toLocaleString()}</p>
+                </div>
+                <button data-record='${encoded}' class="px-3 py-1 bg-fuel-orange text-white rounded-lg text-sm history-view-btn">
+                  View
+                </button>
+              </div>
+            `;
+            })
+            .join('');
+          list.querySelectorAll('.history-view-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const payload = JSON.parse(decodeURIComponent(btn.dataset.record || '{}'));
+              renderExtractedData(payload.data);
+              showToast('Loaded receipt snapshot.', 'success');
+            });
+          });
+        } else {
+          list.innerHTML = `<p class="text-gray-400 text-sm">${data.message || 'No receipts uploaded yet.'}</p>`;
+        }
+      } catch (err) {
+        console.error(err);
+        list.innerHTML = '<p class="text-red-400 text-sm">Failed to load history.</p>';
+      }
+    }
+
+    function initReceiptSection() {
+      const dropZone = document.getElementById('receiptDropZone');
+      const fileInput = document.getElementById('receiptFileInput');
+      const selectBtn = document.getElementById('selectReceiptBtn');
+      const changeBtn = document.getElementById('changeReceiptBtn');
+      const processBtn = document.getElementById('processReceiptBtn');
+      const previewWrapper = document.getElementById('selectedReceiptPreview');
+      const previewImage = document.getElementById('receiptPreviewImage');
+      const previewName = document.getElementById('receiptFileName');
+      const refreshBtn = document.getElementById('refreshHistoryBtn');
+      let selectedFile = null;
+
+      const setPreview = () => {
+        if (selectedFile) {
+          previewWrapper.classList.remove('hidden');
+          previewImage.src = URL.createObjectURL(selectedFile);
+          previewName.textContent = selectedFile.name;
+          processBtn.disabled = false;
+        } else {
+          previewWrapper.classList.add('hidden');
+          previewImage.src = '';
+          previewName.textContent = '';
+          processBtn.disabled = true;
+        }
+      };
+
+      const handleFiles = files => {
+        if (files && files.length) {
+          selectedFile = files[0];
+          setPreview();
+        }
+      };
+
+      if (selectBtn) selectBtn.addEventListener('click', () => fileInput.click());
+      if (changeBtn) changeBtn.addEventListener('click', () => fileInput.click());
+      if (refreshBtn) refreshBtn.addEventListener('click', () => loadReceiptHistory());
+
+      dropZone.addEventListener('click', () => fileInput.click());
+      dropZone.addEventListener('dragover', e => {
+        e.preventDefault();
+        dropZone.classList.add('border-fuel-orange');
+      });
+      dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-fuel-orange'));
+      dropZone.addEventListener('drop', e => {
+        e.preventDefault();
+        dropZone.classList.remove('border-fuel-orange');
+        handleFiles(e.dataTransfer.files);
+      });
+
+      fileInput.addEventListener('change', e => handleFiles(e.target.files));
+
+      processBtn.addEventListener('click', async () => {
+        if (!selectedFile) {
+          showToast('Please select a receipt image first.', 'error');
+          return;
+        }
+
+        processBtn.disabled = true;
+        processBtn.textContent = 'Processing...';
+
+        try {
+          const formData = new FormData();
+          formData.append('receipt', selectedFile);
+          
+          // Add CSRF token for file upload
+          const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+          if (csrfToken) {
+            formData.append('csrf_token', csrfToken);
+          }
+          
+          const res = await fetch(`/pump/${pumpId}/receipt/upload`, {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin',
+            headers: {
+              'X-CSRFToken': csrfToken || ''
+            }
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            showToast('Receipt processed successfully!', 'success');
+            renderExtractedData(data.data);
+            await loadReceiptHistory();
+          } else {
+            showToast(data.error || 'Failed to process receipt', 'error');
+          }
+        } catch (err) {
+          console.error(err);
+          showToast('Unable to process receipt. Please try again.', 'error');
+        } finally {
+          processBtn.disabled = false;
+          processBtn.textContent = 'Process Receipt';
+        }
+      });
+
+      loadReceiptHistory();
+      renderExtractedData(null);
+    }
+
+    async function initDailyComparison() {
+      const summary = document.getElementById('comparisonSummary');
+      const table = document.getElementById('comparisonTable');
+      if (!pumpId) return;
+      summary.innerHTML = '<p class="text-gray-400">Loading comparison data...</p>';
+      table.innerHTML = '<tr><td colspan="4" class="py-4 text-center text-gray-400">Loading...</td></tr>';
+
+      try {
+        const res = await fetch(`/pump/${pumpId}/receipt/comparison`, { credentials: 'same-origin' });
+        const data = await res.json();
+        if (!res.ok || !data.success || data.message) {
+          summary.innerHTML = `<p class="text-gray-400">${data.message || data.error || 'Upload at least two receipts to view comparison.'}</p>`;
+          table.innerHTML = '<tr><td colspan="4" class="py-4 text-center text-gray-400">Not enough data.</td></tr>';
+          return;
+        }
+
+        summary.innerHTML = `
+          <div class="bg-fuel-black/40 rounded-xl p-4">
+            <p class="text-xs text-gray-400">Latest Receipt</p>
+            <p class="text-white font-semibold">${data.latest.print_date || '--'}</p>
+            <p class="text-gray-300 text-sm">Total Sales: ₹${(data.latest.total_sales || 0).toLocaleString()}</p>
+          </div>
+          <div class="bg-fuel-black/40 rounded-xl p-4">
+            <p class="text-xs text-gray-400">Previous Receipt</p>
+            <p class="text-white font-semibold">${data.previous.print_date || '--'}</p>
+            <p class="text-gray-300 text-sm">Total Sales: ₹${(data.previous.total_sales || 0).toLocaleString()}</p>
+          </div>
+          <div class="bg-green-600/30 rounded-xl p-4">
+            <p class="text-xs text-gray-200">Net Change</p>
+            <p class="text-2xl font-bold text-white">₹${(data.net_sales || 0).toLocaleString()}</p>
+            <p class="text-gray-200 text-sm">Latest - Previous</p>
+          </div>`;
+
+        table.innerHTML = data.comparison.map(row => `
+          <tr class="border-b border-gray-700">
+            <td class="py-3">${row.nozzle}</td>
+            <td class="py-3 text-green-300">₹${(row.current || 0).toLocaleString()}</td>
+            <td class="py-3 text-gray-300">₹${(row.previous || 0).toLocaleString()}</td>
+            <td class="py-3 ${row.difference >= 0 ? 'text-green-300' : 'text-red-400'}">₹${(row.difference || 0).toLocaleString()}</td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        console.error(err);
+        summary.innerHTML = '<p class="text-red-400">Failed to load comparison data.</p>';
+        table.innerHTML = '<tr><td colspan="4" class="py-4 text-center text-red-400">Error</td></tr>';
+      }
+    }
+
+    function initDensityCalculator() {
+      const form = document.getElementById('densityForm');
+      const resultEl = document.getElementById('densityResult');
+      if (!form) return;
+
+      form.addEventListener('submit', async e => {
+        e.preventDefault();
+        const formData = new FormData(form);
+        const payload = {
+          fuel_type: formData.get('fuel_type'),
+          density: formData.get('density'),
+          temperature: formData.get('temperature')
+        };
+        resultEl.textContent = 'Calculating...';
+        try {
+          const res = await fetch(`/pump/${pumpId}/density/calculate`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify(payload)
+          });
+          const data = await res.json();
+          if (res.ok && data.success) {
+            resultEl.textContent = `${data.standard_density} g/cm³`;
+            showToast('Standard density calculated.', 'success');
+          } else {
+            resultEl.textContent = '--';
+            showToast(data.error || 'Failed to calculate density', 'error');
+          }
+        } catch (err) {
+          console.error(err);
+          resultEl.textContent = '--';
+          showToast('Unable to calculate density.', 'error');
+        }
+      });
+    }
 
     function updateMainContent(selected) {
       let content = '';
@@ -403,7 +1258,7 @@ case '💳 Subscriptions':
             <li class="flex items-start gap-2"><span>🔸</span><span><del>Hydrotesting system</del></span></li>
           </ul>
         </div>
-        <button class="subscribe-btn">Subscribe</button>
+        <button class="subscribe-btn" data-plan="Silver">Subscribe</button>
       </div>
     </div>
 
@@ -432,7 +1287,7 @@ case '💳 Subscriptions':
             <li class="flex items-start gap-2"><span>🔸</span><span><del>Hydrotesting system</del></span></li>
           </ul>
         </div>
-        <button class="subscribe-btn">Subscribe</button>
+        <button class="subscribe-btn" data-plan="Gold">Subscribe</button>
       </div>
     </div>
 
@@ -461,7 +1316,7 @@ case '💳 Subscriptions':
             <li class="flex items-start gap-2"><span>🔸</span><span>Hydrotesting system</span></li>
           </ul>
         </div>
-        <button class="subscribe-btn">Subscribe</button>
+        <button class="subscribe-btn" data-plan="Diamond">Subscribe</button>
       </div>
     </div>
 
@@ -495,72 +1350,169 @@ case '💳 Subscriptions':
   });
 
   document.querySelectorAll('.subscribe-btn').forEach(button => {
-    button.addEventListener('click', function () {
+    button.addEventListener('click', async function () {
       const card = this.closest('.plan-card');
       const priceContainer = card.querySelector('[data-base-price]');
       const basePrice = parseInt(priceContainer.getAttribute('data-base-price'), 10);
       const durationText = priceContainer.querySelector('.duration-display').textContent.trim();
-      const duration = durationText.includes('6 Months') ? 6 : durationText.includes('Annual') ? 12 : 1;
-      const totalPrice = basePrice * duration;
-      const planName = this.dataset.plan;
+      
+      // Determine duration string
+      let duration = "1 Month";
+      if (durationText.includes('6 Months')) duration = "6 Months";
+      else if (durationText.includes('Annual')) duration = "Annual";
+      
+      const planName = this.dataset.plan || card.querySelector('h3').textContent.trim();
+      const pumpId = "{{ pump.id }}";
+      
+      if (!pumpId) {
+        showToast("Pump ID not found", "error");
+        return;
+      }
 
-      const options = {
-        key: "rzp_test_RLoVxeTmO0idx0", 
-        amount: totalPrice * 100, 
-        currency: "INR",
-        name: "Fuel Flux",
-        description: `${planName} Subscription - ${durationText}`,
-        image: "https://yourdomain.com/static/images/logo2.png",
-        handler: function (response) {
-          alert("✅ Payment successful! Razorpay ID: " + response.razorpay_payment_id);
-        },
-        prefill: {
-          name: "Customer Name",
-          email: "customer@example.com",
-          contact: "9999999999"
-        },
-        theme: { color: "#FF6B35" }
-      };
+      // Disable button during processing
+      this.disabled = true;
+      this.textContent = "Processing...";
 
-      const rzp = new Razorpay(options);
-      rzp.open();
+      try {
+        // Step 1: Create Razorpay order via backend
+        const orderResponse = await fetch("/subscription/create-order", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": document.querySelector('meta[name="csrf-token"]')?.content || ""
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify({
+            plan_type: planName,
+            duration: duration,
+            pump_id: parseInt(pumpId)
+          })
+        });
+
+        const orderData = await orderResponse.json();
+
+        if (!orderData.success) {
+          throw new Error(orderData.error || "Failed to create order");
+        }
+
+        // Step 2: Open Razorpay checkout
+        const options = {
+          key: orderData.key_id || "rzp_test_RLoVxeTmO0idx0",
+          amount: orderData.amount,
+          currency: orderData.currency || "INR",
+          name: "Fuel Flux",
+          description: `${planName} Subscription - ${duration}`,
+          order_id: orderData.order_id,
+          image: "{{ url_for('static', filename='images/logo2.png') }}",
+          handler: async function (response) {
+            // Step 3: Handle payment success
+            try {
+              const successResponse = await fetch("/subscription/payment-success", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "X-CSRFToken": document.querySelector('meta[name="csrf-token"]')?.content || ""
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_signature: response.razorpay_signature,
+                  plan_type: planName,
+                  duration: duration,
+                  pump_id: parseInt(pumpId)
+                })
+              });
+
+              const result = await successResponse.json();
+
+              if (result.success) {
+                showToast(result.message || "✅ Subscription activated successfully!", "success");
+                
+                // Step 4: Refresh subscription status and unlock features
+                try {
+                  await unlockFeatures();
+                } catch (unlockErr) {
+                  console.warn("unlockFeatures error (non-critical):", unlockErr);
+                }
+                
+                // Reload the subscription section to show updated status
+                setTimeout(() => {
+                  updateMainContent('💳 Subscriptions');
+                  // Refresh features again after view change
+                  setTimeout(() => unlockFeatures(), 500);
+                }, 800);
+              } else {
+                showToast(result.error || "Payment succeeded but subscription activation failed", "error");
+              }
+            } catch (err) {
+              console.error("Payment success handler error:", err);
+              // Still try to unlock features even if there was an error
+              try {
+                await unlockFeatures();
+                showToast("Payment completed. Refreshing subscription status...", "success");
+                setTimeout(() => {
+                  updateMainContent('💳 Subscriptions');
+                  setTimeout(() => unlockFeatures(), 500);
+                }, 800);
+              } catch (unlockErr) {
+                showToast("Payment successful but page refresh needed. Please reload the page.", "error");
+              }
+            }
+          },
+          prefill: {
+            name: "{{ user.full_name }}",
+            email: "{{ user.email }}",
+            contact: ""
+          },
+          theme: { color: "#FF6B35" },
+          modal: {
+            ondismiss: function() {
+              // Re-enable button if user closes payment modal
+              button.disabled = false;
+              button.textContent = "Subscribe";
+            }
+          }
+        };
+
+        const rzp = new Razorpay(options);
+        rzp.on('payment.failed', function (response) {
+          showToast("Payment failed: " + (response.error.description || "Unknown error"), "error");
+          button.disabled = false;
+          button.textContent = "Subscribe";
+        });
+        
+        rzp.open();
+
+      } catch (err) {
+        console.error("Subscription error:", err);
+        showToast(err.message || "Failed to initiate payment", "error");
+        this.disabled = false;
+        this.textContent = "Subscribe";
+      }
     });
   });
 
-  // ---- Unlock Feature Logic ----
-  async function unlockFeatures() {
-    const pumpId = "{{ pump.id }}";
-    if (!pumpId) return;
-
-    try {
-      const res = await fetch(`/subscription/current-subscription/${pumpId}`, {
-        credentials: 'same-origin'
-      });
-      if (!res.ok) return;
-
-      const data = await res.json();
-      const rawPlan = (data.plan || '').toString().trim();
-      const displayPlan = rawPlan ? (rawPlan.charAt(0).toUpperCase() + rawPlan.slice(1)) : 'Free Trial';
-      document.querySelectorAll('.subscription-info span').forEach(span => span.textContent = displayPlan);
-
-      const allowed = ['silver', 'gold', 'diamond'];
-      if (allowed.includes(rawPlan.toLowerCase())) {
-        document.querySelectorAll('[data-feature="vehicle-verification"], [data-feature="station-data"]').forEach(el => {
-          el.classList.remove('locked');
-          el.classList.add('border-fuel-orange');
-          el.style.pointerEvents = 'auto';
-          el.style.filter = 'none';
-        });
-      }
-    } catch (err) { console.error(err); }
-  }
-
-  unlockFeatures();
   break;
 
 
 
 
+
+        case '🧾 Receipts':
+          mainContent.innerHTML = getReceiptTemplate();
+          initReceiptSection();
+          break;
+
+        case '📈 Daily Comparison':
+          mainContent.innerHTML = getComparisonTemplate();
+          initDailyComparison();
+          break;
+
+        case '🧪 Density Calculator':
+          mainContent.innerHTML = getDensityTemplate();
+          initDensityCalculator();
+          break;
 
         case '👤 Profile':
           content = `
@@ -577,7 +1529,7 @@ case '💳 Subscriptions':
               <!-- Update Profile Form -->
               <div class="bg-fuel-black p-4 rounded-lg shadow mb-6">
                 <h3 class="text-lg font-semibold text-gray-200 mb-3">Update Profile</h3>
-                <form method="POST" action="{{ url_for('dashboard.update_profile') }}" class="space-y-3">
+                <form method="POST" action="{{ url_for('pump_dashboard.update_profile') }}" class="space-y-3">
                     
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
@@ -594,7 +1546,7 @@ case '💳 Subscriptions':
               {% if user.password_hash %}
               <div class="bg-fuel-black p-4 rounded-lg shadow">
                 <h3 class="text-lg font-semibold text-gray-200 mb-3">Change Password</h3>
-                <form method="POST" action="{{ url_for('password_bp.change_password') }}" class="space-y-3">
+                <form method="POST" action="{{ url_for('pump_dashboard.change_password') }}" class="space-y-3">
                   
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
@@ -1091,7 +2043,7 @@ case '🕵️ Vehicle verification':
           }
 
           // If it's one of the dynamic sections, load it in main
-          if (["💳 Subscriptions", "👤 Profile", "📊 Station vehicle data","🕵️ Vehicle verification"].includes(selected)) {
+          if (["💳 Subscriptions", "👤 Profile", "📊 Station vehicle data","🕵️ Vehicle verification","🧾 Receipts","📈 Daily Comparison","🧪 Density Calculator"].includes(selected)) {
             e.preventDefault();
             updateMainContent(selected);
             localStorage.setItem('selectedSection', selected);
@@ -1116,92 +2068,8 @@ case '🕵️ Vehicle verification':
     // Default content
     const lastSection = localStorage.getItem('selectedSection') || '👤 Profile';
     updateMainContent(lastSection);
-      </script>
-
-      <script>
-    /* unified unlockFeatures + handleSubscribe */
-    function debugLog(...args) {
-      if (window && window.console) console.log('[unlockFeatures]', ...args);
-    }
-
-    async function unlockFeatures() {
-      const pumpId = "{{ pump.id }}";
-      debugLog('pumpId:', pumpId);
-      if (!pumpId) {
-        debugLog('no pumpId found in template');
-        return;
-      }
-
-      try {
-        const res = await fetch(`/subscription/current-subscription/${pumpId}`, {
-          credentials: 'same-origin'
-        });
-        if (!res.ok) {
-          debugLog('subscription endpoint returned not ok', res.status);
-          return;
-        }
-
-        const data = await res.json();
-        debugLog('response:', data);
-
-        // pick plan value — adjust if your API nests it
-        const rawPlan = (data.plan || '').toString().trim();
-        const displayPlan = rawPlan ? (rawPlan.charAt(0).toUpperCase() + rawPlan.slice(1)) : 'Free Plan';
-
-        // update all subscription display spans (desktop + mobile)
-        document.querySelectorAll('.subscription-info span').forEach(span => {
-          span.textContent = displayPlan;
-        });
-
-        // unlock features if eligible
-        const allowed = ['silver', 'gold', 'diamond'];
-        if (rawPlan && allowed.includes(rawPlan.toLowerCase())) {
-          document.querySelectorAll('[data-feature="vehicle-verification"], [data-feature="station-data"]')
-            .forEach(el => {
-              el.classList.remove('locked');
-              el.classList.add('border-fuel-orange');
-              el.style.pointerEvents = 'auto';
-              el.style.filter = 'none';
-            });
-          debugLog('unlocked for', rawPlan);
-        } else {
-          debugLog('not eligible to unlock:', rawPlan || '(none)');
-        }
-
-      } catch (err) {
-        console.error('[unlockFeatures] fetch error', err);
-      }
-    }
-
-    async function handleSubscribe(bodyData) {
-      try {
-        const response = await fetch("/subscription/subscribe", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": document.querySelector('meta[name="csrf-token"]').content
-          },
-          body: JSON.stringify(bodyData),
-          credentials: 'same-origin'
-        });
-        const result = await response.json();
-        if (result.success) {
-          showToast(result.message, "success");
-          // re-check subscription and update the sidebar immediately
-          await unlockFeatures();
-        } else {
-          showToast(result.error || "Subscription failed", "error");
-        }
-      } catch (err) {
-        console.error('subscribe error', err);
-        showToast("Something went wrong", "error");
-      }
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-      unlockFeatures();
-    });
-    </script>
+    unlockFeatures();
+  </script>
 
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </body>
