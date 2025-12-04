@@ -104,11 +104,18 @@ def register():
 
     login_user(user)
     msg = "Registration successful!"
+    
+    # Redirect based on user type
+    if owner_type == "pump":
+        redirect_url = url_for("pump.select_pump")
+    else:
+        redirect_url = url_for("dashboard.dashboard")
+    
     if request.is_json:
-        return jsonify({"success": True, "message": msg, "redirect_url": url_for("dashboard.dashboard")})
+        return jsonify({"success": True, "message": msg, "redirect_url": redirect_url})
 
     flash(msg, "success")
-    return redirect(url_for("dashboard.dashboard"))
+    return redirect(redirect_url)
 
 
 # -------------------------
@@ -143,10 +150,17 @@ def login():
     if user and user.check_password(password):
         login_user(user)
         msg = "Login successful!"
+        
+        # Redirect based on user type
+        if owner_type == "pump":
+            redirect_url = url_for("pump.select_pump")
+        else:
+            redirect_url = url_for("dashboard.dashboard")
+        
         if request.is_json:
-            return jsonify({"success": True, "message": msg, "redirect_url": url_for("dashboard.dashboard")})
+            return jsonify({"success": True, "message": msg, "redirect_url": redirect_url})
         flash(msg, "success")
-        return redirect(url_for("dashboard.dashboard"))
+        return redirect(redirect_url)
 
     msg = "Invalid email or password"
     if request.is_json:
