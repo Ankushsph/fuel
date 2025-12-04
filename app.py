@@ -1,3 +1,4 @@
+import os
 from flask import Flask, redirect, url_for, request, jsonify, render_template
 from config import Config
 from extensions import db, mail, oauth, csrf, migrate
@@ -12,7 +13,7 @@ app.config.from_object(Config)
 # --- Session cookie settings ---
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = "Lax"
-app.config['SESSION_COOKIE_SECURE'] = False  # set to True for HTTPS
+app.config['SESSION_COOKIE_SECURE'] = os.getenv('FLASK_ENV') == 'production'  # auto-detect production
 
 # --- Allow CORS for frontend ---
 CORS(app, supports_credentials=True, origins=["http://127.0.0.1:5001"])
