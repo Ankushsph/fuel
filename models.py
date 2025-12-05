@@ -86,6 +86,11 @@ class Pump(db.Model):
     location = db.Column(db.String(200), nullable=False)
     fuel_types = db.Column(db.String(200), nullable=True)  # e.g., "Petrol, Diesel, CNG"
     owner_id = db.Column(db.Integer, db.ForeignKey('pump_owners.id'), nullable=False)
+    
+    # Admin verification fields
+    is_verified = db.Column(db.Boolean, default=False)
+    is_blocked = db.Column(db.Boolean, default=False)
+    verified_at = db.Column(db.DateTime, nullable=True)
 
 
 class PumpWallet(db.Model):
@@ -177,3 +182,83 @@ class PumpReceipt(db.Model):
 
     def __repr__(self):
         return f"<PumpReceipt pump={self.pump_id} date={self.print_date}>"
+
+
+class PaymentVerification(db.Model):
+    """Model to store payment screenshot submissions for admin verification"""
+    __tablename__ = "payment_verifications"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("pump_owners.id"), nullable=False)
+    user_email = db.Column(db.String(120), nullable=False)
+    pump_id = db.Column(db.Integer, db.ForeignKey("pumps.id"), nullable=False)
+    
+    plan_type = db.Column(db.String(50), nullable=False)  # Silver, Gold, Diamond
+    duration = db.Column(db.String(50), nullable=False)  # 1 Month, 6 Months, Annual
+    amount = db.Column(db.Float, nullable=False)
+    
+    screenshot_filename = db.Column(db.String(255), nullable=False)  # Payment proof
+    transaction_id = db.Column(db.String(100), nullable=True)  # Optional UTR/Transaction ID
+    
+    status = db.Column(db.String(20), default='pending')  # pending, approved, rejected
+    created_at = db.Column(db.DateTime, server_default=func.now())
+    verified_at = db.Column(db.DateTime, nullable=True)
+    verified_by = db.Column(db.String(120), nullable=True)  # Admin email
+    rejection_reason = db.Column(db.Text, nullable=True)
+    
+    owner = db.relationship("PumpOwner", backref="payment_verifications")
+    pump = db.relationship("Pump", backref="payment_verifications")
+
+    def __repr__(self):
+        return f"<PaymentVerification user={self.user_email} amount={self.amount} status={self.status}>"
+
+
+class PumpRegistrationRequest(db.Model):
+    """Model to store pump registration requests for admin approval"""
+    __tablename__ = "pump_registration_requests"
+
+    id = db.Column(db.Integer, primary_key=True)
+    pump_id = db.Column(db.Integer, db.ForeignKey("pumps.id"), nullable=False)
+    owner_id = db.Column(db.Integer, db.ForeignKey("pump_owners.id"), nullable=False)
+    
+    owner_name = db.Column(db.String(100), nullable=False)
+    pump_address = db.Column(db.Text, nullable=False)
+    contact_number = db.Column(db.String(20), nullable=False)
+    opening_time = db.Column(db.String(10), nullable=False)
+    closing_time = db.Column(db.String(10), nullable=False)
+    
+    documents = db.Column(db.JSON, nullable=True)  # List of uploaded document filenames
+    
+    status = db.Column(db.String(20), default='pending')  # pending, approved, rejected
+    created_at = db.Column(db.DateTime, server_default=func.now())
+    verified_at = db.Column(db.DateTime, nullable=True)
+    verified_by = db.Column(db.String(120), nullable=True)  # Admin email
+    rejection_reason = db.Column(db.Text, nullable=True)
+    
+    owner = db.relationship("PumpOwner", backref="registration_requests")
+    pump = db.relationship("Pump", backref="registration_requests")
+
+    def __repr__(self):
+        return f"<PumpRegistrationRequest pump={self.pump_id} status={self.status}>"
+
+
+class Admin(db.Model, UserMixin):
+    """Admin model for admin panel authentication"""
+    __tablename__ = "admins"
+    
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(200), nullable=False)
+    created_at = db.Column(db.DateTime, server_default=func.now())
+    
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+    
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+    
+    def get_id(self):
+        return f"admin_{self.id}"
+    
+    def __repr__(self):
+        return f"<Admin {self.email}>"

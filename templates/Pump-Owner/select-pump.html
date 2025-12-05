@@ -44,27 +44,40 @@
   <div id="toast"></div>
 
   <!-- Header / Navigation -->
-  <nav class="bg-fuel-gray p-4 flex justify-between items-center shadow-lg">
-    <div class="flex items-center space-x-4">
-      <img src="{{ url_for('static', filename='images/logo2.png') }}" alt="Fuel Flux Logo" class="h-10 w-auto" />
-      <span class="text-fuel-orange font-bold text-xl">Pump Owner</span>
+  <nav class="bg-fuel-gray p-2 md:p-4 shadow-lg">
+    <div class="flex justify-between items-center gap-2">
+      <div class="flex items-center gap-1 md:gap-3 flex-1 min-w-0">
+        <img src="{{ url_for('static', filename='images/logo2.png') }}" alt="Fuel Flux Logo" class="h-6 md:h-10 w-auto flex-shrink-0" />
+        <span class="text-fuel-orange font-bold text-xs md:text-xl truncate hidden sm:inline">Pump Owner</span>
+      </div>
+      
+      <!-- Desktop Menu -->
+      <div class="hidden md:flex items-center space-x-4 flex-shrink-0">
+        <a href="/" class="text-fuel-orange hover:text-white transition-colors">Home</a>
+        <a href="{{ url_for('auth.logout') }}" class="bg-fuel-orange hover:bg-orange-600 px-4 py-2 rounded-lg font-semibold transition">Logout</a>
+      </div>
+      
+      <!-- Mobile Menu Button -->
+      <button id="mobile-menu-btn" class="md:hidden text-white text-lg focus:outline-none flex-shrink-0">☰</button>
     </div>
-    <div class="flex items-center space-x-4">
-      <a href="/" class="text-fuel-orange hover:text-white transition-colors">Home</a>
-      <a href="{{ url_for('auth.logout') }}" class="bg-fuel-orange hover:bg-orange-600 px-4 py-2 rounded-lg font-semibold transition">Logout</a>
+    
+    <!-- Mobile Menu -->
+    <div id="mobile-menu" class="hidden md:hidden mt-3 space-y-2 pb-2">
+      <a href="/" class="block text-fuel-orange hover:text-white transition-colors py-2">Home</a>
+      <a href="{{ url_for('auth.logout') }}" class="block bg-fuel-orange hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold transition text-center">Logout</a>
     </div>
   </nav>
 
   <!-- Main Container -->
-<div class="flex-1 flex justify-center items-start p-6">
-  <div class="bg-fuel-gray w-full max-w-4xl rounded-2xl shadow-lg p-6 flex flex-col space-y-6 h-[550px]">
+<div class="flex-1 flex justify-center items-start p-4 md:p-6">
+  <div class="bg-fuel-gray w-full max-w-4xl rounded-2xl shadow-lg p-4 md:p-6 flex flex-col space-y-4 md:space-y-6 min-h-[500px] md:h-[550px]">
 
 
 
       <!-- Header -->
-      <div class="flex justify-between items-center mb-4">
-        <h1 class="text-2xl font-bold text-fuel-orange">Your Pumps</h1>
-        <button id="addPumpBtn" class="bg-fuel-orange hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold transition" onclick="document.getElementById('pumpModal').classList.remove('hidden')">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+        <h1 class="text-xl md:text-2xl font-bold text-fuel-orange">Your Pumps</h1>
+        <button id="addPumpBtn" class="bg-fuel-orange hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold transition w-full sm:w-auto text-sm md:text-base" onclick="document.getElementById('pumpModal').classList.remove('hidden')">
           + Add Pump
         </button>
       </div>
@@ -84,19 +97,19 @@
       <!-- Pumps Grid -->
       <div id="pumpsList" class="flex flex-col gap-3 overflow-y-auto flex-1">
         {% for pump in pumps %}
-        <div class="pump-item bg-fuel-black rounded-xl p-4 flex justify-between items-center hover:bg-fuel-gray cursor-pointer transition mb-3"
+        <div class="pump-item bg-fuel-black rounded-xl p-3 md:p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 hover:bg-fuel-gray cursor-pointer transition mb-3"
             data-pump-id="{{ pump.id }}">
-          <div>
-            <h3 class="text-lg font-semibold text-fuel-orange">{{ pump.name }}</h3>
-            <p class="text-gray-400">{{ pump.location }}</p>
+          <div class="flex-1">
+            <h3 class="text-base md:text-lg font-semibold text-fuel-orange">{{ pump.name }}</h3>
+            <p class="text-sm text-gray-400">{{ pump.location }}</p>
           </div>
           <button data-pump-id="{{ pump.id }}" 
-                  class="bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 font-semibold transition delete-pump">
+                  class="bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 font-semibold transition delete-pump text-sm w-full sm:w-auto">
             Remove
           </button>
         </div>
         {% else %}
-        <div class="text-gray-400 text-center py-6">No pumps added yet.</div>
+        <div class="text-gray-400 text-center py-6 text-sm md:text-base">No pumps added yet.</div>
         {% endfor %}
       </div>
 
@@ -104,6 +117,12 @@
     </div>
   </div>
 <script>
+  // Mobile menu toggle
+  document.getElementById('mobile-menu-btn').addEventListener('click', function() {
+    const menu = document.getElementById('mobile-menu');
+    menu.classList.toggle('hidden');
+  });
+
   const toast = document.getElementById('toast');
 
   // Toast helper: messageType can be 'success' or 'error'
@@ -216,8 +235,8 @@
 
 <!-- Trigger Button -->
   <!-- Modal -->
- <div id="pumpModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50 px-4 overflow-y-auto">
-  <div class="bg-fuel-gray text-fuel-orange font-bold rounded-xl w-full max-w-md p-4 relative">
+ <div id="pumpModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50 p-4 overflow-y-auto">
+  <div class="bg-fuel-gray text-fuel-orange font-bold rounded-xl w-full max-w-md p-4 md:p-6 relative my-auto max-h-[90vh] overflow-y-auto">
 
     <!-- Close Button -->
     <button onclick="document.getElementById('pumpModal').classList.add('hidden')"
@@ -225,9 +244,9 @@
       &times;
     </button>
 
-    <h1 class="text-orange-500 text-center text-2xl mb-4">Pump Registration Form</h1>
+    <h1 class="text-orange-500 text-center text-xl md:text-2xl mb-4">Pump Registration Form</h1>
 
-    <form action="{{ url_for('pump.submit_pump_registration') }}" method="POST" enctype="multipart/form-data" class="space-y-3">
+    <form action="{{ url_for('pump.submit_pump_registration') }}" method="POST" enctype="multipart/form-data" class="space-y-3 text-sm md:text-base">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
       <div>

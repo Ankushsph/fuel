@@ -111,8 +111,7 @@ def pump_dashboard(pump_id):
 def submit_pump_registration():
     """
     Handles the Pump Registration Form POST from the modal in select-pump.html.
-    For now we just log the data and redirect back to the select page with a
-    success message so the route always exists and never 404s.
+    Saves registration data for admin verification.
     """
     if not isinstance(current_user, PumpOwner):
         flash("Access denied.", "error")
@@ -124,21 +123,64 @@ def submit_pump_registration():
     open_time = request.form.get("openTime")
     close_time = request.form.get("closeTime")
     documents = request.files.getlist("documents[]")
+    
+    # Get pump_id from form or use the last created pump
+    pump_id = request.form.get("pump_id")
+    if not pump_id:
+        # Use the most recent pump for this owner
+        latest_pump = Pump.query.filter_by(owner_id=current_user.id).order_by(Pump.id.desc()).first()
+        if not latest_pump:
+            flash("Please add a pump first before registering.", "error")
+            return redirect(url_for("pump.select_pump"))
+        pump_id = latest_pump.id
 
     try:
-        current_app.logger.info(
-            "Pump registration submitted by %s: owner_name=%s, address=%s, contact=%s, open_time=%s, close_time=%s, documents=%s",
-            getattr(current_user, "email", current_user.get_id()),
-            owner_name,
-            address,
-            contact,
-            open_time,
-            close_time,
-            [doc.filename for doc in documents],
+        # Import PumpRegistrationRequest
+        from models import PumpRegistrationRequest
+        
+        # Save uploaded documents
+        saved_documents = []
+        if documents:
+            import os
+            import uuid
+            from werkzeug.utils import secure_filename
+            
+            os.makedirs('uploads/pump_documents', exist_ok=True)
+            
+            for doc in documents:
+                if doc and doc.filename:
+                    filename = secure_filename(doc.filename)
+                    unique_filename = f"{uuid.uuid4().hex}_{filename}"
+                    doc_path = os.path.join('uploads', 'pump_documents', unique_filename)
+                    doc.save(doc_path)
+                    saved_documents.append(unique_filename)
+        
+        # Create registration request
+        registration = PumpRegistrationRequest(
+            pump_id=pump_id,
+            owner_id=current_user.id,
+            owner_name=owner_name,
+            pump_address=address,
+            contact_number=contact,
+            opening_time=open_time,
+            closing_time=close_time,
+            documents=saved_documents,
+            status='pending'
         )
-        flash("Pump registration submitted successfully!", "success")
+        
+        db.session.add(registration)
+        db.session.commit()
+        
+        current_app.logger.info(
+            "Pump registration submitted by %s for pump_id=%s",
+            current_user.email,
+            pump_id
+        )
+        
+        flash("✅ Pump registration submitted! Admin will verify within 24 hours.", "success")
     except Exception as e:
         current_app.logger.error("Error while handling pump registration submit: %s", e)
+        db.session.rollback()
         flash("Something went wrong while submitting the form. Please try again.", "error")
 
     return redirect(url_for("pump.select_pump"))

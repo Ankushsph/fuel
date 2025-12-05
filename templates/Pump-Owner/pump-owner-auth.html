@@ -38,22 +38,28 @@
   <div id="toast"></div>
 
   <!-- Navigation -->
-  <nav class="bg-fuel-gray p-4 flex justify-between items-center relative">
-    <div class="flex items-center space-x-4">
-      <img src="{{ url_for('static', filename='images/logo2.png') }}" alt="Fuel Flux Logo" class="h-10 w-auto" />
-      <span class="text-fuel-orange font-bold text-xl">Pump Owner</span>
+  <nav class="bg-fuel-gray p-2 md:p-4 relative">
+    <div class="flex justify-between items-center gap-2">
+      <div class="flex items-center gap-1 md:gap-3 flex-1 min-w-0">
+        <img src="{{ url_for('static', filename='images/logo2.png') }}" alt="Fuel Flux Logo" class="h-6 md:h-10 w-auto flex-shrink-0" />
+        <span class="text-fuel-orange font-bold text-xs md:text-xl truncate hidden sm:inline">Pump Owner</span>
+      </div>
+      <button id="menu-btn" class="md:hidden text-white text-lg focus:outline-none flex-shrink-0">☰</button>
+      <div id="menu-links" class="hidden md:flex space-x-6 flex-shrink-0">
+        <a href="/" class="text-fuel-orange hover:text-white transition-colors">Home</a>
+      </div>
     </div>
-        <button id="menu-btn" class="md:hidden text-white text-2xl focus:outline-none">☰</button>
-    <div id="menu-links" class="hidden md:flex space-x-6 absolute md:static top-full left-0 w-full md:w-auto bg-fuel-gray md:bg-transparent p-4 md:p-0 flex-col md:flex-row">
-      <a href="/" class="text-fuel-orange hover:text-white transition-colors">Home</a>
+    <!-- Mobile Menu -->
+    <div id="menu-links-mobile" class="hidden md:hidden mt-3 space-y-2 pb-2">
+      <a href="/" class="block text-fuel-orange hover:text-white transition-colors py-2">Home</a>
     </div>
   </nav>
 
   <!-- Main -->
-  <main class="flex-1 flex items-center justify-center px-4 py-8 flex-col">
+  <main class="flex-1 flex items-center justify-center px-4 py-4 md:py-8 flex-col">
 
     <!-- Info Text -->
-    <div id="form-info" class="mb-4 text-center font-semibold text-3xl">
+    <div id="form-info" class="mb-4 text-center font-semibold text-xl md:text-3xl">
       <span id="login-info"><span class="text-fuel-orange">Welcome back!</span> <span class="text-white">Please login.</span></span>
       <span id="register-info" class="hidden"><span class="text-fuel-orange">New here?</span> <span class="text-white">Please register.</span></span>
     </div>
@@ -176,6 +182,13 @@
   </main>
 
   <script>
+    // Mobile menu toggle
+    const menuBtn = document.getElementById("menu-btn");
+    const menuLinksMobile = document.getElementById("menu-links-mobile");
+    if (menuBtn && menuLinksMobile) {
+      menuBtn.addEventListener("click", () => menuLinksMobile.classList.toggle("hidden"));
+    }
+
     // Tabs
     const loginTab = document.getElementById("login-tab");
     const registerTab = document.getElementById("register-tab");
@@ -184,6 +197,27 @@
     const formsContainer = document.getElementById("forms-container");
     const loginInfo = document.getElementById("login-info");
     const registerInfo = document.getElementById("register-info");
+
+    // Initialize form heights
+    loginForm.style.transform = "translateX(0)";
+    registerForm.style.transform = "translateX(100%)";
+    formsContainer.style.height = loginForm.offsetHeight + "px";
+
+    function clearForm(form) {
+      form.querySelectorAll("input").forEach(input => {
+        if (input.type !== "hidden") input.value = "";
+      });
+    }
+
+    function resetPasswords(form) {
+      form.querySelectorAll('input[type="password"], input[type="text"]').forEach(input => {
+        if(input.name.toLowerCase().includes("password")) {
+          input.type = "password";
+          const toggle = input.nextElementSibling;
+          if(toggle && toggle.classList.contains("password-toggle")) toggle.textContent = "Show";
+        }
+      });
+    }
 
     loginTab.addEventListener("click", () => {
       loginTab.classList.add("text-fuel-orange","font-bold","border-b-2","border-fuel-orange");
@@ -197,6 +231,9 @@
 
       loginInfo.classList.remove("hidden");
       registerInfo.classList.add("hidden");
+
+      clearForm(registerForm);
+      resetPasswords(registerForm);
     });
 
     registerTab.addEventListener("click", () => {
@@ -211,6 +248,9 @@
 
       loginInfo.classList.add("hidden");
       registerInfo.classList.remove("hidden");
+
+      clearForm(loginForm);
+      resetPasswords(loginForm);
     });
 
     // Password toggle
@@ -220,11 +260,146 @@
       else { input.type = "password"; span.textContent = "Show"; }
     }
 
-    // Set initial height for forms container on page load
-  window.addEventListener("DOMContentLoaded", () => {
-    const activeForm = loginForm; // login is default active
-    formsContainer.style.height = activeForm.offsetHeight + "px";
-  });
+    // Toast function
+    function showToast(message, type) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.className = "";
+      toast.classList.add("px-6","py-3","rounded-lg","text-white","font-semibold","shadow-lg","fixed","transition-all","duration-500","ease-in-out");
+      if(type === "success") toast.classList.add("bg-fuel-green");
+      else if(type === "error") toast.classList.add("bg-fuel-red");
+      else toast.classList.add("bg-fuel-gray");
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 3000);
+    }
+
+    // Validation functions
+    function validateLogin() {
+      const email = loginForm.email.value.trim();
+      const password = loginForm.password.value.trim();
+      if(!email || !password) { 
+        showToast("Please fill in all fields", "error"); 
+        return false; 
+      }
+      return true;
+    }
+
+    function validateRegister() {
+      const fullName = registerForm.full_name.value.trim();
+      const email = registerForm.email.value.trim();
+      const password = registerForm.password.value.trim();
+      const confirm = registerForm.confirm_password.value.trim();
+      const terms = document.getElementById("terms").checked;
+      const emailRegex = /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/;
+
+      if(!fullName) { showToast("Full name is required", "error"); return false; }
+      if(!emailRegex.test(email)) { showToast("Invalid email address", "error"); return false; }
+      if(password.length < 6) { showToast("Password must be at least 6 characters", "error"); return false; }
+      if(password !== confirm) { showToast("Passwords do not match", "error"); return false; }
+      if(!terms) { showToast("You must agree to the Terms and Conditions", "error"); return false; }
+
+      return true;
+    }
+
+    // CSRF token
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+    // AJAX Login
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if(!validateLogin()) return;
+
+      const data = {
+        owner_type: "pump",
+        email: loginForm.email.value.trim(),
+        password: loginForm.password.value.trim()
+      };
+
+      try {
+        const response = await fetch("{{ url_for('auth.login') }}", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrfToken
+          },
+          credentials: "same-origin",
+          body: JSON.stringify(data)
+        });
+        const result = await response.json();
+        if(result.success){
+          showToast(result.message, "success");
+          setTimeout(() => window.location.href = result.redirect_url || "/pump/select", 1000);
+        } else {
+          showToast(result.message, "error");
+        }
+      } catch(err) {
+        console.error(err);
+        showToast("Server error. Try again.", "error");
+      }
+    });
+
+    // AJAX Register
+    registerForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if(!validateRegister()) return;
+
+      const data = {
+        owner_type: "pump",
+        full_name: registerForm.full_name.value.trim(),
+        email: registerForm.email.value.trim(),
+        password: registerForm.password.value.trim(),
+        confirm_password: registerForm.confirm_password.value.trim(),
+        terms: document.getElementById("terms").checked
+      };
+
+      try {
+        const response = await fetch("{{ url_for('auth.register') }}", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrfToken
+          },
+          credentials: "same-origin",
+          body: JSON.stringify(data)
+        });
+        const result = await response.json();
+        if(result.success){
+          showToast(result.message, "success");
+          setTimeout(() => window.location.href = result.redirect_url || "/pump/select", 1000);
+        } else {
+          showToast(result.message, "error");
+        }
+      } catch(err) {
+        console.error(err);
+        showToast("Server error. Try again.", "error");
+      }
+    });
+
+    // Set initial height and handle resize
+    window.addEventListener("DOMContentLoaded", () => {
+      const activeForm = loginForm;
+      formsContainer.style.height = activeForm.offsetHeight + "px";
+
+      // Flash messages
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            showToast("{{ message }}", "{{ category }}");
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      // Check for #register hash
+      if(window.location.hash === "#register") {
+        registerTab.click();
+      }
+    });
+
+    window.addEventListener("resize", () => {
+      formsContainer.style.height =
+        registerForm.style.transform === "translateX(0px)" ?
+        registerForm.offsetHeight + "px" : loginForm.offsetHeight + "px";
+    });
   </script>
 
 </body>

@@ -33,3 +33,8 @@ class Config:
     RAZORPAY_KEY_ID = os.getenv("RAZORPAY_KEY_ID")
     RAZORPAY_KEY_SECRET = os.getenv("RAZORPAY_KEY_SECRET")
 
+    # ---------------- PAYMENT DETAILS ----------------
+    UPI_ID = "ankushscs645852@okaxis"
+    BUSINESS_NAME = "Fuel Flux"
+    PAYMENT_QR_CODE = "static/images/payment_qr.png"  # Path to QR code image
+

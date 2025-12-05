@@ -3,7 +3,7 @@ from flask import Flask, redirect, url_for, request, jsonify, render_template
 from config import Config
 from extensions import db, mail, oauth, csrf, migrate
 from flask_login import LoginManager
-from models import User, PumpOwner
+from models import User, PumpOwner, Admin
 from flask_cors import CORS
 from pump import pump_bp
 
@@ -24,6 +24,15 @@ mail.init_app(app)
 oauth.init_app(app)
 csrf.init_app(app)
 migrate.init_app(app, db)
+
+# --- Create upload directories ---
+UPLOAD_FOLDERS = [
+    'uploads/receipts',
+    'uploads/payment_proofs',
+    'uploads/pump_documents'
+]
+for folder in UPLOAD_FOLDERS:
+    os.makedirs(folder, exist_ok=True)
 
 # --- Flask-Login setup ---
 login_manager = LoginManager()
@@ -46,6 +55,8 @@ def load_user(user_id):
         return User.query.get(int(real_id))
     elif user_type == "pump":
         return PumpOwner.query.get(int(real_id))
+    elif user_type == "admin":
+        return Admin.query.get(int(real_id))
     return None
 
 
@@ -64,6 +75,7 @@ from wallet import wallet_bp
 from password_reset import password_bp
 from subscription import subscription_bp
 from vehicle_count import vehicle_count_bp
+from admin import admin_bp
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(dashboard_bp)
@@ -74,6 +86,7 @@ app.register_blueprint(password_bp)
 app.register_blueprint(pump_bp)
 app.register_blueprint(subscription_bp, url_prefix="/subscription")
 app.register_blueprint(vehicle_count_bp)
+app.register_blueprint(admin_bp)
 
 # --- Initialize database tables (runs even with Gunicorn) ---
 with app.app_context():

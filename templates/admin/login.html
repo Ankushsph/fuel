@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login - Fuel Flux</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+</head>
+<body class="bg-fuel-black text-white min-h-screen flex items-center justify-center">
+  
+  <div class="w-full max-w-md bg-fuel-gray p-8 rounded-2xl shadow-lg">
+    <div class="text-center mb-6">
+      <h1 class="text-3xl font-bold text-fuel-orange">Admin Panel</h1>
+      <p class="text-gray-400 mt-2">Fuel Flux Management System</p>
+    </div>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="mb-4 p-3 rounded-lg {% if category == 'success' %}bg-green-600{% else %}bg-red-600{% endif %} text-white">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="{{ url_for('admin.admin_login') }}" class="space-y-4">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      
+      <div>
+        <label class="block text-gray-300 mb-2">Admin Email</label>
+        <input type="email" name="email" required 
+               class="w-full p-3 rounded-lg bg-fuel-black text-white border border-gray-600 focus:border-fuel-orange focus:outline-none"
+               placeholder="admin@fuelflux.com">
+      </div>
+
+      <div>
+        <label class="block text-gray-300 mb-2">Password</label>
+        <input type="password" name="password" required 
+               class="w-full p-3 rounded-lg bg-fuel-black text-white border border-gray-600 focus:border-fuel-orange focus:outline-none"
+               placeholder="••••••••">
+      </div>
+
+      <button type="submit" 
+              class="w-full bg-fuel-orange hover:bg-orange-600 text-white py-3 rounded-lg font-semibold transition">
+        🔐 Login as Admin
+      </button>
+    </form>
+
+    <div class="mt-6 text-center">
+      <a href="{{ url_for('auth.index') }}" class="text-fuel-orange hover:underline text-sm">
+        ← Back to Home
+      </a>
+    </div>
+  </div>
+
+</body>
+</html>
+

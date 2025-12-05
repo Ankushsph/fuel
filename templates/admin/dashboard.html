@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>Admin Dashboard - Fuel Flux</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+</head>
+<body class="bg-fuel-black text-white min-h-screen flex flex-col">
+  
+  <!-- Header -->
+  <header class="bg-fuel-gray p-4 shadow-md">
+    <div class="flex justify-between items-center">
+      <div class="flex items-center gap-2">
+        <img src="{{ url_for('static', filename='images/logo2.png') }}" class="h-8" />
+        <span class="text-fuel-orange font-bold text-xl">Admin Dashboard</span>
+      </div>
+      <a href="{{ url_for('admin.admin_logout') }}" 
+         class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-semibold transition">
+        Logout
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 p-6">
+    <h1 class="text-3xl font-bold text-fuel-orange mb-6">Welcome, Admin 👋</h1>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div class="bg-fuel-gray p-6 rounded-xl">
+        <div class="text-gray-400 text-sm">Total Pumps</div>
+        <div class="text-3xl font-bold text-fuel-orange mt-2">{{ total_pumps }}</div>
+      </div>
+      <div class="bg-fuel-gray p-6 rounded-xl">
+        <div class="text-gray-400 text-sm">Total Owners</div>
+        <div class="text-3xl font-bold text-green-500 mt-2">{{ total_owners }}</div>
+      </div>
+      <div class="bg-fuel-gray p-6 rounded-xl">
+        <div class="text-gray-400 text-sm">Active Subscriptions</div>
+        <div class="text-3xl font-bold text-blue-500 mt-2">{{ active_subs }}</div>
+      </div>
+    </div>
+
+    <!-- Pending Verifications -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      
+      <!-- Pending Payments -->
+      <div class="bg-fuel-gray p-6 rounded-xl">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-bold text-fuel-orange">💳 Pending Payments</h2>
+          <span class="bg-orange-600 px-3 py-1 rounded-full text-sm font-semibold">
+            {{ pending_payments|length }}
+          </span>
+        </div>
+        
+        {% if pending_payments %}
+          <div class="space-y-3">
+            {% for payment in pending_payments[:5] %}
+              <div class="bg-fuel-black p-4 rounded-lg">
+                <div class="flex justify-between items-start">
+                  <div>
+                    <div class="font-semibold">{{ payment.user_email }}</div>
+                    <div class="text-sm text-gray-400">{{ payment.plan_type }} - {{ payment.duration }}</div>
+                    <div class="text-fuel-orange font-bold mt-1">₹{{ payment.amount }}</div>
+                  </div>
+                  <button onclick="verifyPayment({{ payment.id }})" 
+                          class="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-sm">
+                    Verify
+                  </button>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+          <a href="{{ url_for('admin.pending_payments') }}" 
+             class="block mt-4 text-center text-fuel-orange hover:underline">
+            View All →
+          </a>
+        {% else %}
+          <div class="text-center text-gray-400 py-8">No pending payments</div>
+        {% endif %}
+      </div>
+
+      <!-- Pending Registrations -->
+      <div class="bg-fuel-gray p-6 rounded-xl">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-bold text-fuel-orange">⛽ Pending Registrations</h2>
+          <span class="bg-blue-600 px-3 py-1 rounded-full text-sm font-semibold">
+            {{ pending_registrations|length }}
+          </span>
+        </div>
+        
+        {% if pending_registrations %}
+          <div class="space-y-3">
+            {% for reg in pending_registrations[:5] %}
+              <div class="bg-fuel-black p-4 rounded-lg">
+                <div class="flex justify-between items-start">
+                  <div>
+                    <div class="font-semibold">{{ reg.owner_name }}</div>
+                    <div class="text-sm text-gray-400">{{ reg.pump.name }}</div>
+                    <div class="text-xs text-gray-500 mt-1">{{ reg.contact_number }}</div>
+                  </div>
+                  <button onclick="verifyRegistration({{ reg.id }})" 
+                          class="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-sm">
+                    Verify
+                  </button>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+          <a href="{{ url_for('admin.pending_registrations') }}" 
+             class="block mt-4 text-center text-fuel-orange hover:underline">
+            View All →
+          </a>
+        {% else %}
+          <div class="text-center text-gray-400 py-8">No pending registrations</div>
+        {% endif %}
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    function verifyPayment(paymentId) {
+      window.location.href = `/admin/payments/pending#payment-${paymentId}`;
+    }
+
+    function verifyRegistration(regId) {
+      window.location.href = `/admin/registrations/pending#reg-${regId}`;
+    }
+  </script>
+
+</body>
+</html>
+

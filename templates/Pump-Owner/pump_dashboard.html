@@ -521,18 +521,17 @@
   <div id="toast"></div>
 
   <!-- Header -->
-  <header class="bg-fuel-gray p-4 flex justify-between items-center shadow-md">
-    <div class="flex items-center space-x-2">
-      <button id="openMobileSidebar" class="lg:hidden text-fuel-orange text-2xl font-bold">☰</button>
-      <img src="{{ url_for('static', filename='images/logo2.png') }}" alt="Fuel Flux Logo" class="h-10 w-auto" />
-      <span class="text-fuel-orange font-bold text-xl">Dashboard</span>
-    </div>
-    <div class="flex items-center space-x-4">
-      <a href="/logout" class="bg-fuel-orange hover:bg-orange-600 px-4 py-2 rounded-lg font-semibold transition">
+  <header class="bg-fuel-gray p-2 md:p-4 shadow-md">
+    <div class="flex justify-between items-center gap-2">
+      <div class="flex items-center gap-1 md:gap-2 flex-1 min-w-0">
+        <button id="openMobileSidebar" class="lg:hidden text-fuel-orange text-lg md:text-xl font-bold flex-shrink-0">☰</button>
+        <img src="{{ url_for('static', filename='images/logo2.png') }}" alt="Fuel Flux Logo" class="h-6 md:h-10 w-auto flex-shrink-0" />
+        <span class="text-fuel-orange font-bold text-xs md:text-xl truncate hidden sm:inline">Dashboard</span>
+      </div>
+      <a href="/logout" class="bg-fuel-orange hover:bg-orange-600 px-2 py-1.5 md:px-4 md:py-2 rounded-lg font-semibold transition text-xs md:text-base whitespace-nowrap flex-shrink-0">
         Logout
       </a>
     </div>
-
   </header>
 
   <!-- Main Dashboard Layout -->
@@ -677,12 +676,12 @@
 
 
         <!-- Main Content -->
-        <main class="flex-1 bg-fuel-black p-6 flex flex-col overflow-y-auto">
-          <header class="flex justify-between items-center mb-6">
-            <h1 class="text-3xl font-bold text-fuel-orange">Welcome, {{ user.full_name }} 🎉</h1>
+        <main class="flex-1 bg-fuel-black p-3 md:p-6 flex flex-col overflow-y-auto">
+          <header class="flex justify-between items-center mb-4 md:mb-6">
+            <h1 class="text-xl md:text-3xl font-bold text-fuel-orange">Welcome, {{ user.full_name }} 🎉</h1>
           </header>
 
-          <div class="flex-1 bg-fuel-gray rounded-xl shadow-lg p-6 flex flex-col overflow-y-auto text-gray-300" 
+          <div class="flex-1 bg-fuel-gray rounded-xl shadow-lg p-4 md:p-6 flex flex-col overflow-y-auto text-gray-300" 
               id="mainWorkspace"
               data-wallet-balance="{{ user.wallet_balance or 0.00 }}"
               data-add-funds-url="{{ url_for('wallet.add_funds') }}"
@@ -1131,6 +1130,9 @@
       switch(selected){
 case '💳 Subscriptions':
   mainContent.innerHTML = `
+<!-- Pending Payment Notice (will be populated if exists) -->
+<div id="pendingPaymentNotice" class="mb-6"></div>
+
 <style>
   /* Animation for fade-in */
   .animate-fade-in { animation: fadeIn 0.8s ease-in-out; }
@@ -1369,6 +1371,18 @@ case '💳 Subscriptions':
         return;
       }
 
+      // Calculate total price
+      let multiplier = 1;
+      if (duration === '6 Months') multiplier = 6;
+      else if (duration === 'Annual') multiplier = 12;
+      const totalPrice = basePrice * multiplier;
+
+      // SHOW QR CODE PAYMENT MODAL (Manual Payment)
+      showQRPaymentModal(planName, duration, totalPrice, pumpId);
+      return;
+
+      // OLD CODE: Razorpay integration (commented out for now)
+      /* 
       // Disable button during processing
       this.disabled = true;
       this.textContent = "Processing...";
@@ -1490,6 +1504,8 @@ case '💳 Subscriptions':
         this.disabled = false;
         this.textContent = "Subscribe";
       }
+      */
+      // END OF OLD RAZORPAY CODE
     });
   });
 
@@ -2070,6 +2086,349 @@ case '🕵️ Vehicle verification':
     updateMainContent(lastSection);
     unlockFeatures();
   </script>
+
+<!-- QR Code Payment Modal -->
+<div id="qrPaymentModal" class="fixed inset-0 bg-black bg-opacity-80 z-50 hidden flex items-center justify-center p-3 overflow-y-auto">
+  <div class="bg-fuel-gray rounded-2xl max-w-3xl w-full my-4">
+    <div class="p-4 md:p-6 max-h-[85vh] overflow-y-auto">
+      <!-- Header -->
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg md:text-2xl font-bold text-fuel-orange">Complete Payment</h2>
+        <button onclick="closeQRModal()" class="text-white text-3xl hover:text-fuel-orange leading-none">&times;</button>
+      </div>
+
+      <!-- Plan Details -->
+      <div class="bg-fuel-black p-3 md:p-4 rounded-xl mb-4">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+          <div>
+            <div class="text-gray-400 text-xs md:text-sm">Selected Plan</div>
+            <div id="modalPlanName" class="text-base md:text-xl font-bold text-fuel-orange">Gold Plan</div>
+            <div id="modalDuration" class="text-gray-300 text-xs md:text-sm">1 Month</div>
+          </div>
+          <div class="text-left sm:text-right">
+            <div class="text-gray-400 text-xs md:text-sm">Amount to Pay</div>
+            <div id="modalAmount" class="text-2xl md:text-3xl font-bold text-green-500">₹10,000</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Payment Method Tabs -->
+      <div class="flex gap-2 mb-4">
+        <button onclick="showPaymentTab('qr')" id="qrTab" class="flex-1 py-2 px-3 text-sm md:text-base rounded-lg font-semibold bg-fuel-orange text-white">
+          Scan QR Code
+        </button>
+        <button onclick="showPaymentTab('upi')" id="upiTab" class="flex-1 py-2 px-3 text-sm md:text-base rounded-lg font-semibold bg-fuel-black text-white hover:bg-gray-700">
+          Pay via UPI ID
+        </button>
+      </div>
+
+      <!-- QR Code Tab -->
+      <div id="qrTabContent" class="space-y-3 md:space-y-4 mb-4">
+        <div class="flex items-start gap-2 md:gap-3">
+          <div class="flex-shrink-0 w-7 h-7 md:w-8 md:h-8 bg-fuel-orange rounded-full flex items-center justify-center font-bold text-sm md:text-base">1</div>
+          <div class="flex-1">
+            <h3 class="font-bold text-white mb-2 text-sm md:text-base">Scan QR Code</h3>
+            <div class="bg-white p-3 md:p-4 rounded-lg text-center">
+              <img src="{{ url_for('static', filename='images/payment_qr.png') }}" 
+                   alt="Payment QR Code" 
+                   class="w-32 h-32 md:w-48 md:h-48 mx-auto mb-2">
+              <div class="text-black font-bold text-sm md:text-base">UPI ID:</div>
+              <div class="flex flex-col sm:flex-row items-center justify-center gap-2 mt-2">
+                <span id="upiId" class="text-black font-mono text-xs md:text-sm break-all">ankushscs645852@okaxis</span>
+                <button onclick="copyUPI()" class="bg-fuel-orange text-white px-3 py-1 rounded text-xs hover:bg-orange-600 whitespace-nowrap">
+                  Copy
+                </button>
+              </div>
+              <div class="text-gray-600 text-xs mt-2">Fuel Flux</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-2 md:gap-3">
+          <div class="flex-shrink-0 w-7 h-7 md:w-8 md:h-8 bg-fuel-orange rounded-full flex items-center justify-center font-bold text-sm md:text-base">2</div>
+          <div class="flex-1">
+            <h3 class="font-bold text-white mb-2 text-sm md:text-base">Upload Payment Screenshot</h3>
+            <input type="file" 
+                   id="paymentScreenshot" 
+                   accept="image/*,.pdf" 
+                   class="w-full text-xs md:text-sm text-white file:mr-2 file:py-2 file:px-3 md:file:px-4 file:rounded file:border-0 file:text-white file:bg-fuel-orange hover:file:bg-orange-600 file:cursor-pointer file:text-xs md:file:text-sm">
+            <div id="screenshotPreview" class="mt-3 hidden">
+              <img id="previewImage" src="" class="max-h-32 md:max-h-40 rounded-lg mx-auto">
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-2 md:gap-3">
+          <div class="flex-shrink-0 w-7 h-7 md:w-8 md:h-8 bg-fuel-orange rounded-full flex items-center justify-center font-bold text-sm md:text-base">3</div>
+          <div class="flex-1">
+            <h3 class="font-bold text-white mb-2 text-sm md:text-base">Transaction ID (Optional)</h3>
+            <input type="text" 
+                   id="transactionId" 
+                   placeholder="Enter UTR/Transaction ID (optional)"
+                   class="w-full p-2 md:p-3 rounded-lg bg-fuel-black text-white border border-gray-600 focus:border-fuel-orange focus:outline-none text-xs md:text-sm">
+          </div>
+        </div>
+
+        <button id="submitPaymentProof" 
+                onclick="submitQRPayment()" 
+                class="w-full bg-fuel-orange hover:bg-orange-600 text-white py-2.5 md:py-3 rounded-xl font-bold text-sm md:text-lg transition disabled:opacity-50">
+          Submit for Verification
+        </button>
+      </div>
+
+      <!-- UPI ID Tab -->
+      <div id="upiTabContent" class="hidden space-y-3 md:space-y-4 mb-4">
+        <div class="bg-fuel-black p-4 rounded-xl">
+          <h3 class="font-bold text-white mb-3 text-sm md:text-base">Enter Your UPI ID to Pay</h3>
+          <div class="space-y-3">
+            <div>
+              <label class="text-gray-300 text-xs md:text-sm mb-1 block">Your UPI ID</label>
+              <input type="text" 
+                     id="userUpiId" 
+                     placeholder="yourname@upi"
+                     class="w-full p-2 md:p-3 rounded-lg bg-fuel-gray text-white border border-gray-600 focus:border-fuel-orange focus:outline-none text-sm">
+              <p class="text-gray-400 text-xs mt-1">Example: 9876543210@paytm, username@oksbi</p>
+            </div>
+            
+            <button onclick="payWithUserUPI()" 
+                    class="w-full bg-green-600 hover:bg-green-700 text-white py-2.5 md:py-3 rounded-xl font-bold text-sm md:text-base transition">
+              💳 Pay ₹<span id="upiAmount">10000</span> Now
+            </button>
+
+            <div class="border-t border-gray-600 pt-3">
+              <h4 class="font-semibold text-white mb-2 text-xs md:text-sm">After Payment:</h4>
+              <div class="space-y-2">
+                <div>
+                  <label class="text-gray-300 text-xs mb-1 block">Upload Payment Screenshot</label>
+                  <input type="file" 
+                         id="upiPaymentScreenshot" 
+                         accept="image/*,.pdf" 
+                         class="w-full text-xs text-white file:mr-2 file:py-2 file:px-3 file:rounded file:border-0 file:text-white file:bg-fuel-orange hover:file:bg-orange-600 file:cursor-pointer file:text-xs">
+                </div>
+                <div>
+                  <label class="text-gray-300 text-xs mb-1 block">Transaction ID (Optional)</label>
+                  <input type="text" 
+                         id="upiTransactionId" 
+                         placeholder="Enter UTR/Transaction ID"
+                         class="w-full p-2 rounded-lg bg-fuel-gray text-white border border-gray-600 focus:border-fuel-orange focus:outline-none text-xs">
+                </div>
+                <button onclick="submitUPIPayment()" 
+                        class="w-full bg-fuel-orange hover:bg-orange-600 text-white py-2.5 rounded-xl font-bold text-sm transition disabled:opacity-50">
+                  Submit for Verification
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="text-center text-gray-400 text-xs mt-3">
+        ⏱️ Your payment will be verified by admin within 24 hours
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+  // QR Payment Modal Functions
+  let currentPaymentData = {};
+
+  function showQRPaymentModal(planName, duration, totalPrice, pumpId) {
+    currentPaymentData = { planName, duration, totalPrice, pumpId };
+    
+    document.getElementById('modalPlanName').textContent = planName + ' Plan';
+    document.getElementById('modalDuration').textContent = duration;
+    document.getElementById('modalAmount').textContent = '₹' + totalPrice.toLocaleString();
+    document.getElementById('qrPaymentModal').classList.remove('hidden');
+    document.getElementById('qrPaymentModal').classList.add('flex');
+  }
+
+  function closeQRModal() {
+    document.getElementById('qrPaymentModal').classList.add('hidden');
+    document.getElementById('qrPaymentModal').classList.remove('flex');
+    document.getElementById('paymentScreenshot').value = '';
+    document.getElementById('transactionId').value = '';
+    document.getElementById('screenshotPreview').classList.add('hidden');
+    document.getElementById('userUpiId').value = '';
+    document.getElementById('upiPaymentScreenshot').value = '';
+    document.getElementById('upiTransactionId').value = '';
+    showPaymentTab('qr'); // Reset to QR tab
+  }
+
+  function copyUPI() {
+    const upiId = document.getElementById('upiId').textContent;
+    navigator.clipboard.writeText(upiId).then(() => {
+      showToast('UPI ID copied to clipboard!', 'success');
+    });
+  }
+
+  // Tab switching
+  function showPaymentTab(tab) {
+    const qrTab = document.getElementById('qrTab');
+    const upiTab = document.getElementById('upiTab');
+    const qrContent = document.getElementById('qrTabContent');
+    const upiContent = document.getElementById('upiTabContent');
+    
+    if (tab === 'qr') {
+      qrTab.classList.add('bg-fuel-orange');
+      qrTab.classList.remove('bg-fuel-black', 'hover:bg-gray-700');
+      upiTab.classList.remove('bg-fuel-orange');
+      upiTab.classList.add('bg-fuel-black', 'hover:bg-gray-700');
+      qrContent.classList.remove('hidden');
+      upiContent.classList.add('hidden');
+    } else {
+      upiTab.classList.add('bg-fuel-orange');
+      upiTab.classList.remove('bg-fuel-black', 'hover:bg-gray-700');
+      qrTab.classList.remove('bg-fuel-orange');
+      qrTab.classList.add('bg-fuel-black', 'hover:bg-gray-700');
+      upiContent.classList.remove('hidden');
+      qrContent.classList.add('hidden');
+      // Update UPI amount
+      document.getElementById('upiAmount').textContent = currentPaymentData.totalPrice;
+    }
+  }
+
+  // Pay with user's UPI ID
+  function payWithUserUPI() {
+    const userUpiId = document.getElementById('userUpiId').value.trim();
+    
+    if (!userUpiId) {
+      showToast('Please enter your UPI ID', 'error');
+      return;
+    }
+
+    // Validate UPI ID format
+    const upiRegex = /^[\w.\-]+@[\w]+$/;
+    if (!upiRegex.test(userUpiId)) {
+      showToast('Invalid UPI ID format', 'error');
+      return;
+    }
+
+    // Generate UPI payment link
+    const merchantUPI = 'ankushscs645852@okaxis';
+    const amount = currentPaymentData.totalPrice;
+    const merchantName = 'Fuel Flux';
+    const note = `${currentPaymentData.planName} Plan - ${currentPaymentData.duration}`;
+    
+    // UPI intent link (opens UPI apps on mobile)
+    const upiLink = `upi://pay?pa=${merchantUPI}&pn=${encodeURIComponent(merchantName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(note)}`;
+    
+    // Try to open UPI app
+    window.location.href = upiLink;
+    
+    showToast('Opening UPI app... Complete payment and upload screenshot', 'success');
+  }
+
+  // Submit UPI payment proof
+  async function submitUPIPayment() {
+    const screenshot = document.getElementById('upiPaymentScreenshot').files[0];
+    const transactionId = document.getElementById('upiTransactionId').value.trim();
+    
+    if (!screenshot) {
+      showToast('Please upload payment screenshot', 'error');
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('screenshot', screenshot);
+      formData.append('plan_type', currentPaymentData.planName);
+      formData.append('duration', currentPaymentData.duration);
+      formData.append('pump_id', currentPaymentData.pumpId);
+      if (transactionId) formData.append('transaction_id', transactionId);
+
+      const response = await fetch('/subscription/submit-qr-payment', {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ""
+        },
+        credentials: 'same-origin',
+        body: formData
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        showToast(result.message, 'success');
+        closeQRModal();
+        setTimeout(() => {
+          showToast('Check back in 24 hours for subscription activation', 'success');
+        }, 3000);
+      } else {
+        showToast(result.error || 'Failed to submit payment', 'error');
+      }
+    } catch (error) {
+      console.error(error);
+      showToast('Network error. Please try again.', 'error');
+    }
+  }
+
+  // Preview screenshot
+  document.getElementById('paymentScreenshot').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file && file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        document.getElementById('previewImage').src = event.target.result;
+        document.getElementById('screenshotPreview').classList.remove('hidden');
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+
+  async function submitQRPayment() {
+    const screenshot = document.getElementById('paymentScreenshot').files[0];
+    const transactionId = document.getElementById('transactionId').value.trim();
+    
+    if (!screenshot) {
+      showToast('Please upload payment screenshot', 'error');
+      return;
+    }
+
+    const submitBtn = document.getElementById('submitPaymentProof');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting...';
+
+    try {
+      const formData = new FormData();
+      formData.append('screenshot', screenshot);
+      formData.append('plan_type', currentPaymentData.planName);
+      formData.append('duration', currentPaymentData.duration);
+      formData.append('pump_id', currentPaymentData.pumpId);
+      if (transactionId) formData.append('transaction_id', transactionId);
+
+      const response = await fetch('/subscription/submit-qr-payment', {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ""
+        },
+        credentials: 'same-origin',
+        body: formData
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        showToast(result.message, 'success');
+        closeQRModal();
+        
+        // Show verification pending message
+        setTimeout(() => {
+          showToast('Check back in 24 hours for subscription activation', 'success');
+        }, 3000);
+      } else {
+        showToast(result.error || 'Failed to submit payment', 'error');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit for Verification';
+      }
+    } catch (error) {
+      console.error(error);
+      showToast('Network error. Please try again.', 'error');
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit for Verification';
+    }
+  }
+</script>
 
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </body>

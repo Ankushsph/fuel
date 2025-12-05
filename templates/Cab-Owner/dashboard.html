@@ -32,14 +32,14 @@
   <div id="toast"></div>
 
   <!-- Header -->
-  <header class="bg-fuel-gray p-4 flex justify-between items-center shadow-md">
-    <div class="flex items-center space-x-2">
-      <button id="openMobileSidebar" class="lg:hidden text-fuel-orange text-2xl font-bold">☰</button>
-      <img src="{{ url_for('static', filename='images/logo2.png') }}" alt="Fuel Flux Logo" class="h-10 w-auto" />
-      <span class="text-fuel-orange font-bold text-xl">Dashboard</span>
-    </div>
-    <div class="flex items-center space-x-4">
-      <a href="/logout" class="bg-fuel-orange hover:bg-orange-600 px-4 py-2 rounded-lg font-semibold transition">Logout</a>
+  <header class="bg-fuel-gray p-2 md:p-4 shadow-md">
+    <div class="flex justify-between items-center gap-2">
+      <div class="flex items-center gap-1 md:gap-2 flex-1 min-w-0">
+        <button id="openMobileSidebar" class="lg:hidden text-fuel-orange text-lg md:text-xl font-bold flex-shrink-0">☰</button>
+        <img src="{{ url_for('static', filename='images/logo2.png') }}" alt="Fuel Flux Logo" class="h-6 md:h-10 w-auto flex-shrink-0" />
+        <span class="text-fuel-orange font-bold text-xs md:text-xl truncate hidden sm:inline">Dashboard</span>
+      </div>
+      <a href="/logout" class="bg-fuel-orange hover:bg-orange-600 px-2 py-1.5 md:px-4 md:py-2 rounded-lg font-semibold transition text-xs md:text-base whitespace-nowrap flex-shrink-0">Logout</a>
     </div>
   </header>
 
@@ -127,12 +127,12 @@
     </div>
 
     <!-- Main Content -->
-    <main class="flex-1 bg-fuel-black p-6 flex flex-col overflow-y-auto">
-      <header class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold text-fuel-orange">Welcome, {{ user.full_name }} 🎉</h1>
+    <main class="flex-1 bg-fuel-black p-3 md:p-6 flex flex-col overflow-y-auto">
+      <header class="flex justify-between items-center mb-4 md:mb-6">
+        <h1 class="text-xl md:text-3xl font-bold text-fuel-orange">Welcome, {{ user.full_name }} 🎉</h1>
       </header>
 
-      <div class="flex-1 bg-fuel-gray rounded-xl shadow-lg p-6 flex flex-col overflow-y-auto text-gray-300" id="mainWorkspace" 
+      <div class="flex-1 bg-fuel-gray rounded-xl shadow-lg p-4 md:p-6 flex flex-col overflow-y-auto text-gray-300" id="mainWorkspace" 
            data-wallet-balance="{{ user.wallet_balance or 0.00 }}"
            data-add-funds-url="{{ url_for('wallet.add_funds') }}"
            data-balance-url="{{ url_for('wallet.get_balance') }}">

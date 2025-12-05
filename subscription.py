@@ -2,14 +2,22 @@
 from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash
 from flask_login import current_user, login_required
 from datetime import datetime, timedelta
-from models import db, PumpSubscription, Pump, PumpOwner
+from models import db, PumpSubscription, Pump, PumpOwner, PaymentVerification
 from config import Config
+from werkzeug.utils import secure_filename
+import os
+import uuid
 try:
     import razorpay
 except ImportError:
     razorpay = None
 
 subscription_bp = Blueprint("subscription", __name__)
+
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'pdf'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # ------------------------
 # 🔹 View Subscription Page (optional)
@@ -284,4 +292,123 @@ def payment_success():
         "message": f"✅ {plan_type} subscription activated for {duration}!",
         "plan": plan_type.capitalize(),
         "status": "active"
+    })
+
+
+# ========================
+# QR Code Payment Submission
+# ========================
+@subscription_bp.route("/submit-qr-payment", methods=["POST"])
+@login_required
+def submit_qr_payment():
+    """Submit QR code payment screenshot for admin verification"""
+    
+    # Get form data
+    plan_type = request.form.get("plan_type")
+    duration = request.form.get("duration")
+    pump_id = request.form.get("pump_id")
+    transaction_id = request.form.get("transaction_id", "")  # Optional
+    
+    # Get screenshot file
+    if 'screenshot' not in request.files:
+        return jsonify({"error": "Payment screenshot is required"}), 400
+    
+    screenshot = request.files['screenshot']
+    
+    if screenshot.filename == '':
+        return jsonify({"error": "No file selected"}), 400
+    
+    if not allowed_file(screenshot.filename):
+        return jsonify({"error": "Invalid file type. Only PNG, JPG, JPEG, PDF allowed"}), 400
+    
+    # Verify pump belongs to current user
+    pump = Pump.query.filter_by(id=pump_id, owner_id=current_user.id).first()
+    if not pump:
+        return jsonify({"error": "Pump not found"}), 404
+    
+    # Calculate amount
+    plan_prices = {
+        "Silver": 5000,
+        "Gold": 10000,
+        "Diamond": 15000
+    }
+    duration_map = {
+        "1 Month": 1,
+        "6 Months": 6,
+        "Annual": 12
+    }
+    
+    base_price = plan_prices.get(plan_type.capitalize(), 0)
+    months = duration_map.get(duration, 1)
+    total_amount = base_price * months
+    
+    if total_amount <= 0:
+        return jsonify({"error": "Invalid plan or duration"}), 400
+    
+    # Save screenshot
+    filename = secure_filename(screenshot.filename)
+    unique_filename = f"{uuid.uuid4().hex}_{filename}"
+    screenshot_path = os.path.join('uploads', 'payment_proofs', unique_filename)
+    screenshot.save(screenshot_path)
+    
+    # Create payment verification record
+    payment_verification = PaymentVerification(
+        user_id=current_user.id,
+        user_email=current_user.email,
+        pump_id=pump_id,
+        plan_type=plan_type.capitalize(),
+        duration=duration,
+        amount=total_amount,
+        screenshot_filename=unique_filename,
+        transaction_id=transaction_id,
+        status='pending'
+    )
+    
+    db.session.add(payment_verification)
+    db.session.commit()
+    
+    return jsonify({
+        "success": True,
+        "message": "✅ Payment screenshot submitted! Admin will verify within 24 hours.",
+        "verification_id": payment_verification.id
+    })
+
+
+# ========================
+# Get Payment QR Code Details
+# ========================
+@subscription_bp.route("/payment-details", methods=["GET"])
+@login_required
+def payment_details():
+    """Get payment QR code and UPI details"""
+    return jsonify({
+        "upi_id": Config.UPI_ID,
+        "business_name": Config.BUSINESS_NAME,
+        "qr_code_url": url_for('static', filename='images/payment_qr.png', _external=True)
+    })
+
+
+# ========================
+# Check Payment Verification Status
+# ========================
+@subscription_bp.route("/payment-status/<int:verification_id>", methods=["GET"])
+@login_required
+def payment_status(verification_id):
+    """Check payment verification status"""
+    verification = PaymentVerification.query.filter_by(
+        id=verification_id,
+        user_id=current_user.id
+    ).first()
+    
+    if not verification:
+        return jsonify({"error": "Verification not found"}), 404
+    
+    return jsonify({
+        "status": verification.status,
+        "plan_type": verification.plan_type,
+        "duration": verification.duration,
+        "amount": verification.amount,
+        "created_at": verification.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+        "verified_at": verification.verified_at.strftime("%Y-%m-%d %H:%M:%S") if verification.verified_at else None,
+        "rejection_reason": verification.rejection_reason if verification.status == 'rejected' else None
     })

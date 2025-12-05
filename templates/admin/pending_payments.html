@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>Pending Payments - Admin Panel</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+</head>
+<body class="bg-fuel-black text-white min-h-screen flex flex-col">
+  
+  <!-- Header -->
+  <header class="bg-fuel-gray p-4 shadow-md">
+    <div class="flex justify-between items-center">
+      <div class="flex items-center gap-4">
+        <a href="{{ url_for('admin.dashboard') }}" class="text-fuel-orange hover:text-white">
+          ← Back to Dashboard
+        </a>
+        <span class="text-xl font-bold">💳 Pending Payments</span>
+      </div>
+      <a href="{{ url_for('admin.admin_logout') }}" 
+         class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-semibold transition text-sm">
+        Logout
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 p-6">
+    <div class="max-w-6xl mx-auto">
+      
+      {% if payments %}
+        <div class="grid gap-6">
+          {% for payment in payments %}
+            <div id="payment-{{ payment.id }}" class="bg-fuel-gray p-6 rounded-xl shadow-lg">
+              <div class="flex flex-col lg:flex-row gap-6">
+                
+                <!-- Payment Details -->
+                <div class="flex-1">
+                  <div class="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 class="text-xl font-bold text-fuel-orange">{{ payment.plan_type }} Plan</h3>
+                      <p class="text-gray-400 text-sm">{{ payment.duration }}</p>
+                    </div>
+                    <div class="text-right">
+                      <div class="text-3xl font-bold text-green-500">₹{{ payment.amount }}</div>
+                      <div class="text-xs text-gray-400 mt-1">
+                        {{ payment.created_at.strftime('%d %b %Y, %H:%M') }}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                      <span class="text-gray-400">User Email:</span>
+                      <span class="font-semibold">{{ payment.user_email }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                      <span class="text-gray-400">Pump:</span>
+                      <span class="font-semibold">{{ payment.pump.name }} ({{ payment.pump.location }})</span>
+                    </div>
+                    {% if payment.transaction_id %}
+                      <div class="flex justify-between">
+                        <span class="text-gray-400">Transaction ID:</span>
+                        <span class="font-mono text-xs">{{ payment.transaction_id }}</span>
+                      </div>
+                    {% endif %}
+                  </div>
+
+                  <!-- Action Buttons -->
+                  <div class="flex gap-3 mt-6">
+                    <button onclick="approvePayment({{ payment.id }})" 
+                            class="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-semibold transition">
+                      ✅ Approve & Activate
+                    </button>
+                    <button onclick="rejectPayment({{ payment.id }})" 
+                            class="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-semibold transition">
+                      ❌ Reject
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Screenshot Preview -->
+                <div class="lg:w-1/3">
+                  <div class="bg-fuel-black p-4 rounded-lg">
+                    <p class="text-gray-400 text-sm mb-2">Payment Screenshot:</p>
+                    <img src="{{ url_for('admin.view_screenshot', filename=payment.screenshot_filename) }}" 
+                         alt="Payment Proof"
+                         class="w-full rounded-lg cursor-pointer hover:scale-105 transition"
+                         onclick="openImageModal('{{ url_for('admin.view_screenshot', filename=payment.screenshot_filename) }}')">
+                    <button onclick="openImageModal('{{ url_for('admin.view_screenshot', filename=payment.screenshot_filename) }}')" 
+                            class="w-full mt-2 text-fuel-orange hover:text-white text-sm">
+                      🔍 View Full Size
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="bg-fuel-gray p-12 rounded-xl text-center">
+          <div class="text-6xl mb-4">✅</div>
+          <h2 class="text-2xl font-bold text-gray-400">All Caught Up!</h2>
+          <p class="text-gray-500 mt-2">No pending payments to verify</p>
+        </div>
+      {% endif %}
+
+    </div>
+  </main>
+
+  <!-- Image Modal -->
+  <div id="imageModal" class="hidden fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4" onclick="closeImageModal()">
+    <div class="relative max-w-4xl max-h-full">
+      <button onclick="closeImageModal()" class="absolute -top-10 right-0 text-white text-3xl hover:text-fuel-orange">&times;</button>
+      <img id="modalImage" src="" class="max-w-full max-h-screen rounded-lg">
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg hidden z-50"></div>
+
+  <script>
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = `fixed top-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg z-50 ${type === 'success' ? 'bg-green-600' : 'bg-red-600'} text-white`;
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 3000);
+    }
+
+    async function approvePayment(paymentId) {
+      if (!confirm('Approve this payment and activate the subscription?')) return;
+
+      try {
+        const response = await fetch(`/admin/payments/verify/${paymentId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+          },
+          body: JSON.stringify({ action: 'approve' })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          showToast(result.message, 'success');
+          // Remove the payment card
+          document.getElementById(`payment-${paymentId}`).remove();
+          
+          // Check if no more payments
+          if (document.querySelectorAll('[id^="payment-"]').length === 0) {
+            location.reload();
+          }
+        } else {
+          showToast(result.error || 'Failed to approve payment', 'error');
+        }
+      } catch (error) {
+        console.error(error);
+        showToast('Network error. Try again.', 'error');
+      }
+    }
+
+    async function rejectPayment(paymentId) {
+      const reason = prompt('Enter rejection reason (optional):');
+      if (reason === null) return; // User cancelled
+
+      try {
+        const response = await fetch(`/admin/payments/verify/${paymentId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+          },
+          body: JSON.stringify({ 
+            action: 'reject',
+            reason: reason || 'Invalid payment proof'
+          })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          showToast(result.message, 'success');
+          // Remove the payment card
+          document.getElementById(`payment-${paymentId}`).remove();
+          
+          // Check if no more payments
+          if (document.querySelectorAll('[id^="payment-"]').length === 0) {
+            location.reload();
+          }
+        } else {
+          showToast(result.error || 'Failed to reject payment', 'error');
+        }
+      } catch (error) {
+        console.error(error);
+        showToast('Network error. Try again.', 'error');
+      }
+    }
+
+    function openImageModal(imageUrl) {
+      event.stopPropagation();
+      document.getElementById('modalImage').src = imageUrl;
+      document.getElementById('imageModal').classList.remove('hidden');
+    }
+
+    function closeImageModal() {
+      document.getElementById('imageModal').classList.add('hidden');
+    }
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeImageModal();
+    });
+  </script>
+
+</body>
+</html>
+
