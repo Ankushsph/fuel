@@ -19,8 +19,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application
 COPY . .
 
+# Make startup script executable
+RUN chmod +x start.sh
+
 # Create uploads directory
-RUN mkdir -p uploads/receipts
+RUN mkdir -p uploads/receipts uploads/payment_proofs uploads/pump_documents
 
 # Expose port (Railway uses PORT env variable)
 EXPOSE 8080
@@ -28,7 +31,8 @@ EXPOSE 8080
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8080
+ENV FLASK_APP=app.py
 
-# Run gunicorn
-CMD gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+# Run startup script (includes migrations + gunicorn)
+CMD ["bash", "start.sh"]
 
