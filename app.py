@@ -88,10 +88,34 @@ app.register_blueprint(subscription_bp, url_prefix="/subscription")
 app.register_blueprint(vehicle_count_bp)
 app.register_blueprint(admin_bp)
 
-# --- Initialize database tables (runs even with Gunicorn) ---
+# --- Initialize database tables and run migrations (runs even with Gunicorn) ---
 with app.app_context():
+    # Try to run migrations first
+    try:
+        from flask_migrate import upgrade as migrate_upgrade
+        migrate_upgrade()
+        print("✅ Database migrations completed successfully!")
+    except Exception as e:
+        print(f"⚠️  Migration warning (may be normal): {e}")
+    
+    # Ensure all tables exist
     db.create_all()
     print("✅ Database tables created successfully!")
+    
+    # Create admin user if not exists
+    try:
+        from models import Admin
+        existing_admin = Admin.query.filter_by(email="ankushn2005@gmail.com").first()
+        if not existing_admin:
+            admin = Admin(email="ankushn2005@gmail.com")
+            admin.set_password("123466")
+            db.session.add(admin)
+            db.session.commit()
+            print("✅ Admin user created: ankushn2005@gmail.com")
+        else:
+            print("✅ Admin user already exists")
+    except Exception as e:
+        print(f"⚠️  Admin creation warning: {e}")
 
 # --- Create all tables and run app ---
 if __name__ == "__main__":
