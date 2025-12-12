@@ -217,18 +217,6 @@ MAIL_USERNAME = "your_email@gmail.com"
 MAIL_PASSWORD = "your_app_password"
 ```
 
-## Subscription Plans
-
-| Feature | Silver | Gold | Diamond |
-|---------|--------|------|---------|
-| Basic Dashboard | ✅ | ✅ | ✅ |
-| OCR Processing | ✅ | ✅ | ✅ |
-| Vehicle Counting | ❌ | ✅ | ✅ |
-| Hydrotesting | ❌ | ✅ | ✅ |
-| ANPR Gate Control | ❌ | ❌ | ✅ |
-| Employee Attendance | ❌ | ❌ | ✅ |
-| Price/Month | ₹999 | ₹1999 | ₹2999 |
-
 ## Support
 
 For issues or questions, contact the development team.
