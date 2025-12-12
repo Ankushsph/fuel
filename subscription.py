@@ -61,8 +61,7 @@ def subscribe():
 
     # Base prices (in ₹)
     plan_prices = {
-        "Silver": 5000,
-        "Gold": 10000,
+        "Gold": 5000,
         "Diamond": 15000
     }
 
@@ -381,10 +380,12 @@ def submit_qr_payment():
 @login_required
 def payment_details():
     """Get payment QR code and UPI details"""
+    # Get QR code path from config (remove 'static/' prefix for url_for)
+    qr_path = Config.PAYMENT_QR_CODE.replace('static/', '')
     return jsonify({
         "upi_id": Config.UPI_ID,
         "business_name": Config.BUSINESS_NAME,
-        "qr_code_url": url_for('static', filename='images/payment_qr.png', _external=True)
+        "qr_code_url": url_for('static', filename=qr_path, _external=True)
     })
 
 

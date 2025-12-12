@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>Station Vehicle Data - Fuel Flux</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    #toast {
+      position: fixed;
+      top: -100px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 50;
+      padding: 1rem 1.5rem;
+      border-radius: 0.5rem;
+      font-weight: 500;
+      color: white;
+      opacity: 0;
+      transition: all 0.5s ease-in-out;
+      min-width: 250px;
+      text-align: center;
+    }
+    #toast.show {
+      top: 2rem;
+      opacity: 1;
+    }
+    #toast.success {
+      background-color: #16a34a;
+    }
+    #toast.error {
+      background-color: #dc2626;
+    }
+    .stat-card {
+      background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+      border: 1px solid #374151;
+    }
+    .pulse {
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+  </style>
+</head>
+<body class="bg-fuel-black text-white min-h-screen">
+  <div id="toast"></div>
+
+  <!-- Header -->
+  <nav class="bg-fuel-gray p-4 shadow-lg">
+    <div class="flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <a href="{{ url_for('pump.pump_dashboard', pump_id=pump.id) }}" class="text-fuel-orange hover:text-white">← Back to Dashboard</a>
+        <h1 class="text-xl font-bold text-fuel-orange">📊 Station Vehicle Data</h1>
+      </div>
+      <a href="{{ url_for('auth.logout') }}" class="bg-fuel-orange hover:bg-orange-600 px-4 py-2 rounded-lg">Logout</a>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="container mx-auto p-6 max-w-7xl">
+    <!-- Setup Section -->
+    <div class="bg-fuel-gray rounded-xl p-6 mb-6">
+      <h2 class="text-2xl font-bold text-fuel-orange mb-4">Setup CCTV Stream for Vehicle Counting</h2>
+      <form id="setupForm" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Station Name *</label>
+            <input type="text" name="station_name" required
+                   class="w-full p-3 rounded-lg bg-fuel-black text-white border border-gray-600">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Location *</label>
+            <input type="text" name="location" required
+                   class="w-full p-3 rounded-lg bg-fuel-black text-white border border-gray-600">
+          </div>
+          <div class="md:col-span-2">
+            <label class="block text-sm font-medium mb-1">RTSP URL *</label>
+            <input type="text" name="rtsp_url" placeholder="rtsp://username:password@ip:port/stream" required
+                   class="w-full p-3 rounded-lg bg-fuel-black text-white border border-gray-600">
+            <p class="text-xs text-gray-400 mt-1">Example: rtsp://admin:password@192.168.1.100:554/stream1</p>
+          </div>
+        </div>
+        <button type="submit" class="bg-fuel-orange hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold">
+          Add CCTV Stream
+        </button>
+      </form>
+    </div>
+
+    <!-- Live Statistics -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <!-- Current Vehicles -->
+      <div class="stat-card rounded-xl p-6">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-sm text-gray-400">📈 Live Vehicle Statistics</h3>
+        </div>
+        <div class="text-4xl font-bold text-fuel-orange mb-1" id="currentVehicles">0</div>
+        <p class="text-xs text-gray-400">🚗 Current Vehicles</p>
+      </div>
+
+      <!-- Station Status -->
+      <div class="stat-card rounded-xl p-6">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-sm text-gray-400">📶 Station Status</h3>
+        </div>
+        <div class="text-2xl font-bold mb-1">
+          <span id="stationStatus" class="text-green-400">🟢 Idle</span>
+        </div>
+        <p class="text-xs text-gray-400">Real-time monitoring</p>
+      </div>
+
+      <!-- Last Updated -->
+      <div class="stat-card rounded-xl p-6">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-sm text-gray-400">⏱ Last Updated</h3>
+        </div>
+        <div class="text-2xl font-bold text-white mb-1" id="lastUpdated">--:--:--</div>
+        <p class="text-xs text-gray-400">Auto-refresh every 2s</p>
+      </div>
+    </div>
+
+    <!-- Vehicle Count Trend Chart -->
+    <div class="bg-fuel-gray rounded-xl p-6 mb-6">
+      <h2 class="text-2xl font-bold text-fuel-orange mb-4">🚦 Vehicle Count Trend</h2>
+      <div class="bg-fuel-black rounded-lg p-4">
+        <canvas id="vehicleChart" height="100"></canvas>
+      </div>
+    </div>
+
+    <!-- Active Streams -->
+    <div class="bg-fuel-gray rounded-xl p-6 mb-6">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-2xl font-bold text-fuel-orange">Active CCTV Streams</h2>
+      </div>
+      <div id="streamsList" class="space-y-3">
+        <p class="text-gray-400 text-center py-4">Loading streams...</p>
+      </div>
+    </div>
+
+    <!-- Recently Detected Vehicles -->
+    <div class="bg-fuel-gray rounded-xl p-6">
+      <h2 class="text-2xl font-bold text-fuel-orange mb-4">🚗 Recently Detected Vehicles</h2>
+      <div id="recentVehicles" class="space-y-2">
+        <p class="text-gray-400 text-center py-4">No vehicles detected yet.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const pumpId = {{ pump.id }};
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    
+    let vehicleChart = null;
+    let chartData = {
+      labels: [],
+      data: []
+    };
+    const maxDataPoints = 20;
+
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = 'show ' + type;
+      setTimeout(() => toast.className = '', 3000);
+    }
+
+    // Initialize Chart
+    function initChart() {
+      const ctx = document.getElementById('vehicleChart').getContext('2d');
+      vehicleChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: chartData.labels,
+          datasets: [{
+            label: 'Vehicle Count',
+            data: chartData.data,
+            borderColor: '#f97316',
+            backgroundColor: 'rgba(249, 115, 22, 0.1)',
+            borderWidth: 2,
+            tension: 0.4,
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: {
+              display: true,
+              labels: {
+                color: '#fff'
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                color: '#9ca3af',
+                stepSize: 1
+              },
+              grid: {
+                color: '#374151'
+              }
+            },
+            x: {
+              ticks: {
+                color: '#9ca3af'
+              },
+              grid: {
+                color: '#374151'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Update Chart
+    function updateChart(count) {
+      const now = new Date();
+      const timeLabel = now.toLocaleTimeString();
+      
+      chartData.labels.push(timeLabel);
+      chartData.data.push(count);
+      
+      // Keep only last maxDataPoints
+      if (chartData.labels.length > maxDataPoints) {
+        chartData.labels.shift();
+        chartData.data.shift();
+      }
+      
+      if (vehicleChart) {
+        vehicleChart.update();
+      }
+    }
+
+    // Load streams
+    async function loadStreams() {
+      try {
+        const res = await fetch(`/vehicle_count/list-streams/${pumpId}`);
+        const data = await res.json();
+        
+        const container = document.getElementById('streamsList');
+        if (data.success) {
+          if (data.streams.length === 0) {
+            container.innerHTML = '<p class="text-gray-400">No streams configured yet.</p>';
+          } else {
+            container.innerHTML = data.streams.map(s => `
+              <div class="bg-fuel-black p-4 rounded-lg border border-gray-700">
+                <div class="flex justify-between items-start">
+                  <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-1">
+                      <h4 class="font-semibold text-fuel-orange">${s.station_name}</h4>
+                      <span class="text-xs px-2 py-1 rounded-full ${s.is_active ? 'bg-green-900 text-green-300' : 'bg-gray-700 text-gray-400'}">
+                        ${s.is_active ? '🟢 MONITORING' : '⚪ IDLE'}
+                      </span>
+                    </div>
+                    <p class="text-sm text-gray-400">${s.location}</p>
+                    <p class="text-xs text-gray-500 mt-1 break-all">${s.rtsp_url}</p>
+                  </div>
+                  <button onclick="deleteStream(${s.id}, '${s.station_name}')" 
+                          class="text-red-500 hover:text-red-400">
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            `).join('');
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    // Add stream
+    document.getElementById('setupForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      
+      const payload = {
+        station_name: formData.get('station_name'),
+        location: formData.get('location'),
+        rtsp_url: formData.get('rtsp_url')
+      };
+      
+      try {
+        const res = await fetch(`/vehicle_count/add-stream/${pumpId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+          },
+          body: JSON.stringify(payload)
+        });
+        
+        const data = await res.json();
+        if (data.success) {
+          showToast(data.message, 'success');
+          e.target.reset();
+          loadStreams();
+        } else {
+          showToast(data.message || 'Error adding stream', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Network error', 'error');
+      }
+    });
+
+    // Delete stream
+    async function deleteStream(id, name) {
+      if (!confirm(`Remove ${name}?`)) return;
+      
+      try {
+        const res = await fetch(`/vehicle_count/delete-stream/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'X-CSRFToken': csrfToken
+          }
+        });
+        
+        const data = await res.json();
+        if (data.success) {
+          showToast(data.message, 'success');
+          loadStreams();
+        } else {
+          showToast(data.message, 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Error deleting stream', 'error');
+      }
+    }
+
+    // Update vehicle count
+    async function updateVehicleCount() {
+      try {
+        const res = await fetch(`/vehicle-count?pump_id=${pumpId}`);
+        const data = await res.json();
+        
+        if (data.success) {
+          const count = data.vehicle_count || 0;
+          document.getElementById('currentVehicles').textContent = count;
+          
+          // Update status
+          const statusEl = document.getElementById('stationStatus');
+          if (count === 0) {
+            statusEl.innerHTML = '🟢 Idle';
+            statusEl.className = 'text-green-400';
+          } else if (count < 5) {
+            statusEl.innerHTML = '🟡 Normal';
+            statusEl.className = 'text-yellow-400';
+          } else {
+            statusEl.innerHTML = '🔴 Busy';
+            statusEl.className = 'text-red-400';
+          }
+          
+          // Update timestamp
+          const now = new Date();
+          document.getElementById('lastUpdated').textContent = now.toLocaleTimeString();
+          
+          // Update chart
+          updateChart(count);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    // Auto-start monitoring on page load
+    async function autoStartMonitoring() {
+      try {
+        const streams = await fetch(`/vehicle_count/list-streams/${pumpId}`);
+        const data = await streams.json();
+        
+        if (data.success && data.streams.length > 0) {
+          // Automatically start monitoring if streams exist
+          console.log('Auto-starting vehicle monitoring...');
+          
+          // Start monitoring for each stream
+          for (const stream of data.streams) {
+            try {
+              await fetch(`/vehicle-count?pump_id=${pumpId}`);
+            } catch (err) {
+              console.error('Error starting monitoring:', err);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error in auto-start:', err);
+      }
+    }
+
+    // Load on page load
+    initChart();
+    loadStreams();
+    autoStartMonitoring();
+    updateVehicleCount();
+    
+    // Auto-refresh every 2 seconds
+    setInterval(updateVehicleCount, 2000);
+  </script>
+</body>
+</html>

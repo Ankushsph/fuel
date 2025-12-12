@@ -29,7 +29,9 @@ migrate.init_app(app, db)
 UPLOAD_FOLDERS = [
     'uploads/receipts',
     'uploads/payment_proofs',
-    'uploads/pump_documents'
+    'uploads/pump_documents',
+    'uploads/employee_photos',
+    'uploads/hydrotest_documents'
 ]
 for folder in UPLOAD_FOLDERS:
     os.makedirs(folder, exist_ok=True)
@@ -76,6 +78,10 @@ from password_reset import password_bp
 from subscription import subscription_bp
 from vehicle_count import vehicle_count_bp
 from admin import admin_bp
+from employee import employee_bp
+from attendance_monitor import attendance_monitor_bp
+from vehicle_verification import vehicle_verification_bp
+from hydrotesting import hydrotesting_bp
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(dashboard_bp)
@@ -87,6 +93,10 @@ app.register_blueprint(pump_bp)
 app.register_blueprint(subscription_bp, url_prefix="/subscription")
 app.register_blueprint(vehicle_count_bp)
 app.register_blueprint(admin_bp)
+app.register_blueprint(employee_bp)
+app.register_blueprint(attendance_monitor_bp, url_prefix="/attendance_monitor")
+app.register_blueprint(vehicle_verification_bp, url_prefix="/vehicle_verification")
+app.register_blueprint(hydrotesting_bp, url_prefix="/hydrotesting")
 
 # --- Initialize database tables and run migrations (runs even with Gunicorn) ---
 with app.app_context():
@@ -105,17 +115,63 @@ with app.app_context():
     # Create admin user if not exists
     try:
         from models import Admin
-        existing_admin = Admin.query.filter_by(email="ankushn2005@gmail.com").first()
-        if not existing_admin:
-            admin = Admin(email="ankushn2005@gmail.com")
+        # Check if new admin exists
+        new_admin = Admin.query.filter_by(email="web3.ankitrai@gmail.com").first()
+        if not new_admin:
+            admin = Admin(email="web3.ankitrai@gmail.com")
             admin.set_password("123466")
             db.session.add(admin)
             db.session.commit()
-            print("✅ Admin user created: ankushn2005@gmail.com")
+            print("✅ Admin user created: web3.ankitrai@gmail.com")
         else:
             print("✅ Admin user already exists")
+        
+        # Remove old admin if exists
+        old_admin = Admin.query.filter_by(email="ankushn2005@gmail.com").first()
+        if old_admin:
+            db.session.delete(old_admin)
+            db.session.commit()
+            print("✅ Old admin user removed")
     except Exception as e:
         print(f"⚠️  Admin creation warning: {e}")
+    
+    # Auto-start all saved RTSP monitoring streams
+    try:
+        from models import StationVehicle, VehicleVerification
+        from vehicle_count import start_rtsp_thread as start_vehicle_count
+        from vehicle_verification import start_rtsp_thread as start_plate_detection
+        
+        # Start vehicle counting for all saved streams
+        vehicle_streams = StationVehicle.query.all()
+        for stream in vehicle_streams:
+            try:
+                start_vehicle_count(stream.owner_id, stream.rtsp_url)
+                print(f"🚗 Auto-started vehicle counting for: {stream.station_name}")
+            except Exception as e:
+                print(f"⚠️  Could not auto-start vehicle counting for {stream.station_name}: {e}")
+        
+        # Start plate detection for all saved streams
+        plate_streams = VehicleVerification.query.all()
+        for stream in plate_streams:
+            try:
+                start_plate_detection(stream)
+                print(f"🛑 Auto-started plate detection for: {stream.station_name}")
+            except Exception as e:
+                print(f"⚠️  Could not auto-start plate detection for {stream.station_name}: {e}")
+        
+        if vehicle_streams or plate_streams:
+            print(f"\n✅ Auto-started monitoring for {len(vehicle_streams)} vehicle counting + {len(plate_streams)} plate detection streams")
+        else:
+            print("ℹ️  No saved streams found. Add streams to start monitoring.")
+    except Exception as e:
+        print(f"⚠️  Auto-start warning: {e}")
+    
+    # Start hydrotest notification service
+    try:
+        from hydrotest_notification_service import start_notification_service
+        start_notification_service(app)
+    except Exception as e:
+        print(f"⚠️  Hydrotest notification service warning: {e}")
 
 # --- Create all tables and run app ---
 if __name__ == "__main__":

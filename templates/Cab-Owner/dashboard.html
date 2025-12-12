@@ -36,7 +36,10 @@
     <div class="flex justify-between items-center gap-2">
       <div class="flex items-center gap-1 md:gap-2 flex-1 min-w-0">
         <button id="openMobileSidebar" class="lg:hidden text-fuel-orange text-lg md:text-xl font-bold flex-shrink-0">☰</button>
-        <img src="{{ url_for('static', filename='images/logo2.png') }}" alt="Fuel Flux Logo" class="h-6 md:h-10 w-auto flex-shrink-0" />
+        <img src="{{ url_for('static', filename='images/logo2.png') }}" 
+             alt="Fuel Flux Logo" 
+             class="h-6 md:h-10 w-auto flex-shrink-0"
+             style="background: none !important; background-color: transparent !important; mix-blend-mode: screen;" />
         <span class="text-fuel-orange font-bold text-xs md:text-xl truncate hidden sm:inline">Dashboard</span>
       </div>
       <a href="/logout" class="bg-fuel-orange hover:bg-orange-600 px-2 py-1.5 md:px-4 md:py-2 rounded-lg font-semibold transition text-xs md:text-base whitespace-nowrap flex-shrink-0">Logout</a>

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Tank - {{ pump.name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <header class="bg-gradient-to-r from-purple-600 to-purple-800 text-white shadow-lg">
+            <div class="container mx-auto px-4 py-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-3xl font-bold">Add New Tank</h1>
+                        <p class="text-purple-100 mt-1">{{ pump.name }}</p>
+                    </div>
+                    <a href="{{ url_for('hydrotesting.tanks_list', pump_id=pump.id) }}" 
+                       class="bg-white text-purple-600 px-6 py-2 rounded-lg hover:bg-purple-50 transition">
+                        <i class="fas fa-arrow-left mr-2"></i>Back
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <div class="container mx-auto px-4 py-8">
+            <div class="max-w-2xl mx-auto">
+                <div class="bg-white rounded-lg shadow-md p-8">
+                    <form method="POST">
+                        <div class="space-y-6">
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">Tank ID *</label>
+                                <input type="text" name="tank_id" required 
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                       placeholder="e.g., TANK-001">
+                            </div>
+
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">Tank Name *</label>
+                                <input type="text" name="name" required 
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                       placeholder="e.g., Petrol Storage Tank 1">
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-gray-700 font-medium mb-2">Capacity (Liters) *</label>
+                                    <input type="number" step="0.01" name="capacity" required 
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                           placeholder="e.g., 10000">
+                                </div>
+
+                                <div>
+                                    <label class="block text-gray-700 font-medium mb-2">Fuel Type *</label>
+                                    <select name="fuel_type" required 
+                                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                                        <option value="">Select Fuel Type</option>
+                                        <option value="Petrol">Petrol</option>
+                                        <option value="Diesel">Diesel</option>
+                                        <option value="CNG">CNG</option>
+                                        <option value="LPG">LPG</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">Location</label>
+                                <input type="text" name="location" 
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                       placeholder="e.g., Underground - North Side">
+                            </div>
+
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">Installation Date</label>
+                                <input type="date" name="installation_date" 
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                            </div>
+
+                            <div class="flex gap-4 pt-4">
+                                <button type="submit" 
+                                        class="flex-1 bg-purple-600 text-white px-8 py-3 rounded-lg hover:bg-purple-700 transition font-medium">
+                                    <i class="fas fa-save mr-2"></i>Add Tank
+                                </button>
+                                <a href="{{ url_for('hydrotesting.tanks_list', pump_id=pump.id) }}" 
+                                   class="px-8 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium">
+                                    Cancel
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

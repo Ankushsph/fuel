@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hydrotest Details - {{ pump.name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <header class="bg-gradient-to-r from-blue-600 to-blue-800 text-white shadow-lg">
+            <div class="container mx-auto px-4 py-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-3xl font-bold">Hydrotest Details</h1>
+                        <p class="text-blue-100 mt-1">{{ pump.name }}</p>
+                    </div>
+                    <a href="{{ url_for('hydrotesting.dashboard', pump_id=pump.id) }}" 
+                       class="bg-white text-blue-600 px-6 py-2 rounded-lg hover:bg-blue-50 transition">
+                        <i class="fas fa-arrow-left mr-2"></i>Back
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <div class="container mx-auto px-4 py-8">
+            <div class="max-w-5xl mx-auto">
+                <!-- Status Banner -->
+                <div class="mb-6">
+                    {% set status = hydrotest.get_compliance_status() %}
+                    {% if status == 'compliant' %}
+                        <div class="bg-green-100 border-l-4 border-green-500 p-4 rounded">
+                            <div class="flex items-center">
+                                <i class="fas fa-check-circle text-green-600 text-2xl mr-3"></i>
+                                <div>
+                                    <p class="font-bold text-green-800">Compliant</p>
+                                    <p class="text-green-700 text-sm">This test is valid until {{ hydrotest.next_due_date.strftime('%d/%m/%Y') }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    {% elif status == 'warning' %}
+                        <div class="bg-yellow-100 border-l-4 border-yellow-500 p-4 rounded">
+                            <div class="flex items-center">
+                                <i class="fas fa-exclamation-triangle text-yellow-600 text-2xl mr-3"></i>
+                                <div>
+                                    <p class="font-bold text-yellow-800">Warning - Expiring in {{ hydrotest.get_days_until_expiry() }} days</p>
+                                    <p class="text-yellow-700 text-sm">Please schedule testing before {{ hydrotest.next_due_date.strftime('%d/%m/%Y') }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    {% elif status == 'due_soon' %}
+                        <div class="bg-orange-100 border-l-4 border-orange-500 p-4 rounded">
+                            <div class="flex items-center">
+                                <i class="fas fa-clock text-orange-600 text-2xl mr-3"></i>
+                                <div>
+                                    <p class="font-bold text-orange-800">Due Soon - {{ hydrotest.get_days_until_expiry() }} days remaining</p>
+                                    <p class="text-orange-700 text-sm">Immediate action required. Schedule testing now!</p>
+                                </div>
+                            </div>
+                        </div>
+                    {% elif status == 'expired' %}
+                        <div class="bg-red-100 border-l-4 border-red-500 p-4 rounded">
+                            <div class="flex items-center">
+                                <i class="fas fa-times-circle text-red-600 text-2xl mr-3"></i>
+                                <div>
+                                    <p class="font-bold text-red-800">EXPIRED - {{ -hydrotest.get_days_until_expiry() }} days overdue</p>
+                                    <p class="text-red-700 text-sm">Non-compliant! Schedule testing immediately to avoid penalties.</p>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Test Information -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <!-- Basic Info -->
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h2 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">
+                            <i class="fas fa-info-circle text-blue-500 mr-2"></i>Basic Information
+                        </h2>
+                        <div class="space-y-3">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Equipment:</span>
+                                <span class="font-semibold text-gray-800">
+                                    {% if hydrotest.tank %}
+                                        <i class="fas fa-database text-purple-500 mr-1"></i>{{ hydrotest.tank.name }}
+                                    {% elif hydrotest.pipeline %}
+                                        <i class="fas fa-project-diagram text-green-500 mr-1"></i>{{ hydrotest.pipeline.name }}
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Test Type:</span>
+                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                                    {{ hydrotest.test_type.replace('_', ' ').title() }}
+                                </span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Test Date:</span>
+                                <span class="font-semibold text-gray-800">{{ hydrotest.test_date.strftime('%d/%m/%Y') }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Next Due Date:</span>
+                                <span class="font-semibold text-gray-800">{{ hydrotest.next_due_date.strftime('%d/%m/%Y') }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Validity:</span>
+                                <span class="font-semibold text-gray-800">{{ hydrotest.validity_years }} Years</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Test Results -->
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h2 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">
+                            <i class="fas fa-clipboard-check text-green-500 mr-2"></i>Test Results
+                        </h2>
+                        <div class="space-y-3">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Test Pressure:</span>
+                                <span class="font-semibold text-gray-800">{{ hydrotest.test_pressure }} {{ hydrotest.pressure_unit }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Hold Duration:</span>
+                                <span class="font-semibold text-gray-800">{{ hydrotest.hold_duration }} minutes</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Result:</span>
+                                {% if hydrotest.result == 'Pass' %}
+                                    <span class="px-3 py-1 text-sm font-semibold rounded-full bg-green-100 text-green-800">
+                                        <i class="fas fa-check-circle mr-1"></i>Pass
+                                    </span>
+                                {% else %}
+                                    <span class="px-3 py-1 text-sm font-semibold rounded-full bg-red-100 text-red-800">
+                                        <i class="fas fa-times-circle mr-1"></i>Fail
+                                    </span>
+                                {% endif %}
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">PESO Status:</span>
+                                {% if hydrotest.peso_approved %}
+                                    <span class="px-3 py-1 text-sm font-semibold rounded-full bg-green-100 text-green-800">
+                                        <i class="fas fa-certificate mr-1"></i>Approved
+                                    </span>
+                                {% else %}
+                                    <span class="px-3 py-1 text-sm font-semibold rounded-full bg-gray-100 text-gray-800">
+                                        Pending
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contractor Information -->
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">
+                        <i class="fas fa-user-tie text-purple-500 mr-2"></i>PESO Contractor Information
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Contractor Name:</span>
+                            <span class="font-semibold text-gray-800">{{ hydrotest.peso_contractor_name }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Licence Number:</span>
+                            <span class="font-semibold text-gray-800">{{ hydrotest.competent_person_licence }}</span>
+                        </div>
+                        {% if hydrotest.peso_certificate_number %}
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Certificate Number:</span>
+                            <span class="font-semibold text-gray-800">{{ hydrotest.peso_certificate_number }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Remarks -->
+                {% if hydrotest.remarks %}
+                <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">
+                        <i class="fas fa-comment-alt text-orange-500 mr-2"></i>Remarks
+                    </h2>
+                    <p class="text-gray-700">{{ hydrotest.remarks }}</p>
+                </div>
+                {% endif %}
+
+                <!-- Documents -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">
+                        <i class="fas fa-file-alt text-blue-500 mr-2"></i>Uploaded Documents
+                    </h2>
+                    
+                    {% if files_by_type %}
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {% for file_type, files in files_by_type.items() %}
+                        <div class="border rounded-lg p-4">
+                            <h3 class="font-semibold text-gray-800 mb-2">
+                                {% if file_type == 'certificate' %}
+                                    <i class="fas fa-certificate text-blue-500 mr-2"></i>Hydrotest Certificate
+                                {% elif file_type == 'gas_free' %}
+                                    <i class="fas fa-file-alt text-green-500 mr-2"></i>Gas-Free Certificate
+                                {% elif file_type == 'gauge_calibration' %}
+                                    <i class="fas fa-tachometer-alt text-purple-500 mr-2"></i>Gauge Calibration
+                                {% elif 'photo' in file_type %}
+                                    <i class="fas fa-camera text-red-500 mr-2"></i>{{ file_type.replace('_', ' ').title() }}
+                                {% endif %}
+                            </h3>
+                            {% for file in files %}
+                            <div class="flex items-center justify-between bg-gray-50 p-2 rounded mb-2">
+                                <span class="text-sm text-gray-600 truncate">{{ file.original_filename }}</span>
+                                <a href="{{ url_for('hydrotesting.download_file', file_id=file.id) }}" 
+                                   class="text-blue-600 hover:text-blue-800 ml-2">
+                                    <i class="fas fa-download"></i>
+                                </a>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-gray-500 text-center py-4">No documents uploaded</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vehicle Database - ANPR</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-900">
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-orange-600 to-orange-700 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold">🚗 Vehicle Compliance Database</h1>
+                    <p class="text-orange-100 mt-1">Manage vehicle hydrotest records</p>
+                </div>
+                <div class="flex gap-3">
+                    <a href="{{ url_for('hydrotesting.anpr_add_vehicle', pump_id=pump.id) }}" 
+                       class="bg-white text-orange-600 px-4 py-2 rounded-lg hover:bg-orange-50 transition font-semibold">
+                        <i class="fas fa-plus mr-2"></i>Add Vehicle
+                    </a>
+                    <a href="{{ url_for('hydrotesting.anpr_dashboard', pump_id=pump.id) }}" 
+                       class="bg-orange-700 hover:bg-orange-800 text-white px-4 py-2 rounded-lg transition">
+                        <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container mx-auto px-4 py-8">
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="mb-4 p-4 rounded-lg {% if category == 'error' %}bg-red-600{% elif category == 'warning' %}bg-yellow-600{% else %}bg-green-600{% endif %}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-gradient-to-br from-blue-600 to-blue-800 rounded-xl p-6">
+                <p class="text-blue-200 text-sm">Total Vehicles</p>
+                <h3 class="text-3xl font-bold mt-2">{{ vehicles|length }}</h3>
+            </div>
+            <div class="bg-gradient-to-br from-green-600 to-green-800 rounded-xl p-6">
+                <p class="text-green-200 text-sm">Compliant</p>
+                <h3 class="text-3xl font-bold mt-2">{{ vehicles|selectattr('is_compliant')|list|length }}</h3>
+            </div>
+            <div class="bg-gradient-to-br from-red-600 to-red-800 rounded-xl p-6">
+                <p class="text-red-200 text-sm">Expired</p>
+                <h3 class="text-3xl font-bold mt-2">{{ vehicles|selectattr('compliance_status', 'equalto', 'expired')|list|length }}</h3>
+            </div>
+            <div class="bg-gradient-to-br from-yellow-600 to-yellow-800 rounded-xl p-6">
+                <p class="text-yellow-200 text-sm">Expiring Soon</p>
+                <h3 class="text-3xl font-bold mt-2">{{ vehicles|selectattr('compliance_status', 'equalto', 'expiring_soon')|list|length }}</h3>
+            </div>
+        </div>
+
+        <!-- Vehicles Table -->
+        {% if vehicles %}
+        <div class="bg-gray-800 rounded-xl p-6 shadow-lg overflow-x-auto border border-gray-700">
+            <table class="w-full">
+                <thead>
+                    <tr class="border-b border-gray-700 bg-gray-700">
+                        <th class="text-left py-3 px-4 text-gray-300">Vehicle Number</th>
+                        <th class="text-left py-3 px-4 text-gray-300">Type</th>
+                        <th class="text-left py-3 px-4 text-gray-300">Last Test</th>
+                        <th class="text-left py-3 px-4 text-gray-300">Expiry Date</th>
+                        <th class="text-left py-3 px-4 text-gray-300">Days Remaining</th>
+                        <th class="text-left py-3 px-4 text-gray-300">Status</th>
+                        <th class="text-left py-3 px-4 text-gray-300">Owner</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for vehicle in vehicles %}
+                    <tr class="border-b border-gray-700 hover:bg-gray-700">
+                        <td class="py-3 px-4 font-bold text-lg text-white">{{ vehicle.vehicle_number }}</td>
+                        <td class="py-3 px-4">
+                            <span class="px-2 py-1 bg-gray-700 rounded text-sm text-gray-200">
+                                {{ vehicle.vehicle_type }}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 text-sm text-gray-300">
+                            {% if vehicle.last_hydrotest_date %}
+                            {{ vehicle.last_hydrotest_date.strftime('%d/%m/%Y') }}
+                            {% else %}
+                            <span class="text-gray-400">N/A</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-4 text-sm text-gray-300">
+                            {{ vehicle.hydrotest_expiry_date.strftime('%d/%m/%Y') }}
+                        </td>
+                        <td class="py-3 px-4">
+                            {% set days = vehicle.get_days_until_expiry() %}
+                            {% if days < 0 %}
+                            <span class="text-red-400 font-semibold">{{ days|abs }} days overdue</span>
+                            {% elif days <= 30 %}
+                            <span class="text-yellow-400 font-semibold">{{ days }} days</span>
+                            {% else %}
+                            <span class="text-green-400 font-semibold">{{ days }} days</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-4">
+                            {% set status = vehicle.get_compliance_status() %}
+                            <span class="px-3 py-1 rounded-full text-xs font-semibold
+                                {% if status == 'compliant' %}bg-green-600
+                                {% elif status == 'expiring_soon' %}bg-yellow-600
+                                {% elif status == 'expired' %}bg-red-600
+                                {% elif status == 'blacklisted' %}bg-red-800
+                                {% else %}bg-gray-600{% endif %}">
+                                {% if status == 'compliant' %}✔ Compliant
+                                {% elif status == 'expiring_soon' %}⚠ Expiring Soon
+                                {% elif status == 'expired' %}❌ Expired
+                                {% elif status == 'blacklisted' %}🚫 Blacklisted
+                                {% else %}{{ status|title }}{% endif %}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 text-sm">
+                            <div class="text-white">{{ vehicle.owner_name or 'N/A' }}</div>
+                            {% if vehicle.owner_contact %}
+                            <div class="text-gray-500 text-xs">{{ vehicle.owner_contact }}</div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Info Box -->
+        <div class="mt-8 bg-gray-800 border border-gray-700 rounded-lg p-6">
+            <h3 class="font-bold text-blue-800 mb-3">
+                <i class="fas fa-info-circle mr-2"></i>Vehicle Database Information
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-300">
+                <div>
+                    <p class="font-semibold mb-1">Status Indicators:</p>
+                    <ul class="space-y-1">
+                        <li>• <span class="text-green-400">✔ Compliant</span> - Valid hydrotest (>30 days)</li>
+                        <li>• <span class="text-yellow-400">⚠ Expiring Soon</span> - Valid but <30 days</li>
+                        <li>• <span class="text-red-400">❌ Expired</span> - Hydrotest expired</li>
+                        <li>• <span class="text-red-400">🚫 Blacklisted</span> - Access denied</li>
+                    </ul>
+                </div>
+                <div>
+                    <p class="font-semibold mb-1">Gate Actions:</p>
+                    <ul class="space-y-1">
+                        <li>• Compliant vehicles: Gate opens automatically</li>
+                        <li>• Expired vehicles: Gate remains closed</li>
+                        <li>• Blacklisted vehicles: Gate closed + alert</li>
+                        <li>• Unknown vehicles: Gate closed + register prompt</li>
+                    </ul>
+                </div>
+                <div>
+                    <p class="font-semibold mb-1">Management:</p>
+                    <ul class="space-y-1">
+                        <li>• Add vehicles before they arrive</li>
+                        <li>• Update hydrotest dates regularly</li>
+                        <li>• Upload certificates for records</li>
+                        <li>• Monitor expiring vehicles weekly</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        {% else %}
+        <!-- Empty State -->
+        <div class="bg-gray-800 rounded-xl p-12 text-center shadow-lg border border-gray-700">
+            <i class="fas fa-car text-6xl text-gray-500 mb-4"></i>
+            <h2 class="text-2xl font-bold mb-2 text-white">No Vehicles Registered</h2>
+            <p class="text-gray-300 mb-6">Add vehicles to your compliance database to enable ANPR gate control</p>
+            <a href="{{ url_for('hydrotesting.anpr_add_vehicle', pump_id=pump.id) }}" 
+               class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold">
+                <i class="fas fa-plus mr-2"></i>Add Your First Vehicle
+            </a>
+            
+            <div class="mt-8 bg-gray-700 border border-gray-600 rounded-lg p-6 text-left max-w-2xl mx-auto">
+                <h3 class="font-bold text-white mb-3">
+                    <i class="fas fa-lightbulb mr-2"></i>What You Need
+                </h3>
+                <ul class="text-sm text-gray-300 space-y-2">
+                    <li><strong>Vehicle Number:</strong> Registration plate (e.g., KA19MB1234)</li>
+                    <li><strong>Vehicle Type:</strong> CNG Auto, Fuel Truck, Tanker, etc.</li>
+                    <li><strong>Hydrotest Dates:</strong> Last test date and expiry date</li>
+                    <li><strong>Certificate:</strong> Upload hydrotest certificate (optional)</li>
+                    <li><strong>Owner Details:</strong> Name and contact information</li>
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

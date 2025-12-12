@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Hydrotest - {{ pump.name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <!-- Header -->
+        <header class="bg-gradient-to-r from-blue-600 to-blue-800 text-white shadow-lg">
+            <div class="container mx-auto px-4 py-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-3xl font-bold">Add Hydrotest Record</h1>
+                        <p class="text-blue-100 mt-1">{{ pump.name }} - {{ pump.location }}</p>
+                    </div>
+                    <a href="{{ url_for('hydrotesting.dashboard', pump_id=pump.id) }}" 
+                       class="bg-white text-blue-600 px-6 py-2 rounded-lg hover:bg-blue-50 transition">
+                        <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <div class="container mx-auto px-4 py-8">
+            <div class="max-w-4xl mx-auto">
+                <div class="bg-white rounded-lg shadow-md p-8">
+                    <form method="POST" enctype="multipart/form-data" id="hydrotestForm">
+                        <!-- Basic Information -->
+                        <div class="mb-8">
+                            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">
+                                <i class="fas fa-info-circle text-blue-500 mr-2"></i>Basic Information
+                            </h2>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-gray-700 font-medium mb-2">Test Type *</label>
+                                    <select name="test_type" id="test_type" required 
+                                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                        <option value="">Select Test Type</option>
+                                        <option value="tank_hydrotest">Tank Hydrotest</option>
+                                        <option value="pipeline_hydrotest">Pipeline Hydrotest</option>
+                                        <option value="sump_hydrotest">Sump Hydrotest</option>
+                                        <option value="vent_line_test">Vent Line Test</option>
+                                    </select>
+                                </div>
+
+                                <div id="tankSelection" class="hidden">
+                                    <label class="block text-gray-700 font-medium mb-2">Select Tank *</label>
+                                    <select name="tank_id" id="tank_id" 
+                                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                        <option value="">Select Tank</option>
+                                        {% for tank in tanks %}
+                                        <option value="{{ tank.id }}">{{ tank.name }} ({{ tank.tank_id }}) - {{ tank.capacity }}L</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div id="pipelineSelection" class="hidden">
+                                    <label class="block text-gray-700 font-medium mb-2">Select Pipeline *</label>
+                                    <select name="pipeline_id" id="pipeline_id" 
+                                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                        <option value="">Select Pipeline</option>
+                                        {% for pipeline in pipelines %}
+                                        <option value="{{ pipeline.id }}">{{ pipeline.name }} ({{ pipeline.line_id }}) - {{ pipeline.length }}m</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="block text-gray-700 font-medium mb-2">Test Date *</label>
+                                    <input type="date" name="test_date" required 
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- PESO Contractor Information -->
+                        <div class="mb-8">
+                            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">
+                                <i class="fas fa-user-tie text-purple-500 mr-2"></i>PESO Contractor Information
+                            </h2>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-gray-700 font-medium mb-2">Contractor Name *</label>
+                                    <input type="text" name="contractor_name" required list="contractors"
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                           placeholder="Enter contractor name">
+                                    <datalist id="contractors">
+                                        {% for contractor in contractors %}
+                                        <option value="{{ contractor.contractor_name }}">
+                                        {% endfor %}
+                                    </datalist>
+                                </div>
+
+                                <div>
+                                    <label class="block text-gray-700 font-medium mb-2">Competent Person Licence Number *</label>
+                                    <input type="text" name="licence_number" required 
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                           placeholder="Enter licence number">
+                                </div>
+
+                                <div>
+                                    <label class="block text-gray-700 font-medium mb-2">PESO Certificate Number</label>
+                                    <input type="text" name="peso_certificate_number" 
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                           placeholder="Enter PESO certificate number">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Technical Test Details -->
+                        <div class="mb-8">
+                            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">
+                                <i class="fas fa-cogs text-green-500 mr-2"></i>Technical Test Details
+                            </h2>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-gray-700 font-medium mb-2">Test Pressure *</label>
+                                    <div class="flex gap-2">
+                                        <input type="number" step="0.01" name="test_pressure" required 
+                                               class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                               placeholder="Enter pressure">
+                                        <select name="pressure_unit" 
+                                                class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                            <option value="bar">bar</option>
+                                            <option value="psi">psi</option>
+                                            <option value="kPa">kPa</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-gray-700 font-medium mb-2">Hold Duration (minutes) *</label>
+                                    <input type="number" name="hold_duration" required 
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                           placeholder="Enter duration in minutes">
+                                </div>
+
+                                <div>
+                                    <label class="block text-gray-700 font-medium mb-2">Test Result *</label>
+                                    <select name="result" required 
+                                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                        <option value="">Select Result</option>
+                                        <option value="Pass">Pass - No pressure drop</option>
+                                        <option value="Fail">Fail - Pressure drop detected</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="block text-gray-700 font-medium mb-2">Validity Period (years) *</label>
+                                    <select name="validity_years" required 
+                                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                        <option value="1">1 Year</option>
+                                        <option value="2">2 Years</option>
+                                        <option value="3">3 Years</option>
+                                        <option value="5" selected>5 Years</option>
+                                    </select>
+                                </div>
+
+                                <div class="md:col-span-2">
+                                    <label class="block text-gray-700 font-medium mb-2">Remarks</label>
+                                    <textarea name="remarks" rows="3" 
+                                              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                              placeholder="Enter any observations or remarks (e.g., No pressure drop, Joint leakage found, etc.)"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Document Uploads -->
+                        <div class="mb-8">
+                            <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">
+                                <i class="fas fa-file-upload text-orange-500 mr-2"></i>Document Uploads
+                            </h2>
+                            
+                            <div class="space-y-4">
+                                <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-4">
+                                    <p class="text-sm text-blue-800">
+                                        <i class="fas fa-info-circle mr-2"></i>
+                                        Upload all required documents for PESO compliance. Accepted formats: PDF, JPG, PNG, DOC, DOCX
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <label class="block text-gray-700 font-medium mb-2">
+                                        <i class="fas fa-certificate text-blue-500 mr-2"></i>Hydrotest Certificate PDF *
+                                    </label>
+                                    <input type="file" name="certificate" accept=".pdf,.jpg,.jpeg,.png" required
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                </div>
+
+                                <div>
+                                    <label class="block text-gray-700 font-medium mb-2">
+                                        <i class="fas fa-file-alt text-green-500 mr-2"></i>Gas-Free Certificate PDF
+                                    </label>
+                                    <input type="file" name="gas_free" accept=".pdf,.jpg,.jpeg,.png"
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                </div>
+
+                                <div>
+                                    <label class="block text-gray-700 font-medium mb-2">
+                                        <i class="fas fa-tachometer-alt text-purple-500 mr-2"></i>Pressure Gauge Calibration Certificate
+                                    </label>
+                                    <input type="file" name="gauge_calibration" accept=".pdf,.jpg,.jpeg,.png"
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                </div>
+
+                                <div>
+                                    <label class="block text-gray-700 font-medium mb-2">
+                                        <i class="fas fa-camera text-red-500 mr-2"></i>Photos - Before Test
+                                    </label>
+                                    <input type="file" name="photo_before" accept="image/*" multiple
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                </div>
+
+                                <div>
+                                    <label class="block text-gray-700 font-medium mb-2">
+                                        <i class="fas fa-camera text-red-500 mr-2"></i>Photos - During Filling
+                                    </label>
+                                    <input type="file" name="photo_filling" accept="image/*" multiple
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                </div>
+
+                                <div>
+                                    <label class="block text-gray-700 font-medium mb-2">
+                                        <i class="fas fa-camera text-red-500 mr-2"></i>Photos - Gauge Reading
+                                    </label>
+                                    <input type="file" name="photo_gauge" accept="image/*" multiple
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                </div>
+
+                                <div>
+                                    <label class="block text-gray-700 font-medium mb-2">
+                                        <i class="fas fa-camera text-red-500 mr-2"></i>Photos - After Test
+                                    </label>
+                                    <input type="file" name="photo_after" accept="image/*" multiple
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <div class="flex gap-4">
+                            <button type="submit" 
+                                    class="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-8 py-3 rounded-lg hover:from-blue-700 hover:to-blue-800 transition font-medium text-lg">
+                                <i class="fas fa-save mr-2"></i>Save Hydrotest Record
+                            </button>
+                            <a href="{{ url_for('hydrotesting.dashboard', pump_id=pump.id) }}" 
+                               class="px-8 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium text-lg">
+                                Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Quick Links -->
+                <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <a href="{{ url_for('hydrotesting.add_tank', pump_id=pump.id) }}" 
+                       class="bg-white rounded-lg shadow p-4 hover:shadow-md transition border-l-4 border-purple-500">
+                        <i class="fas fa-plus-circle text-purple-500 mr-2"></i>
+                        <span class="font-medium">Add New Tank</span>
+                    </a>
+                    <a href="{{ url_for('hydrotesting.add_pipeline', pump_id=pump.id) }}" 
+                       class="bg-white rounded-lg shadow p-4 hover:shadow-md transition border-l-4 border-green-500">
+                        <i class="fas fa-plus-circle text-green-500 mr-2"></i>
+                        <span class="font-medium">Add New Pipeline</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Show/hide tank or pipeline selection based on test type
+        document.getElementById('test_type').addEventListener('change', function() {
+            const testType = this.value;
+            const tankSelection = document.getElementById('tankSelection');
+            const pipelineSelection = document.getElementById('pipelineSelection');
+            const tankSelect = document.getElementById('tank_id');
+            const pipelineSelect = document.getElementById('pipeline_id');
+
+            // Hide both initially
+            tankSelection.classList.add('hidden');
+            pipelineSelection.classList.add('hidden');
+            tankSelect.removeAttribute('required');
+            pipelineSelect.removeAttribute('required');
+
+            // Show appropriate selection
+            if (testType === 'tank_hydrotest' || testType === 'sump_hydrotest') {
+                tankSelection.classList.remove('hidden');
+                tankSelect.setAttribute('required', 'required');
+            } else if (testType === 'pipeline_hydrotest' || testType === 'vent_line_test') {
+                pipelineSelection.classList.remove('hidden');
+                pipelineSelect.setAttribute('required', 'required');
+            }
+        });
+
+        // Form validation
+        document.getElementById('hydrotestForm').addEventListener('submit', function(e) {
+            const testType = document.getElementById('test_type').value;
+            const tankId = document.getElementById('tank_id').value;
+            const pipelineId = document.getElementById('pipeline_id').value;
+
+            if ((testType === 'tank_hydrotest' || testType === 'sump_hydrotest') && !tankId) {
+                e.preventDefault();
+                alert('Please select a tank for this test type.');
+                return false;
+            }
+
+            if ((testType === 'pipeline_hydrotest' || testType === 'vent_line_test') && !pipelineId) {
+                e.preventDefault();
+                alert('Please select a pipeline for this test type.');
+                return false;
+            }
+        });
+    </script>
+</body>
+</html>

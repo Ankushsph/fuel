@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>Live Attendance Monitor - Fuel Flux</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+  <style>
+    #toast {
+      position: fixed;
+      top: -100px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 50;
+      padding: 1rem 1.5rem;
+      border-radius: 0.5rem;
+      font-weight: 500;
+      color: white;
+      opacity: 0;
+      transition: all 0.5s ease-in-out;
+      min-width: 250px;
+      text-align: center;
+    }
+    #toast.show {
+      top: 2rem;
+      opacity: 1;
+    }
+    #toast.success {
+      background-color: #16a34a;
+    }
+    #toast.error {
+      background-color: #dc2626;
+    }
+    #videoStream {
+      max-width: 100%;
+      border: 2px solid #f97316;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body class="bg-fuel-black text-white min-h-screen">
+  <div id="toast"></div>
+
+  <!-- Header -->
+  <nav class="bg-fuel-gray p-4 shadow-lg">
+    <div class="flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <a href="{{ url_for('pump_dashboard.dashboard') }}" class="text-fuel-orange hover:text-white">← Back to Dashboard</a>
+        <h1 class="text-xl font-bold text-fuel-orange">Live Attendance Monitor</h1>
+      </div>
+      <div class="flex gap-3">
+        <a href="{{ url_for('employee.employee_management', pump_id=pump.id) }}" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg">Manage Employees</a>
+        <a href="{{ url_for('attendance_monitor.attendance_report', pump_id=pump.id) }}" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg">View Reports</a>
+        <a href="{{ url_for('auth.logout') }}" class="bg-fuel-orange hover:bg-orange-600 px-4 py-2 rounded-lg">Logout</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="container mx-auto p-6 max-w-6xl">
+    <!-- RTSP Stream Selection -->
+    <div class="bg-fuel-gray rounded-xl p-6 mb-6">
+      <h2 class="text-2xl font-bold text-fuel-orange mb-4">Select CCTV Stream</h2>
+      {% if stations %}
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        {% for station in stations %}
+        <button onclick="loadStream('{{ station.rtsp_url }}')" 
+                class="bg-fuel-black hover:bg-gray-800 p-4 rounded-lg text-left">
+          <h3 class="font-semibold">{{ station.station_name }}</h3>
+          <p class="text-sm text-gray-400">{{ station.location }}</p>
+        </button>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-gray-400 mb-4">No RTSP streams configured. Please add a stream in the dashboard.</p>
+      {% endif %}
+      
+      <div class="mt-4">
+        <label class="block text-sm font-medium mb-2">Or enter RTSP URL manually:</label>
+        <div class="flex gap-2">
+          <input type="text" id="rtspUrlInput" placeholder="rtsp://..." 
+                 class="flex-1 p-3 rounded-lg bg-fuel-black text-white border border-gray-600">
+          <button onclick="loadStream(document.getElementById('rtspUrlInput').value)" 
+                  class="bg-fuel-orange hover:bg-orange-600 px-6 py-3 rounded-lg">
+            Load Stream
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Video Stream -->
+    <div class="bg-fuel-gray rounded-xl p-6">
+      <h2 class="text-2xl font-bold text-fuel-orange mb-4">Live Feed</h2>
+      <div class="text-center">
+        <img id="videoStream" src="" alt="Video Stream" style="display: none; max-width: 100%; height: auto;">
+        <p id="noStream" class="text-gray-400 py-8">Select a stream above to start monitoring</p>
+        <p id="loadingStream" class="text-fuel-orange py-4" style="display: none;">🔄 Connecting to camera stream...</p>
+      </div>
+      <div class="mt-4 text-center">
+        <p class="text-sm text-gray-400">
+          Face recognition is active. Employees will be automatically detected and attendance marked.
+        </p>
+      </div>
+    </div>
+
+    <!-- Employee Status Today -->
+    <div class="bg-fuel-gray rounded-xl p-6 mt-6">
+      <h2 class="text-2xl font-bold text-fuel-orange mb-4">👥 Employee Status (Today)</h2>
+      <div id="employeeStatus" class="space-y-2">
+        <p class="text-gray-400 text-center py-4">Loading...</p>
+      </div>
+    </div>
+
+    <!-- Recent Attendance -->
+    <div class="bg-fuel-gray rounded-xl p-6 mt-6">
+      <h2 class="text-2xl font-bold text-fuel-orange mb-4">📋 Recent Attendance Records</h2>
+      <div id="recentAttendance" class="space-y-2">
+        <p class="text-gray-400 text-center py-4">Loading...</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const pumpId = {{ pump.id }};
+    let currentStreamUrl = null;
+
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = 'show ' + type;
+      setTimeout(() => toast.className = '', 3000);
+    }
+
+    async function loadStream(rtspUrl) {
+      if (!rtspUrl || !rtspUrl.trim()) {
+        showToast('Please enter an RTSP URL', 'error');
+        return;
+      }
+      
+      rtspUrl = rtspUrl.trim();
+      
+      // Basic client-side validation
+      if (!rtspUrl.startsWith('rtsp://') && !rtspUrl.startsWith('rtsps://')) {
+        showToast('RTSP URL must start with rtsp:// or rtsps://', 'error');
+        return;
+      }
+      
+      // Skip validation - directly load the stream
+      // Real-world cameras may not respond to validation requests
+      showToast('Loading stream...', 'success');
+      
+      try {
+        console.log('Loading RTSP stream:', rtspUrl);
+        
+        // Stream format is valid, load it directly
+        currentStreamUrl = rtspUrl;
+        const videoElement = document.getElementById('videoStream');
+        const noStream = document.getElementById('noStream');
+        const loadingStream = document.getElementById('loadingStream');
+        
+        // Show loading state
+        noStream.style.display = 'none';
+        loadingStream.style.display = 'block';
+        videoElement.style.display = 'none';
+        
+        // Build video feed URL with proper encoding
+        const feedUrl = `/attendance_monitor/${pumpId}/video_feed?rtsp_url=${encodeURIComponent(rtspUrl)}`;
+        console.log('Loading stream from:', feedUrl);
+        
+        // Set up error handling before setting src
+        videoElement.onerror = function() {
+          console.error('Video stream error');
+          showToast('Stream error: Unable to display video feed. Check camera connection and network.', 'error');
+          videoElement.style.display = 'none';
+          loadingStream.style.display = 'none';
+          noStream.style.display = 'block';
+        };
+        
+        videoElement.onload = function() {
+          console.log('Video stream loaded successfully');
+          loadingStream.style.display = 'none';
+          videoElement.style.display = 'block';
+          showToast('Stream connected! Face recognition active.', 'success');
+        };
+        
+        // Set the source to start loading
+        videoElement.src = feedUrl;
+        
+        // Check if stream loads - multipart streams need special handling
+        let loadCheckInterval = setInterval(() => {
+          if (videoElement.complete && videoElement.naturalWidth > 0) {
+            clearInterval(loadCheckInterval);
+            loadingStream.style.display = 'none';
+            videoElement.style.display = 'block';
+            showToast('Stream connected!', 'success');
+          }
+        }, 500);
+        
+        // Timeout after 15 seconds
+        setTimeout(() => {
+          clearInterval(loadCheckInterval);
+          if (loadingStream.style.display !== 'none') {
+            // Still loading - check if there's an error
+            if (!videoElement.complete || videoElement.naturalWidth === 0) {
+              loadingStream.style.display = 'none';
+              noStream.style.display = 'block';
+              showToast('Stream connection timeout. Check camera and network.', 'error');
+            }
+          }
+        }, 15000);
+        
+      } catch (err) {
+        console.error('Error validating stream:', err);
+        showToast('Error: ' + err.message, 'error');
+      }
+    }
+
+    // Load employee list and today's status
+    async function loadEmployeeStatus() {
+      try {
+        const [employeesRes, attendanceRes] = await Promise.all([
+          fetch(`/employee/${pumpId}/list`),
+          fetch(`/employee/${pumpId}/attendance/list`)
+        ]);
+        
+        const employeesData = await employeesRes.json();
+        const attendanceData = await attendanceRes.json();
+        
+        if (employeesData.success) {
+          const statusContainer = document.getElementById('employeeStatus');
+          const employees = employeesData.employees || [];
+          
+          if (employees.length === 0) {
+            statusContainer.innerHTML = '<p class="text-gray-400 text-center py-4">No employees registered yet.</p>';
+            return;
+          }
+          
+          const today = new Date().toISOString().split('T')[0];
+          const todayAttendance = {};
+          
+          if (attendanceData.success) {
+            attendanceData.attendance.forEach(record => {
+              if (record.date === today) {
+                todayAttendance[record.employee_id] = record;
+              }
+            });
+          }
+          
+          const statusHtml = employees.map(emp => {
+            const attendance = todayAttendance[emp.id];
+            const isPresent = attendance && attendance.status === 'present' && attendance.check_in_time;
+            const statusColor = isPresent ? 'bg-green-600' : 'bg-red-600';
+            const statusIcon = isPresent ? '✓' : '✗';
+            const statusText = isPresent ? 'Present' : 'Absent';
+            
+            return `
+            <div class="bg-fuel-black rounded-lg p-4 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <img src="/employee/photos/${emp.photo_filename}" 
+                     alt="${emp.name}" 
+                     class="w-12 h-12 rounded-full object-cover">
+                <div>
+                  <h3 class="font-semibold">${emp.name}</h3>
+                  <p class="text-xs text-gray-400">${emp.designation || 'Employee'}</p>
+                </div>
+              </div>
+              <div class="text-right">
+                <span class="${statusColor} text-white px-3 py-1 rounded-full text-sm font-semibold">
+                  ${statusIcon} ${statusText}
+                </span>
+                ${isPresent && attendance.check_in_time ? `<p class="text-xs text-gray-400 mt-1">In: ${new Date(attendance.check_in_time).toLocaleTimeString()}</p>` : ''}
+              </div>
+            </div>
+            `;
+          }).join('');
+          
+          statusContainer.innerHTML = statusHtml;
+        }
+      } catch (err) {
+        console.error(err);
+        document.getElementById('employeeStatus').innerHTML = '<p class="text-gray-400 text-center py-4">Error loading employee status.</p>';
+      }
+    }
+
+    // Load recent attendance records
+    async function loadRecentAttendance() {
+      try {
+        const res = await fetch(`/employee/${pumpId}/attendance/list?limit=10`);
+        const data = await res.json();
+        
+        if (data.success) {
+          const container = document.getElementById('recentAttendance');
+          if (data.attendance.length === 0) {
+            container.innerHTML = '<p class="text-gray-400 text-center py-4">No attendance records yet.</p>';
+            return;
+          }
+          
+          const recordsHtml = data.attendance.map(record => {
+            const isPresent = record.status === 'present' && record.check_in_time;
+            const statusColor = isPresent ? 'text-green-400' : 'text-red-400';
+            
+            return `
+            <div class="bg-fuel-black rounded-lg p-3 flex justify-between items-center">
+              <div>
+                <span class="font-semibold">${record.employee_name}</span>
+                <span class="text-sm text-gray-400 ml-3">${record.date}</span>
+              </div>
+              <div class="text-sm text-right">
+                <span class="${statusColor}">${record.status}</span>
+                ${record.check_in_time ? `<p class="text-gray-400">In: ${new Date(record.check_in_time).toLocaleTimeString()}</p>` : ''}
+                ${record.check_out_time ? `<p class="text-gray-400">Out: ${new Date(record.check_out_time).toLocaleTimeString()}</p>` : ''}
+              </div>
+            </div>
+            `;
+          }).join('');
+          
+          container.innerHTML = recordsHtml;
+        }
+      } catch (err) {
+        console.error(err);
+        document.getElementById('recentAttendance').innerHTML = '<p class="text-gray-400 text-center py-4">Error loading attendance.</p>';
+      }
+    }
+
+    // Load on page load
+    loadEmployeeStatus();
+    loadRecentAttendance();
+    
+    // Refresh every 5 seconds for real-time updates
+    setInterval(() => {
+      loadEmployeeStatus();
+      loadRecentAttendance();
+    }, 5000);
+  </script>
+</body>
+</html>
+
+
+
+

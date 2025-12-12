@@ -13,8 +13,11 @@
   <header class="bg-fuel-gray p-4 shadow-md">
     <div class="flex justify-between items-center">
       <div class="flex items-center gap-2">
-        <img src="{{ url_for('static', filename='images/logo2.png') }}" class="h-8" />
-        <span class="text-fuel-orange font-bold text-xl">Admin Dashboard</span>
+        <img src="{{ url_for('static', filename='images/logo2.png') }}" 
+             alt="Fuel Flux Logo" 
+             class="h-5 md:h-6 w-auto" 
+             style="background: none !important; background-color: transparent !important; mix-blend-mode: screen;" />
+        <span class="text-fuel-orange font-bold text-base md:text-lg">Admin Dashboard</span>
       </div>
       <a href="{{ url_for('admin.admin_logout') }}" 
          class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-semibold transition">
@@ -133,4 +136,7 @@
 
 </body>
 </html>
+
+
+
 

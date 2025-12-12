@@ -10,7 +10,7 @@ import os
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
 # Admin credentials (hardcoded for now)
-ADMIN_EMAIL = "ankushn2005@gmail.com"
+ADMIN_EMAIL = "web3.ankitrai@gmail.com"
 ADMIN_PASSWORD = "123466"  # In production, hash this!
 
 def admin_required(f):
@@ -246,4 +246,7 @@ def view_document(filename):
     """Serve pump registration documents"""
     from flask import send_from_directory
     return send_from_directory(os.path.join('uploads', 'pump_documents'), filename)
+
+
+
 

@@ -1,0 +1,112 @@
+=================================================================
+WORKING RTSP TEST URLS - USE THESE TO VERIFY YOUR SETUP
+=================================================================
+
+PUBLIC TEST STREAM (ALWAYS WORKS):
+----------------------------------
+rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mp4
+
+This is a public demo stream that should work from anywhere.
+Use this FIRST to verify your application is working correctly.
+
+
+YOUR CAMERA URL (FROM SCREENSHOT):
+----------------------------------
+rtsp://192.168.1.72:554/cam/realmonitor?channel=4&subtype=0&unicast=true&proto=Onvif
+
+This is your local camera. It will only work if:
+1. Camera is powered on
+2. You're on the same network (192.168.1.x)
+3. Camera is accessible at IP 192.168.1.72
+4. RTSP is enabled on the camera
+
+
+HOW TO TEST:
+------------
+1. Open VLC Media Player
+2. Go to: Media → Open Network Stream
+3. Paste the RTSP URL
+4. Click Play
+
+If VLC can play it, the application should work too.
+
+
+TESTING STEPS:
+--------------
+Step 1: Test public stream in VLC
+   URL: rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mp4
+   Expected: Video plays immediately
+
+Step 2: Test public stream in application
+   - Go to Attendance Monitor or Vehicle Data page
+   - Paste the public URL
+   - Click Load/Add Stream
+   - Expected: Connection succeeds, video/counting starts
+
+Step 3: Test your camera in VLC
+   URL: rtsp://192.168.1.72:554/cam/realmonitor?channel=4&subtype=0&unicast=true&proto=Onvif
+   Expected: Your camera video plays
+
+Step 4: Test your camera in application
+   - Use same URL as Step 3
+   - Expected: Connection succeeds
+
+
+COMMON CAMERA RTSP URL FORMATS:
+--------------------------------
+Hikvision:
+rtsp://admin:password@192.168.1.64:554/Streaming/Channels/101
+
+Dahua:
+rtsp://admin:password@192.168.1.108:554/cam/realmonitor?channel=1&subtype=0
+
+Axis:
+rtsp://admin:password@192.168.1.100:554/axis-media/media.amp
+
+Generic ONVIF:
+rtsp://admin:password@IP:554/onvif1
+
+
+QUICK TEST COMMAND:
+-------------------
+cd E:\fuelflux\Flue_flex_pvt_ltd_
+python test_rtsp_simple.py
+
+Then select option 1 to test the public stream.
+
+
+TROUBLESHOOTING:
+----------------
+If public stream works but your camera doesn't:
+→ Camera URL is wrong or camera is offline
+
+If nothing works:
+→ Check if OpenCV is installed: pip install opencv-python
+→ Check if VLC can play the public stream
+→ Check firewall settings
+
+If vehicle counting shows 0:
+→ Check if YOLO model exists: dir model\yolov8m.pt
+→ Download if missing: python -c "from ultralytics import YOLO; YOLO('yolov8m.pt')"
+
+If plates not detected:
+→ Install EasyOCR: pip install easyocr
+→ Check console for "🔍 EasyOCR reader loaded: True"
+
+
+CONSOLE OUTPUT TO LOOK FOR:
+----------------------------
+Successful connection:
+✅ Connected with FFMPEG on attempt X
+✅ Started RTSP processing for pump X
+
+Vehicle counting working:
+🚗 Pump X: Detected Y vehicles (frame Z)
+
+Plate detection working:
+🚗 PLATE DETECTED: ABC123 at station (Total: X)
+
+
+=================================================================
+START WITH THE PUBLIC TEST STREAM TO VERIFY EVERYTHING WORKS!
+=================================================================

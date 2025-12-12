@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PESO Contractors - {{ pump.name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <header class="bg-gradient-to-r from-purple-600 to-purple-800 text-white shadow-lg">
+            <div class="container mx-auto px-4 py-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-3xl font-bold">PESO Approved Contractors</h1>
+                        <p class="text-purple-100 mt-1">Verified contractors for hydrotesting</p>
+                    </div>
+                    <a href="{{ url_for('hydrotesting.dashboard', pump_id=pump.id) }}" 
+                       class="bg-white text-purple-600 px-6 py-2 rounded-lg hover:bg-purple-50 transition">
+                        <i class="fas fa-arrow-left mr-2"></i>Back
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <div class="container mx-auto px-4 py-8">
+            {% if contractors %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for contractor in contractors %}
+                <div class="bg-white rounded-lg shadow-md hover:shadow-xl transition p-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="bg-purple-100 rounded-full p-3">
+                            <i class="fas fa-user-tie text-purple-600 text-2xl"></i>
+                        </div>
+                        {% if contractor.is_peso_verified %}
+                            <span class="px-3 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                <i class="fas fa-certificate mr-1"></i>PESO Verified
+                            </span>
+                        {% else %}
+                            <span class="px-3 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                                Not Verified
+                            </span>
+                        {% endif %}
+                    </div>
+
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">{{ contractor.contractor_name }}</h3>
+                    
+                    <div class="space-y-2 mb-4">
+                        <div class="flex items-center text-sm">
+                            <i class="fas fa-id-card text-gray-400 mr-2 w-5"></i>
+                            <span class="text-gray-600">Licence: </span>
+                            <span class="font-semibold text-gray-800 ml-1">{{ contractor.licence_number }}</span>
+                        </div>
+                        
+                        {% if contractor.contact_person %}
+                        <div class="flex items-center text-sm">
+                            <i class="fas fa-user text-gray-400 mr-2 w-5"></i>
+                            <span class="text-gray-600">Contact: </span>
+                            <span class="font-semibold text-gray-800 ml-1">{{ contractor.contact_person }}</span>
+                        </div>
+                        {% endif %}
+                        
+                        {% if contractor.phone %}
+                        <div class="flex items-center text-sm">
+                            <i class="fas fa-phone text-gray-400 mr-2 w-5"></i>
+                            <span class="font-semibold text-gray-800">{{ contractor.phone }}</span>
+                        </div>
+                        {% endif %}
+                        
+                        {% if contractor.email %}
+                        <div class="flex items-center text-sm">
+                            <i class="fas fa-envelope text-gray-400 mr-2 w-5"></i>
+                            <span class="font-semibold text-gray-800">{{ contractor.email }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% if contractor.licence_valid_until %}
+                    <div class="border-t pt-4">
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-gray-600">Licence Valid Until:</span>
+                            <span class="font-semibold text-gray-800">{{ contractor.licence_valid_until.strftime('%d/%m/%Y') }}</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="bg-white rounded-lg shadow-md p-12 text-center">
+                <i class="fas fa-users text-gray-300 text-6xl mb-4"></i>
+                <h3 class="text-2xl font-bold text-gray-800 mb-2">No Contractors Found</h3>
+                <p class="text-gray-600">PESO approved contractors will be listed here</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

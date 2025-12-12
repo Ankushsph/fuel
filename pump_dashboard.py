@@ -1,6 +1,7 @@
 # pump_dashboard.py
 import os
 import uuid
+import time
 from datetime import datetime
 
 from extensions import db
@@ -211,7 +212,7 @@ def save_vehicle_verification():
 
     # Accept JSON or form data
     json_data = request.get_json(silent=True) or {}
-    verification_id = json_data.get("verification_id") or request.form.get("verification_id")
+    verification_id = json_data.get("verification_id") or json_data.get("id") or request.form.get("verification_id") or request.form.get("id")
     station_name = json_data.get("station_name") or request.form.get("station_name")
     location = json_data.get("location") or request.form.get("location")
     rtsp_url = json_data.get("rtsp_url") or request.form.get("rtsp_url")
@@ -259,9 +260,23 @@ def save_vehicle_verification():
             db.session.add(new_verification)
             db.session.commit()
 
+            # Auto-start monitoring for new verification in background
+            import threading
+            def start_monitoring_background():
+                time.sleep(1)  # Wait a bit for commit to complete
+                try:
+                    from vehicle_verification import start_rtsp_thread
+                    start_rtsp_thread(new_verification)
+                    current_app.logger.info(f"Started vehicle monitoring for verification {new_verification.id}")
+                except Exception as e:
+                    current_app.logger.warning(f"Could not auto-start monitoring: {e}")
+            
+            threading.Thread(target=start_monitoring_background, daemon=True).start()
+            
             return jsonify({
                 "success": True,
-                "message": "Vehicle verification added successfully",
+                "message": "Vehicle verification added successfully. Monitoring started.",
+                "id": new_verification.id,
                 "verification_id": new_verification.id
             })
 

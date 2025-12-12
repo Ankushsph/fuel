@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Pipeline - {{ pump.name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <header class="bg-gradient-to-r from-green-600 to-green-800 text-white shadow-lg">
+            <div class="container mx-auto px-4 py-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-3xl font-bold">Add New Pipeline</h1>
+                        <p class="text-green-100 mt-1">{{ pump.name }}</p>
+                    </div>
+                    <a href="{{ url_for('hydrotesting.pipelines_list', pump_id=pump.id) }}" 
+                       class="bg-white text-green-600 px-6 py-2 rounded-lg hover:bg-green-50 transition">
+                        <i class="fas fa-arrow-left mr-2"></i>Back
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <div class="container mx-auto px-4 py-8">
+            <div class="max-w-2xl mx-auto">
+                <div class="bg-white rounded-lg shadow-md p-8">
+                    <form method="POST">
+                        <div class="space-y-6">
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">Line ID *</label>
+                                <input type="text" name="line_id" required 
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                       placeholder="e.g., LINE-A">
+                            </div>
+
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">Pipeline Name *</label>
+                                <input type="text" name="name" required 
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                       placeholder="e.g., Main Petrol Supply Line">
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-gray-700 font-medium mb-2">Length (meters) *</label>
+                                    <input type="number" step="0.01" name="length" required 
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                           placeholder="e.g., 50">
+                                </div>
+
+                                <div>
+                                    <label class="block text-gray-700 font-medium mb-2">Diameter (mm)</label>
+                                    <input type="number" step="0.01" name="diameter" 
+                                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                           placeholder="e.g., 100">
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">Fuel Type *</label>
+                                <select name="fuel_type" required 
+                                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                                    <option value="">Select Fuel Type</option>
+                                    <option value="Petrol">Petrol</option>
+                                    <option value="Diesel">Diesel</option>
+                                    <option value="CNG">CNG</option>
+                                    <option value="LPG">LPG</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">Location</label>
+                                <input type="text" name="location" 
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                       placeholder="e.g., Tank to Dispenser 1">
+                            </div>
+
+                            <div>
+                                <label class="block text-gray-700 font-medium mb-2">Installation Date</label>
+                                <input type="date" name="installation_date" 
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent">
+                            </div>
+
+                            <div class="flex gap-4 pt-4">
+                                <button type="submit" 
+                                        class="flex-1 bg-green-600 text-white px-8 py-3 rounded-lg hover:bg-green-700 transition font-medium">
+                                    <i class="fas fa-save mr-2"></i>Add Pipeline
+                                </button>
+                                <a href="{{ url_for('hydrotesting.pipelines_list', pump_id=pump.id) }}" 
+                                   class="px-8 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium">
+                                    Cancel
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

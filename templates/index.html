@@ -24,7 +24,8 @@
       <div class="flex items-center flex-1 min-w-0">
         <img src="{{ url_for('static', filename='images/logo2.png') }}" 
              alt="Fuel Flux Logo" 
-             class="h-6 md:h-10 w-auto flex-shrink-0">
+             class="h-6 md:h-10 w-auto flex-shrink-0"
+             style="background: none !important; background-color: transparent !important; mix-blend-mode: screen;">
       </div>
 
       <!-- Right: Links + Menu -->
@@ -86,11 +87,11 @@
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
           <!-- Pump Owner Button -->
-          <a href="/pump-owner-auth" class="group block">
-            <div class="bg-fuel-gray hover:bg-fuel-orange transition-all duration-300 rounded-xl p-8 border-2 border-fuel-orange hover:border-fuel-orange transform hover:scale-105 hover:shadow-2xl">
+          <a href="/pump-owner-auth" class="group block h-full">
+            <div class="bg-fuel-gray hover:bg-fuel-orange transition-all duration-300 rounded-xl p-8 border-2 border-fuel-orange hover:border-fuel-orange transform hover:scale-105 hover:shadow-2xl h-full flex flex-col">
               <div class="text-6xl mb-4 group-hover:animate-bounce">⛽</div>
               <h3 class="text-2xl font-bold mb-3 text-fuel-orange group-hover:text-white">Pump Owner</h3>
-              <p class="text-gray-300 group-hover:text-gray-100 mb-4">
+              <p class="text-gray-300 group-hover:text-gray-100 mb-4 flex-grow">
                 Manage your fuel stations, set availability, and connect with cab owners
               </p>
               <div class="inline-flex items-center text-fuel-orange group-hover:text-white font-semibold">
@@ -103,11 +104,11 @@
           </a>
 
           <!-- Cab Owner Button -->
-          <a href="/cab-owner-auth" class="group block">
-            <div class="bg-fuel-gray hover:bg-fuel-orange transition-all duration-300 rounded-xl p-8 border-2 border-fuel-orange hover:border-fuel-orange transform hover:scale-105 hover:shadow-2xl">
+          <a href="/cab-owner-auth" class="group block h-full">
+            <div class="bg-fuel-gray hover:bg-fuel-orange transition-all duration-300 rounded-xl p-8 border-2 border-fuel-orange hover:border-fuel-orange transform hover:scale-105 hover:shadow-2xl h-full flex flex-col">
               <div class="text-6xl mb-4 group-hover:animate-bounce">🚕</div>
               <h3 class="text-2xl font-bold mb-3 text-fuel-orange group-hover:text-white">Cab Owner</h3>
-              <p class="text-gray-300 group-hover:text-gray-100 mb-4">
+              <p class="text-gray-300 group-hover:text-gray-100 mb-4 flex-grow">
                 Book fuel slots, manage your fleet, and optimize your operations
               </p>
               <div class="inline-flex items-center text-fuel-orange group-hover:text-white font-semibold">

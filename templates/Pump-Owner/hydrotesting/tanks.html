@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tank Management - {{ pump.name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <header class="bg-gradient-to-r from-purple-600 to-purple-800 text-white shadow-lg">
+            <div class="container mx-auto px-4 py-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-3xl font-bold">Tank Management</h1>
+                        <p class="text-purple-100 mt-1">{{ pump.name }} - {{ pump.location }}</p>
+                    </div>
+                    <div class="flex gap-4">
+                        <a href="{{ url_for('hydrotesting.add_tank', pump_id=pump.id) }}" 
+                           class="bg-white text-purple-600 px-6 py-2 rounded-lg hover:bg-purple-50 transition">
+                            <i class="fas fa-plus mr-2"></i>Add Tank
+                        </a>
+                        <a href="{{ url_for('hydrotesting.dashboard', pump_id=pump.id) }}" 
+                           class="bg-purple-700 text-white px-6 py-2 rounded-lg hover:bg-purple-600 transition">
+                            <i class="fas fa-arrow-left mr-2"></i>Back
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="container mx-auto px-4 py-8">
+            {% if tanks %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for tank in tanks %}
+                <div class="bg-white rounded-lg shadow-md hover:shadow-xl transition">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="bg-purple-100 rounded-full p-3">
+                                <i class="fas fa-database text-purple-600 text-2xl"></i>
+                            </div>
+                            {% if tank.status == 'compliant' %}
+                                <span class="px-3 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                    <i class="fas fa-check-circle mr-1"></i>Compliant
+                                </span>
+                            {% elif tank.status == 'warning' %}
+                                <span class="px-3 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                    <i class="fas fa-exclamation-triangle mr-1"></i>Warning
+                                </span>
+                            {% elif tank.status == 'due_soon' %}
+                                <span class="px-3 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
+                                    <i class="fas fa-clock mr-1"></i>Due Soon
+                                </span>
+                            {% elif tank.status == 'expired' %}
+                                <span class="px-3 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                                    <i class="fas fa-times-circle mr-1"></i>Expired
+                                </span>
+                            {% else %}
+                                <span class="px-3 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                                    No Test
+                                </span>
+                            {% endif %}
+                        </div>
+
+                        <h3 class="text-xl font-bold text-gray-800 mb-2">{{ tank.name }}</h3>
+                        <p class="text-gray-600 text-sm mb-4">Tank ID: {{ tank.tank_id }}</p>
+
+                        <div class="space-y-2 mb-4">
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-gray-600">Capacity:</span>
+                                <span class="font-semibold text-gray-800">{{ tank.capacity }} L</span>
+                            </div>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-gray-600">Fuel Type:</span>
+                                <span class="font-semibold text-gray-800">{{ tank.fuel_type }}</span>
+                            </div>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-gray-600">Location:</span>
+                                <span class="font-semibold text-gray-800">{{ tank.location or 'N/A' }}</span>
+                            </div>
+                        </div>
+
+                        <div class="border-t pt-4 space-y-2">
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-gray-600">Last Test:</span>
+                                <span class="font-semibold text-gray-800">{{ tank.last_test_date }}</span>
+                            </div>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-gray-600">Next Due:</span>
+                                <span class="font-semibold text-gray-800">{{ tank.next_due_date }}</span>
+                            </div>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-gray-600">Result:</span>
+                                {% if tank.result == 'Pass' %}
+                                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                        Pass
+                                    </span>
+                                {% elif tank.result == 'Fail' %}
+                                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                                        Fail
+                                    </span>
+                                {% else %}
+                                    <span class="text-gray-500">N/A</span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mt-4 pt-4 border-t">
+                            <a href="{{ url_for('hydrotesting.history', pump_id=pump.id, equipment_type='tank', equipment_id=tank.id) }}" 
+                               class="block w-full text-center bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition">
+                                <i class="fas fa-history mr-2"></i>View History
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="bg-white rounded-lg shadow-md p-12 text-center">
+                <i class="fas fa-database text-gray-300 text-6xl mb-4"></i>
+                <h3 class="text-2xl font-bold text-gray-800 mb-2">No Tanks Found</h3>
+                <p class="text-gray-600 mb-6">Add your first storage tank to start tracking hydrotests</p>
+                <a href="{{ url_for('hydrotesting.add_tank', pump_id=pump.id) }}" 
+                   class="inline-block bg-purple-600 text-white px-8 py-3 rounded-lg hover:bg-purple-700 transition">
+                    <i class="fas fa-plus mr-2"></i>Add First Tank
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

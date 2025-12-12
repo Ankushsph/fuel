@@ -496,7 +496,7 @@
           });
         };
 
-        const basePlans = ['silver', 'gold', 'diamond'];
+        const basePlans = ['gold', 'diamond'];
         const premiumPlans = ['gold', 'diamond'];
 
         if (basePlans.includes(planKey)) {
@@ -525,7 +525,10 @@
     <div class="flex justify-between items-center gap-2">
       <div class="flex items-center gap-1 md:gap-2 flex-1 min-w-0">
         <button id="openMobileSidebar" class="lg:hidden text-fuel-orange text-lg md:text-xl font-bold flex-shrink-0">☰</button>
-        <img src="{{ url_for('static', filename='images/logo2.png') }}" alt="Fuel Flux Logo" class="h-6 md:h-10 w-auto flex-shrink-0" />
+        <img src="{{ url_for('static', filename='images/logo2.png') }}" 
+             alt="Fuel Flux Logo" 
+             class="h-6 md:h-10 w-auto flex-shrink-0"
+             style="background: none !important; background-color: transparent !important; mix-blend-mode: screen;" />
         <span class="text-fuel-orange font-bold text-xs md:text-xl truncate hidden sm:inline">Dashboard</span>
       </div>
       <a href="/logout" class="bg-fuel-orange hover:bg-orange-600 px-2 py-1.5 md:px-4 md:py-2 rounded-lg font-semibold transition text-xs md:text-base whitespace-nowrap flex-shrink-0">
@@ -545,6 +548,18 @@
           <a href="{{ url_for('pump.select_pump') }}" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition">
             ⛽ My Pumps
           </a>
+          
+          <!-- Employee & Attendance Section -->
+          <div class="space-y-2">
+            <div class="text-xs text-gray-500 uppercase tracking-wide mb-2 px-3">👥 Employee & Attendance</div>
+            <a href="{{ url_for('employee.employee_management', pump_id=pump.id) }}" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition ml-2">
+              👤 Manage Employees
+            </a>
+            <a href="{{ url_for('attendance_monitor.monitor_page', pump_id=pump.id) }}" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition ml-2">
+              📹 Live Monitor
+            </a>
+          </div>
+          
           <a href="#" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition">💳 Subscriptions</a>
           <a href="#" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition">👤 Profile</a>
         </nav>
@@ -564,8 +579,9 @@
         <!-- Silver+ features -->
         <div class="text-xs text-gray-500 uppercase tracking-wide mb-2 px-3">Silver Features</div>
         <nav class="space-y-4 mb-6">
-          <a href="#" data-feature="vehicle-verification" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">🕵️ Vehicle verification 🔒</a>
-          <a href="#" data-feature="station-data" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">📊 Station vehicle data 🔒</a>
+          <a href="{{ url_for('vehicle_verification.vehicle_verification_page', pump_id=pump.id) }}" data-feature="vehicle-verification" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">🕵️ Vehicle verification 🔒</a>
+          <a href="{{ url_for('vehicle_count.station_vehicle_data_page', pump_id=pump.id) }}" data-feature="station-data" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">📊 Station vehicle data 🔒</a>
+          <a href="{{ url_for('hydrotesting.dashboard', pump_id=pump.id) }}" data-feature="hydrotesting" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition">💧 Hydrotesting</a>
         </nav>
 
         <hr class="my-6 border-fuel-black">
@@ -635,8 +651,9 @@
       <!-- Base Paid Features (Silver+) -->
       <div class="text-xs text-gray-500 uppercase tracking-wide mb-2 px-3">Silver Features</div>
       <nav class="space-y-4 mb-6">
-        <a href="#" data-feature="vehicle-verification" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">🕵️ Vehicle verification 🔒</a>
-        <a href="#" data-feature="station-data" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">📊 Station vehicle data 🔒</a>
+        <a href="{{ url_for('vehicle_verification.vehicle_verification_page', pump_id=pump.id) }}" data-feature="vehicle-verification" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">🕵️ Vehicle verification 🔒</a>
+        <a href="{{ url_for('vehicle_count.station_vehicle_data_page', pump_id=pump.id) }}" data-feature="station-data" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">📊 Station vehicle data 🔒</a>
+        <a href="{{ url_for('hydrotesting.dashboard', pump_id=pump.id) }}" data-feature="hydrotesting" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition">💧 Hydrotesting</a>
       </nav>
 
       <hr class="my-6 border-fuel-black">
@@ -1235,36 +1252,7 @@ case '💳 Subscriptions':
 <div class="w-full max-w-6xl mx-auto px-4">
   <div class="plans-wrapper">
 
-    <!-- Silver Plan -->
-    <div class="plan-card">
-      <div class="plan-card-inner">
-        <div>
-          <div class="emoji-big mb-4 emoji-bounce">⚪</div>
-          <h3 class="text-2xl font-bold text-fuel-orange mb-4">Silver</h3>
-          <ul class="flex justify-center flex-wrap gap-2 mb-5 duration-options">
-            <li class="cursor-pointer px-3 py-1 rounded-md hover:bg-fuel-orange transition">1 Month</li>
-            <li class="cursor-pointer px-3 py-1 rounded-md hover:bg-fuel-orange transition">6 Months</li>
-            <li class="cursor-pointer px-3 py-1 rounded-md hover:bg-fuel-orange transition">Annual</li>
-          </ul>
-          <div class="text-gray-300 mb-5" data-base-price="5000">
-            <h1 class="font-bold text-3xl price-display">₹5,000</h1>
-            <h2 class="text-sm duration-display">per month</h2>
-          </div>
-          <ul class="space-y-2 text-base text-white text-left mb-6">
-            <li class="flex items-start gap-2"><span>🔸</span><span>Vehicle verification</span></li>
-            <li class="flex items-start gap-2"><span>🔸</span><span>Station vehicle data</span></li>
-            <li class="flex items-start gap-2"><span>🔸</span><span>Basic billing system</span></li>
-            <li class="flex items-start gap-2"><span>🔸</span><span><del>Smoke and fire detection</del></span></li>
-            <li class="flex items-start gap-2"><span>🔸</span><span><del>Number plate detection</del></span></li>
-            <li class="flex items-start gap-2"><span>🔸</span><span><del>Work monitoring</del></span></li>
-            <li class="flex items-start gap-2"><span>🔸</span><span><del>Hydrotesting system</del></span></li>
-          </ul>
-        </div>
-        <button class="subscribe-btn" data-plan="Silver">Subscribe</button>
-      </div>
-    </div>
-
-    <!-- Gold Plan -->
+    <!-- Gold Plan (formerly Silver - 5k) -->
     <div class="plan-card">
       <div class="plan-card-inner">
         <div>
@@ -1275,9 +1263,9 @@ case '💳 Subscriptions':
             <li class="cursor-pointer px-3 py-1 rounded-md hover:bg-fuel-orange transition">6 Months</li>
             <li class="cursor-pointer px-3 py-1 rounded-md hover:bg-fuel-orange transition">Annual</li>
           </ul>
-          <div class="text-gray-300 mb-5" data-base-price="10000">
-            <h1 class="font-bold text-3xl price-display">₹10,000</h1>
-            <h2 class="text-sm duration-display">per month</h2>
+          <div class="text-gray-300 mb-5" data-base-price="5000">
+            <h1 class="font-bold text-3xl price-display">₹5,000</h1>
+            <h2 class="text-sm duration-display">or volume</h2>
           </div>
           <ul class="space-y-2 text-base text-white text-left mb-6">
             <li class="flex items-start gap-2"><span>🔸</span><span>Vehicle verification</span></li>
@@ -1346,7 +1334,13 @@ case '💳 Subscriptions':
 
         const totalPrice = basePrice * multiplier;
         priceDisplay.textContent = '₹' + totalPrice.toLocaleString();
-        durationDisplay.textContent = duration === '1 Month' ? 'per month' : 'for ' + duration;
+        // Check if this is Gold plan (5k) - show "or volume" instead of duration
+        const planName = card.querySelector('h3').textContent.trim();
+        if (planName === 'Gold' && basePrice === 5000) {
+          durationDisplay.textContent = 'or volume';
+        } else {
+          durationDisplay.textContent = duration === '1 Month' ? 'per month' : 'for ' + duration;
+        }
       });
     });
   });
@@ -1681,9 +1675,17 @@ case '📊 Station vehicle data':
         </div>
       </div>
 
-      <div class="bg-gradient-to-br from-orange-50 to-white p-4 rounded-xl shadow-inner">
+      <div class="bg-gradient-to-br from-orange-50 to-white p-4 rounded-xl shadow-inner mb-6">
         <h4 class="text-lg font-semibold text-gray-700 mb-2">🚦 Vehicle Count Trend</h4>
         <canvas id="vehicleLineChart" height="180"></canvas>
+      </div>
+
+      <!-- Detected Vehicles List -->
+      <div class="bg-white p-4 rounded-xl border border-gray-200">
+        <h4 class="text-lg font-semibold text-gray-700 mb-4">🚗 Recently Detected Vehicles</h4>
+        <div id="detectedVehiclesList" class="space-y-2 max-h-64 overflow-y-auto">
+          <p class="text-gray-500 text-center py-4">Loading detected vehicles...</p>
+        </div>
       </div>
     </div>
   `;
@@ -1732,7 +1734,13 @@ case '📊 Station vehicle data':
     async function fetchVehicleCount() {
       try {
         const res = await fetch(`/vehicle-count?pump_id={{ pump.id }}`, { credentials: 'same-origin' });
-        if (!res.ok) return;
+        if (!res.ok) {
+          console.error('Vehicle count fetch failed:', res.status);
+          vehicleCountEl.textContent = '0';
+          statusEl.textContent = '❌ Error';
+          statusEl.style.color = 'red';
+          return;
+        }
         const json = await res.json();
         const count = json.vehicle_count || 0;
 
@@ -1754,8 +1762,35 @@ case '📊 Station vehicle data':
       }
     }
 
-    setInterval(fetchVehicleCount, 10000);
+    // Fetch detected vehicles
+    async function fetchDetectedVehicles() {
+      try {
+        const res = await fetch("/vehicle_verification/vehicle-details", { credentials: 'same-origin' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.success && Array.isArray(data.plates)) {
+          const container = document.getElementById('detectedVehiclesList');
+          if (data.plates.length === 0) {
+            container.innerHTML = '<p class="text-gray-500 text-center py-4">No vehicles detected yet.</p>';
+            return;
+          }
+          container.innerHTML = data.plates.map(p => `
+            <div class="flex justify-between items-center p-2 bg-gray-50 rounded border border-gray-200">
+              <span class="font-semibold text-gray-800">${p.plate}</span>
+              <span class="text-sm text-gray-500">${new Date(p.detected_at).toLocaleString()}</span>
+            </div>
+          `).join('');
+        }
+      } catch (err) {
+        console.error('Error fetching detected vehicles:', err);
+      }
+    }
+
+    // Start immediately and then every 5 seconds
     fetchVehicleCount();
+    fetchDetectedVehicles();
+    setInterval(fetchVehicleCount, 5000);
+    setInterval(fetchDetectedVehicles, 3000);
   })();
 
   (() => {
@@ -1793,6 +1828,8 @@ case '📊 Station vehicle data':
             currentValue.textContent = matched.rtsp_url;
             formDiv.classList.add('hidden');
             currentDiv.classList.remove('hidden');
+            // Auto-start vehicle counting when RTSP is configured
+            setTimeout(() => fetchVehicleCount(), 1000);
           }
         }
       } catch (err) {
@@ -2023,19 +2060,36 @@ case '🕵️ Vehicle verification':
     }
   }
 
-  // Polling endpoint for latest detected plates every 2 seconds
+  // Polling endpoint for latest detected plates every 3 seconds
+  let lastPlateCount = 0;
   setInterval(async () => {
     try {
-      const res = await fetch("/vehicle-details", { credentials: "same-origin" });
+      const res = await fetch("/vehicle_verification/vehicle-details", { credentials: "same-origin" });
       if (!res.ok) return;
       const data = await res.json();
       if (data.success && Array.isArray(data.plates)) {
-        data.plates.forEach(plate => logDetectedPlate(plate));
+        // Only log new plates
+        if (data.plates.length > lastPlateCount) {
+          const newPlates = data.plates.slice(0, data.plates.length - lastPlateCount);
+          newPlates.forEach(plate => logDetectedPlate(plate.plate || plate));
+          lastPlateCount = data.plates.length;
+        }
       }
     } catch (err) {
       console.error("Error fetching vehicle details:", err);
     }
-  }, 2000);
+  }, 3000);
+  
+  // Initial fetch
+  fetch("/vehicle_verification/vehicle-details", { credentials: "same-origin" })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success && Array.isArray(data.plates)) {
+        lastPlateCount = data.plates.length;
+        data.plates.slice(0, 10).reverse().forEach(plate => logDetectedPlate(plate.plate || plate));
+      }
+    })
+    .catch(err => console.error("Error fetching initial vehicle details:", err));
 
 })();
 
@@ -2090,7 +2144,7 @@ case '🕵️ Vehicle verification':
 <!-- QR Code Payment Modal -->
 <div id="qrPaymentModal" class="fixed inset-0 bg-black bg-opacity-80 z-50 hidden flex items-center justify-center p-3 overflow-y-auto">
   <div class="bg-fuel-gray rounded-2xl max-w-3xl w-full my-4">
-    <div class="p-4 md:p-6 max-h-[85vh] overflow-y-auto">
+    <div class="p-4 md:p-6 max-h-[95vh] overflow-y-auto">
       <!-- Header -->
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-lg md:text-2xl font-bold text-fuel-orange">Complete Payment</h2>
@@ -2128,13 +2182,16 @@ case '🕵️ Vehicle verification':
           <div class="flex-shrink-0 w-7 h-7 md:w-8 md:h-8 bg-fuel-orange rounded-full flex items-center justify-center font-bold text-sm md:text-base">1</div>
           <div class="flex-1">
             <h3 class="font-bold text-white mb-2 text-sm md:text-base">Scan QR Code</h3>
-            <div class="bg-white p-3 md:p-4 rounded-lg text-center">
-              <img src="{{ url_for('static', filename='images/payment_qr.png') }}" 
-                   alt="Payment QR Code" 
-                   class="w-32 h-32 md:w-48 md:h-48 mx-auto mb-2">
+            <div class="bg-white p-4 md:p-5 rounded-lg text-center flex flex-col items-center">
+              <div class="w-[200px] md:w-[250px] h-[200px] md:h-[250px] flex items-center justify-center mb-3">
+                <img src="{{ url_for('static', filename='images/payment_qr.png') }}" 
+                     alt="Payment QR Code" 
+                     class="w-full h-full object-contain"
+                     style="max-width: 100%; max-height: 100%;">
+              </div>
               <div class="text-black font-bold text-sm md:text-base">UPI ID:</div>
               <div class="flex flex-col sm:flex-row items-center justify-center gap-2 mt-2">
-                <span id="upiId" class="text-black font-mono text-xs md:text-sm break-all">ankushscs645852@okaxis</span>
+                <span id="upiId" class="text-black font-mono text-xs md:text-sm break-all">Loading...</span>
                 <button onclick="copyUPI()" class="bg-fuel-orange text-white px-3 py-1 rounded text-xs hover:bg-orange-600 whitespace-nowrap">
                   Copy
                 </button>
@@ -2233,7 +2290,7 @@ case '🕵️ Vehicle verification':
   // QR Payment Modal Functions
   let currentPaymentData = {};
 
-  function showQRPaymentModal(planName, duration, totalPrice, pumpId) {
+  async function showQRPaymentModal(planName, duration, totalPrice, pumpId) {
     currentPaymentData = { planName, duration, totalPrice, pumpId };
     
     document.getElementById('modalPlanName').textContent = planName + ' Plan';
@@ -2241,6 +2298,21 @@ case '🕵️ Vehicle verification':
     document.getElementById('modalAmount').textContent = '₹' + totalPrice.toLocaleString();
     document.getElementById('qrPaymentModal').classList.remove('hidden');
     document.getElementById('qrPaymentModal').classList.add('flex');
+    
+    // Load payment details (UPI ID, QR code) from backend
+    try {
+      const response = await fetch('/subscription/payment-details', {
+        credentials: 'same-origin'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.upi_id) {
+          document.getElementById('upiId').textContent = data.upi_id;
+        }
+      }
+    } catch (err) {
+      console.error('Error loading payment details:', err);
+    }
   }
 
   function closeQRModal() {
@@ -2305,7 +2377,7 @@ case '🕵️ Vehicle verification':
     }
 
     // Generate UPI payment link
-    const merchantUPI = 'ankushscs645852@okaxis';
+    const merchantUPI = document.getElementById('upiId').textContent.trim();
     const amount = currentPaymentData.totalPrice;
     const merchantName = 'Fuel Flux';
     const note = `${currentPaymentData.planName} Plan - ${currentPaymentData.duration}`;

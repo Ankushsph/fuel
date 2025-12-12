@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entry Logs - ANPR</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-900">
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-orange-600 to-orange-700 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold">📋 Vehicle Entry Logs</h1>
+                    <p class="text-orange-100 mt-1">Complete detection history with compliance results</p>
+                </div>
+                <a href="{{ url_for('hydrotesting.anpr_dashboard', pump_id=pump.id) }}" 
+                   class="bg-white text-orange-600 px-4 py-2 rounded-lg hover:bg-orange-50 transition font-semibold">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container mx-auto px-4 py-8">
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="mb-4 p-4 rounded-lg {% if category == 'error' %}bg-red-600{% else %}bg-green-600{% endif %}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Logs Table -->
+        {% if logs %}
+        <div class="bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-700">
+            <div class="mb-4 flex justify-between items-center">
+                <h2 class="text-xl font-bold text-white">Recent Detections (Last 100)</h2>
+                <div class="text-sm text-gray-300">
+                    Total: {{ logs|length }} entries
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-gray-700 bg-gray-700">
+                            <th class="text-left py-3 px-4 text-gray-300">Time</th>
+                            <th class="text-left py-3 px-4 text-gray-300">Vehicle Number</th>
+                            <th class="text-left py-3 px-4 text-gray-300">Status</th>
+                            <th class="text-left py-3 px-4 text-gray-300">Confidence</th>
+                            <th class="text-left py-3 px-4 text-gray-300">Entry</th>
+                            <th class="text-left py-3 px-4 text-gray-300">Gate</th>
+                            <th class="text-left py-3 px-4 text-gray-300">Alert</th>
+                            <th class="text-left py-3 px-4 text-gray-300">Images</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr class="border-b border-gray-700 hover:bg-gray-700">
+                            <td class="py-3 px-4 text-sm whitespace-nowrap text-gray-300">
+                                {{ log.detected_at.strftime('%d/%m/%Y %H:%M:%S') }}
+                            </td>
+                            <td class="py-3 px-4 font-bold text-lg text-white">
+                                {{ log.vehicle_number }}
+                            </td>
+                            <td class="py-3 px-4">
+                                <span class="px-2 py-1 rounded-full text-xs font-semibold
+                                    {% if log.compliance_status == 'compliant' %}bg-green-600
+                                    {% elif log.compliance_status == 'expired' %}bg-red-600
+                                    {% elif log.compliance_status == 'expiring_soon' %}bg-yellow-600
+                                    {% elif log.compliance_status == 'blacklisted' %}bg-red-800
+                                    {% elif log.compliance_status == 'unknown' %}bg-gray-600
+                                    {% else %}bg-gray-600{% endif %}">
+                                    {% if log.compliance_status == 'compliant' %}✔ Compliant
+                                    {% elif log.compliance_status == 'expired' %}❌ Expired
+                                    {% elif log.compliance_status == 'expiring_soon' %}⚠ Expiring
+                                    {% elif log.compliance_status == 'blacklisted' %}🚫 Blacklisted
+                                    {% elif log.compliance_status == 'unknown' %}❓ Unknown
+                                    {% else %}{{ log.compliance_status|title }}{% endif %}
+                                </span>
+                            </td>
+                            <td class="py-3 px-4 text-sm">
+                                {% if log.detection_confidence %}
+                                <span class="{% if log.detection_confidence >= 0.8 %}text-green-400{% elif log.detection_confidence >= 0.6 %}text-yellow-400{% else %}text-red-400{% endif %}">
+                                    {{ (log.detection_confidence * 100)|round(1) }}%
+                                </span>
+                                {% else %}
+                                <span class="text-gray-500">N/A</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3 px-4">
+                                {% if log.is_allowed_entry %}
+                                <span class="text-green-400">
+                                    <i class="fas fa-check-circle"></i> Allowed
+                                </span>
+                                {% else %}
+                                <span class="text-red-400">
+                                    <i class="fas fa-times-circle"></i> Denied
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3 px-4">
+                                <span class="px-2 py-1 rounded text-xs font-semibold
+                                    {% if log.gate_action == 'open' %}bg-green-700
+                                    {% else %}bg-red-700{% endif %}">
+                                    {% if log.gate_action %}{{ log.gate_action|upper }}{% else %}N/A{% endif %}
+                                </span>
+                            </td>
+                            <td class="py-3 px-4 text-center">
+                                {% if log.alert_triggered %}
+                                <i class="fas fa-bell text-yellow-400" title="{{ log.alert_message }}"></i>
+                                {% else %}
+                                <span class="text-gray-600">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3 px-4">
+                                <div class="flex gap-2">
+                                    {% if log.image_path %}
+                                    <a href="/{{ log.image_path }}" target="_blank" 
+                                       class="text-blue-400 hover:text-blue-300" title="View full frame">
+                                        <i class="fas fa-image"></i>
+                                    </a>
+                                    {% endif %}
+                                    {% if log.plate_image_path %}
+                                    <a href="/{{ log.plate_image_path }}" target="_blank" 
+                                       class="text-purple-400 hover:text-purple-300" title="View plate">
+                                        <i class="fas fa-id-card"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Statistics Summary -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mt-8">
+            <div class="bg-white rounded-xl p-6 shadow border border-gray-200">
+                <p class="text-gray-300 text-sm">Total Detections</p>
+                <h3 class="text-3xl font-bold mt-2">{{ logs|length }}</h3>
+            </div>
+            <div class="bg-white rounded-xl p-6 shadow border border-gray-200">
+                <p class="text-gray-300 text-sm">Allowed Entries</p>
+                <h3 class="text-3xl font-bold mt-2 text-green-400">
+                    {{ logs|selectattr('is_allowed_entry')|list|length }}
+                </h3>
+            </div>
+            <div class="bg-white rounded-xl p-6 shadow border border-gray-200">
+                <p class="text-gray-300 text-sm">Denied Entries</p>
+                <h3 class="text-3xl font-bold mt-2 text-red-400">
+                    {{ logs|rejectattr('is_allowed_entry')|list|length }}
+                </h3>
+            </div>
+            <div class="bg-white rounded-xl p-6 shadow border border-gray-200">
+                <p class="text-gray-300 text-sm">Alerts Triggered</p>
+                <h3 class="text-3xl font-bold mt-2 text-yellow-400">
+                    {{ logs|selectattr('alert_triggered')|list|length }}
+                </h3>
+            </div>
+        </div>
+
+        <!-- Legend -->
+        <div class="mt-8 bg-gray-800 rounded-xl p-6 shadow border border-gray-700">
+            <h3 class="font-bold text-white mb-4">
+                <i class="fas fa-info-circle mr-2"></i>Legend
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                    <p class="font-semibold text-white mb-2">Status Indicators:</p>
+                    <ul class="space-y-1 text-gray-300">
+                        <li><span class="text-green-400">✔ Compliant</span> - Hydrotest valid, entry allowed</li>
+                        <li><span class="text-yellow-400">⚠ Expiring</span> - Valid but expiring soon (<30 days)</li>
+                        <li><span class="text-red-400">❌ Expired</span> - Hydrotest expired, entry denied</li>
+                        <li><span class="text-red-400">🚫 Blacklisted</span> - Vehicle banned, entry denied</li>
+                        <li><span class="text-gray-400">❓ Unknown</span> - Not in database, entry denied</li>
+                    </ul>
+                </div>
+                <div>
+                    <p class="font-semibold text-white mb-2">Image Icons:</p>
+                    <ul class="space-y-1 text-gray-300">
+                        <li><i class="fas fa-image text-blue-400"></i> Full frame capture</li>
+                        <li><i class="fas fa-id-card text-purple-400"></i> License plate close-up</li>
+                        <li><i class="fas fa-bell text-yellow-400"></i> Alert was triggered</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        {% else %}
+        <!-- Empty State -->
+        <div class="bg-gray-800 rounded-xl p-12 text-center shadow-lg border border-gray-700">
+            <i class="fas fa-inbox text-6xl text-gray-500 mb-4"></i>
+            <h2 class="text-2xl font-bold mb-2 text-white">No Entry Logs Yet</h2>
+            <p class="text-gray-300 mb-6">Start a camera to begin detecting vehicles</p>
+            <a href="{{ url_for('hydrotesting.anpr_cameras', pump_id=pump.id) }}" 
+               class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold">
+                <i class="fas fa-video mr-2"></i>Go to Cameras
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

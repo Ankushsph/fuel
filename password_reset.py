@@ -1,7 +1,7 @@
 #password_reset.py
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_mail import Message
-from models import db, User
+from models import db, User, PumpOwner
 from extensions import mail
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask_login import current_user, login_required
@@ -12,66 +12,104 @@ otp_store = {}  # Temporary store, consider Redis for production
 
 @password_bp.route("/forgot-password", methods=["GET", "POST"])
 def forgot_password():
+    # Get user type from query parameter (default to 'cab')
+    user_type = request.args.get('type', 'cab')
+    
     if request.method == "POST":
         email = request.form.get("email").strip().lower()
-        user = User.query.filter_by(email=email).first()
+        user_type = request.form.get("user_type", "cab")
+        
+        # Check based on user type
+        if user_type == "pump":
+            user = PumpOwner.query.filter_by(email=email).first()
+            redirect_url = "auth.pump_owner_auth"
+            template_dir = "Pump-Owner"
+        else:
+            user = User.query.filter_by(email=email).first()
+            redirect_url = "auth.cab_owner_auth"
+            template_dir = "Cab-Owner"
+        
         if not user:
             flash("Email not registered! Please register first.", "error")
-            return redirect(url_for("auth.cab_owner_auth") + "#register")
+            return redirect(url_for(redirect_url) + "#register")
 
         otp = random.randint(100000, 999999)
-        otp_store[email] = otp
+        otp_store[email] = {"otp": otp, "user_type": user_type}
 
         try:
             msg = Message(
-                "Fuel Flux - OTP Verification",
+                "Fuel Flux - Password Reset OTP",
                 recipients=[email]
             )
-            msg.body = f"Your OTP is: {otp}\n\nThis OTP will expire in 5 minutes."
-            mail.send(msg)  # <-- use the imported mail instance
-            flash("OTP sent to your email. Please enter it below.", "success")
+            msg.body = f"""Dear User,
+
+Your OTP for password reset is: {otp}
+
+This OTP will expire in 5 minutes.
+
+If you didn't request this, please ignore this email.
+
+Best regards,
+Fuel Flux Team"""
+            mail.send(msg)
+            flash("✅ OTP sent to your email. Please check your inbox.", "success")
         except Exception as e:
             print("Email sending failed:", e)
-            flash("Error sending email. Please try again later.", "error")
-            return redirect(url_for("password_bp.forgot_password"))
+            flash("❌ Error sending email. Please try again later.", "error")
+            return redirect(url_for("password_bp.forgot_password", type=user_type))
 
-        return render_template("/Cab-Owner/forgot_password.html", step="otp", email=email)
+        return render_template(f"/{template_dir}/forgot_password.html", step="otp", email=email, user_type=user_type)
 
-    return render_template("/Cab-Owner/forgot_password.html", step="email")
+    # Determine template based on user type
+    template_dir = "Pump-Owner" if user_type == "pump" else "Cab-Owner"
+    return render_template(f"/{template_dir}/forgot_password.html", step="email", user_type=user_type)
 
 @password_bp.route("/verify-otp", methods=["POST"])
 def verify_otp():
     email = request.form.get("email")
     entered_otp = request.form.get("otp")
+    user_type = request.form.get("user_type", "cab")
+    
+    # Validate OTP
+    if email not in otp_store or str(otp_store[email]["otp"]) != entered_otp:
+        flash("❌ Invalid OTP! Please try again.", "error")
+        template_dir = "Pump-Owner" if user_type == "pump" else "Cab-Owner"
+        return render_template(f"/{template_dir}/forgot_password.html", step="otp", email=email, user_type=user_type)
 
-    if email not in otp_store or str(otp_store[email]) != entered_otp:
-        flash("Invalid OTP! Try again.", "error")
-        return render_template("/Cab-Owner/forgot_password.html", step="otp", email=email)
-
-    flash("OTP verified! Please set your new password.", "success")
-    return render_template("reset_password.html", email=email)
+    flash("✅ OTP verified! Please set your new password.", "success")
+    template_dir = "Pump-Owner" if user_type == "pump" else "Cab-Owner"
+    return render_template(f"/{template_dir}/reset_password.html", email=email, user_type=user_type)
 
 @password_bp.route("/reset-password", methods=["POST"])
 def reset_password():
     email = request.form.get("email")
     password = request.form.get("password")
     confirm = request.form.get("confirm_password")
+    user_type = request.form.get("user_type", "cab")
 
     if password != confirm:
-        flash("Passwords do not match!", "error")
-        return render_template("/Cab-Owner/reset_password.html", email=email)
+        flash("❌ Passwords do not match!", "error")
+        template_dir = "Pump-Owner" if user_type == "pump" else "Cab-Owner"
+        return render_template(f"/{template_dir}/reset_password.html", email=email, user_type=user_type)
 
-    user = User.query.filter_by(email=email).first()
+    # Get user based on type
+    if user_type == "pump":
+        user = PumpOwner.query.filter_by(email=email).first()
+        redirect_url = "auth.pump_owner_auth"
+    else:
+        user = User.query.filter_by(email=email).first()
+        redirect_url = "auth.cab_owner_auth"
+    
     if not user:
-        flash("User not found!", "error")
-        return redirect(url_for("password_bp.forgot_password"))
+        flash("❌ User not found!", "error")
+        return redirect(url_for("password_bp.forgot_password", type=user_type))
 
     user.set_password(password)
     db.session.commit()
     otp_store.pop(email, None)
 
-    flash("Password reset successful. Please login.", "success")
-    return redirect(url_for("auth.cab_owner_auth"))
+    flash("✅ Password reset successful! Please login with your new password.", "success")
+    return redirect(url_for(redirect_url))
 
 @password_bp.route("/change_password", methods=["POST"])
 @login_required

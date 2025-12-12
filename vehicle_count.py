@@ -3,15 +3,19 @@
 import cv2
 import threading
 import time
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app, render_template
 from ultralytics import YOLO
-from models import db, StationVehicle
+from models import db, StationVehicle, Pump, PumpOwner
 
 vehicle_count_bp = Blueprint('vehicle_count', __name__)
 
 # --- Load YOLOv8 model (make sure you have your weights ready) ---
 MODEL_PATH = "model/yolov8m.pt"  # adjust path
-model = YOLO(MODEL_PATH)
+try:
+    model = YOLO(MODEL_PATH)
+except Exception as e:
+    print(f"Warning: Could not load YOLO model: {e}")
+    model = None
 
 # --- Dictionary to keep latest vehicle count per pump ---
 latest_counts = {}
@@ -21,37 +25,129 @@ lock = threading.Lock()
 
 def process_rtsp(pump_id, rtsp_url):
     """
-    Thread to read RTSP feed and update vehicle count
+    Process RTSP feed in a background thread, count vehicles using YOLO.
     """
-    global latest_counts
-    cap = cv2.VideoCapture(rtsp_url)
-    if not cap.isOpened():
-        print(f"❌ Failed to open RTSP stream for pump {pump_id}")
-        latest_counts[pump_id] = 0
+    print(f"🔄 Starting vehicle counting for pump {pump_id}...")
+    print(f"📹 RTSP URL: {rtsp_url}")
+    
+    # Try multiple backends for better compatibility
+    cap = None
+    connection_methods = [
+        (cv2.CAP_FFMPEG, "FFMPEG"),
+        (cv2.CAP_ANY, "ANY")
+    ]
+    
+    for backend, backend_name in connection_methods:
+        print(f"🔌 Trying {backend_name} backend...")
+        cap = cv2.VideoCapture(rtsp_url, backend)
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        cap.set(cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, 20000)
+        cap.set(cv2.CAP_PROP_READ_TIMEOUT_MSEC, 20000)
+        
+        # Give camera time to connect and verify with frame read
+        max_attempts = 8
+        connected = False
+        
+        for attempt in range(max_attempts):
+            if cap.isOpened():
+                ret, test_frame = cap.read()
+                if ret and test_frame is not None:
+                    print(f"✅ Connected with {backend_name} on attempt {attempt + 1}")
+                    connected = True
+                    break
+            time.sleep(1.5)
+        
+        if connected:
+            break
+        else:
+            if cap:
+                cap.release()
+            cap = None
+    
+    if not cap or not cap.isOpened():
+        print(f"❌ Failed to open RTSP stream for pump {pump_id} after all attempts")
+        with lock:
+            latest_counts[pump_id] = 0
         return
 
     print(f"✅ Started RTSP processing for pump {pump_id}")
+    print(f"🤖 YOLO model loaded: {model is not None}")
+    
+    if not model:
+        print(f"⚠️  WARNING: YOLO model not loaded! Vehicle counting will not work.")
+        print(f"⚠️  Please ensure model/yolov8m.pt exists")
+        with lock:
+            latest_counts[pump_id] = 0
+        return
+    
+    # Use app context if available
+    app_context = None
+    try:
+        app_context = current_app.app_context()
+        app_context.push()
+    except:
+        print(f"⚠️  Running without app context")
+        pass
+
+    consecutive_failures = 0
+    max_failures = 15
+    frame_count = 0
+    last_log_time = time.time()
 
     while True:
         ret, frame = cap.read()
-        if not ret:
-            print(f"⚠️ Frame read failed for pump {pump_id}, retrying in 1s...")
+        if not ret or frame is None:
+            consecutive_failures += 1
+            print(f"⚠️  Frame read failed for pump {pump_id} (attempt {consecutive_failures}/{max_failures})")
+            if consecutive_failures >= max_failures:
+                print(f"❌ Too many failures for pump {pump_id}, stopping")
+                break
             time.sleep(1)
             continue
+        
+        consecutive_failures = 0
+        frame_count += 1
 
-        # Run YOLO detection
-        results = model(frame, classes=[2,3,5,7], verbose=False)  
-        # class IDs for vehicles (COCO: car=2, motorcycle=3, bus=5, truck=7)
+        # Run YOLO detection if model is available
+        if model:
+            try:
+                # Run detection on frame
+                results = model(frame, classes=[2,3,5,7], verbose=False, conf=0.3)  
+                # class IDs for vehicles (COCO: car=2, motorcycle=3, bus=5, truck=7)
+                # Lower confidence threshold to detect more vehicles
 
-        # Count vehicles
-        count = 0
-        for r in results:
-            count += len(r.boxes)
+                # Count vehicles
+                count = 0
+                for r in results:
+                    if hasattr(r, 'boxes'):
+                        count += len(r.boxes)
 
-        with lock:
-            latest_counts[pump_id] = count
+                with lock:
+                    latest_counts[pump_id] = count
+                
+                # Log every 10 seconds
+                current_time = time.time()
+                if current_time - last_log_time >= 10:
+                    print(f"🚗 Pump {pump_id}: Detected {count} vehicles (frame {frame_count})")
+                    last_log_time = current_time
+                    
+            except Exception as e:
+                print(f"❌ YOLO detection error for pump {pump_id}: {e}")
+                import traceback
+                traceback.print_exc()
+        else:
+            # If no model, return 0
+            print(f"⚠️  No YOLO model available for pump {pump_id}")
+            with lock:
+                latest_counts[pump_id] = 0
 
-        time.sleep(0.5)  # reduce CPU usage
+        time.sleep(1)  # Check every 1 second for more responsive updates
+    
+    cap.release()
+    if app_context:
+        app_context.pop()
+    with lock:
+        latest_counts[pump_id] = 0
 
 
 def start_rtsp_thread(pump_id, rtsp_url):
@@ -59,7 +155,10 @@ def start_rtsp_thread(pump_id, rtsp_url):
     Start a thread for a pump if not already running
     """
     if pump_id in rtsp_threads:
-        return
+        thread = rtsp_threads[pump_id]
+        if thread.is_alive():
+            return  # Already running
+    
     thread = threading.Thread(target=process_rtsp, args=(pump_id, rtsp_url), daemon=True)
     rtsp_threads[pump_id] = thread
     thread.start()
@@ -69,12 +168,25 @@ def start_rtsp_thread(pump_id, rtsp_url):
 def get_vehicle_count():
     pump_id = request.args.get("pump_id")
     if not pump_id:
-        return jsonify({"success": False, "message": "pump_id required"}), 400
+        return jsonify({"success": False, "message": "pump_id required", "vehicle_count": 0}), 400
 
-    # Fetch RTSP URL from database
-    station = StationVehicle.query.filter_by(owner_id=pump_id).first()
+    try:
+        pump_id = int(pump_id)
+    except:
+        return jsonify({"success": False, "message": "Invalid pump_id", "vehicle_count": 0}), 400
+
+    # Fetch RTSP URL from database - use owner_id from current user context
+    from flask_login import current_user
+    if hasattr(current_user, 'id'):
+        owner_id = current_user.id
+    else:
+        owner_id = pump_id
+    
+    station = StationVehicle.query.filter_by(owner_id=owner_id).first()
     if not station or not station.rtsp_url:
-        return jsonify({"success": False, "message": "No RTSP URL configured", "vehicle_count": 0})
+        with lock:
+            count = latest_counts.get(pump_id, 0)
+        return jsonify({"success": True, "message": "No RTSP URL configured", "vehicle_count": count})
 
     # Start RTSP thread if not already started
     start_rtsp_thread(pump_id, station.rtsp_url)
@@ -84,3 +196,149 @@ def get_vehicle_count():
         count = latest_counts.get(pump_id, 0)
 
     return jsonify({"success": True, "vehicle_count": count})
+
+
+@vehicle_count_bp.route("/<int:pump_id>/page")
+def station_vehicle_data_page(pump_id):
+    """
+    Render station vehicle data page
+    """
+    from flask_login import login_required, current_user
+    
+    @login_required
+    def _render():
+        if not isinstance(current_user, PumpOwner):
+            return jsonify({"success": False, "message": "Access denied"}), 403
+        
+        pump = Pump.query.filter_by(id=pump_id, owner_id=current_user.id).first()
+        if not pump:
+            return jsonify({"success": False, "message": "Pump not found"}), 404
+        
+        return render_template(
+            "/Pump-Owner/station_vehicle_data.html",
+            pump=pump,
+            user=current_user
+        )
+    
+    return _render()
+
+
+@vehicle_count_bp.route("/list-streams/<int:pump_id>")
+def list_streams(pump_id):
+    """
+    List all station vehicle streams for a pump
+    """
+    from flask_login import login_required, current_user
+    
+    @login_required
+    def _list():
+        if not isinstance(current_user, PumpOwner):
+            return jsonify({"success": False, "message": "Access denied"}), 403
+        
+        streams = StationVehicle.query.filter_by(owner_id=current_user.id).all()
+        stream_list = [
+            {
+                "id": s.id,
+                "station_name": s.station_name,
+                "location": s.location,
+                "rtsp_url": s.rtsp_url,
+                "is_active": current_user.id in rtsp_threads and rtsp_threads[current_user.id].is_alive()
+            }
+            for s in streams
+        ]
+        
+        return jsonify({"success": True, "streams": stream_list})
+    
+    return _list()
+
+
+@vehicle_count_bp.route("/add-stream/<int:pump_id>", methods=["POST"])
+def add_stream(pump_id):
+    """
+    Add a new station vehicle stream
+    """
+    from flask_login import login_required, current_user
+    
+    @login_required
+    def _add():
+        if not isinstance(current_user, PumpOwner):
+            return jsonify({"success": False, "message": "Access denied"}), 403
+        
+        pump = Pump.query.filter_by(id=pump_id, owner_id=current_user.id).first()
+        if not pump:
+            return jsonify({"success": False, "message": "Pump not found"}), 404
+        
+        try:
+            data = request.get_json()
+            station_name = data.get("station_name", "").strip()
+            location = data.get("location", "").strip()
+            rtsp_url = data.get("rtsp_url", "").strip()
+            
+            if not station_name or not location or not rtsp_url:
+                return jsonify({"success": False, "message": "All fields are required"}), 400
+            
+            # Create new stream
+            new_stream = StationVehicle(
+                owner_id=current_user.id,
+                station_name=station_name,
+                location=location,
+                rtsp_url=rtsp_url
+            )
+            
+            db.session.add(new_stream)
+            db.session.commit()
+            
+            # Start monitoring thread
+            start_rtsp_thread(current_user.id, rtsp_url)
+            
+            return jsonify({
+                "success": True,
+                "message": f"Stream '{station_name}' added and monitoring started!"
+            })
+        
+        except Exception as e:
+            db.session.rollback()
+            try:
+                current_app.logger.exception("Error adding stream")
+            except:
+                print(f"Error adding stream: {e}")
+            return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
+    
+    return _add()
+
+
+@vehicle_count_bp.route("/delete-stream/<int:stream_id>", methods=["DELETE"])
+def delete_stream(stream_id):
+    """
+    Delete a station vehicle stream
+    """
+    from flask_login import login_required, current_user
+    
+    @login_required
+    def _delete():
+        if not isinstance(current_user, PumpOwner):
+            return jsonify({"success": False, "message": "Access denied"}), 403
+        
+        stream = StationVehicle.query.filter_by(id=stream_id, owner_id=current_user.id).first()
+        if not stream:
+            return jsonify({"success": False, "message": "Stream not found"}), 404
+        
+        try:
+            station_name = stream.station_name
+            db.session.delete(stream)
+            db.session.commit()
+            
+            return jsonify({
+                "success": True,
+                "message": f"Stream '{station_name}' deleted successfully"
+            })
+        
+        except Exception as e:
+            db.session.rollback()
+            try:
+                current_app.logger.exception("Error deleting stream")
+            except:
+                print(f"Error deleting stream: {e}")
+            return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
+    
+    return _delete()

@@ -47,7 +47,10 @@
   <nav class="bg-fuel-gray p-2 md:p-4 shadow-lg">
     <div class="flex justify-between items-center gap-2">
       <div class="flex items-center gap-1 md:gap-3 flex-1 min-w-0">
-        <img src="{{ url_for('static', filename='images/logo2.png') }}" alt="Fuel Flux Logo" class="h-6 md:h-10 w-auto flex-shrink-0" />
+        <img src="{{ url_for('static', filename='images/logo2.png') }}" 
+             alt="Fuel Flux Logo" 
+             class="h-6 md:h-10 w-auto flex-shrink-0"
+             style="background: none !important; background-color: transparent !important; mix-blend-mode: screen;" />
         <span class="text-fuel-orange font-bold text-xs md:text-xl truncate hidden sm:inline">Pump Owner</span>
       </div>
       
@@ -228,6 +231,30 @@
       showToast("Network error. Try again.", 'error');
     }
   });
+
+  // Employee management in registration form
+  let employeeCount = 0;
+  function addEmployeeField() {
+    employeeCount++;
+    const div = document.createElement('div');
+    div.className = 'employee-field bg-fuel-black p-2 rounded flex flex-col gap-2';
+    div.innerHTML = `
+      <div class="grid grid-cols-2 gap-2">
+        <input type="text" name="employee_name_${employeeCount}" placeholder="Employee Name" 
+               class="rounded p-1.5 text-sm text-black" required>
+        <input type="tel" name="employee_phone_${employeeCount}" placeholder="Phone" 
+               class="rounded p-1.5 text-sm text-black">
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <input type="text" name="employee_designation_${employeeCount}" placeholder="Designation" 
+               class="rounded p-1.5 text-sm text-black">
+        <input type="file" name="employee_photo_${employeeCount}" accept="image/*" 
+               class="text-xs text-black file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-white file:bg-orange-500" required>
+      </div>
+      <button type="button" onclick="this.parentElement.remove()" class="text-red-500 text-xs">Remove</button>
+    `;
+    document.getElementById('employeeList').appendChild(div);
+  }
 </script>
 
 
@@ -289,6 +316,14 @@
         <input type="file" id="documents" name="documents[]" multiple
                accept=".pdf,.doc,.docx,image/*"
                class="w-full text-sm text-black file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-white file:bg-orange-500 hover:file:bg-orange-600">
+      </div>
+
+      <div class="border-t border-orange-500 pt-3 mt-3">
+        <p class="text-orange-500 text-sm font-semibold mb-2">Add Employees (Optional - Can add later)</p>
+        <div id="employeeList" class="space-y-2 mb-2 max-h-40 overflow-y-auto"></div>
+        <button type="button" onclick="addEmployeeField()" class="bg-orange-400 text-white px-3 py-1 rounded text-xs hover:bg-orange-500">
+          + Add Employee
+        </button>
       </div>
 
       <div class="text-center">

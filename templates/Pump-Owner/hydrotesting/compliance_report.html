@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PESO Compliance Report - {{ pump.name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        <header class="bg-gradient-to-r from-indigo-600 to-indigo-800 text-white shadow-lg">
+            <div class="container mx-auto px-4 py-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h1 class="text-3xl font-bold">PESO Compliance Report</h1>
+                        <p class="text-indigo-100 mt-1">{{ pump.name }} - {{ pump.location }}</p>
+                    </div>
+                    <div class="flex gap-4">
+                        <button onclick="window.print()" class="bg-white text-indigo-600 px-6 py-2 rounded-lg hover:bg-indigo-50 transition">
+                            <i class="fas fa-print mr-2"></i>Print Report
+                        </button>
+                        <a href="{{ url_for('hydrotesting.dashboard', pump_id=pump.id) }}" 
+                           class="bg-indigo-700 text-white px-6 py-2 rounded-lg hover:bg-indigo-600 transition">
+                            <i class="fas fa-arrow-left mr-2"></i>Back
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="container mx-auto px-4 py-8">
+            <div class="bg-white rounded-lg shadow-md p-8 mb-6">
+                <div class="text-center mb-8">
+                    <h2 class="text-2xl font-bold text-gray-800">Hydrotest Compliance Status Report</h2>
+                    <p class="text-gray-600 mt-2">Generated on: {{ now().strftime('%d/%m/%Y %H:%M') }}</p>
+                    <p class="text-gray-600">Petrol Bunk: {{ pump.name }}</p>
+                    <p class="text-gray-600">Location: {{ pump.location }}</p>
+                </div>
+
+                <!-- Summary -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                    {% set compliant = compliance_data|selectattr('status', 'equalto', 'compliant')|list|length %}
+                    {% set warning = compliance_data|selectattr('status', 'equalto', 'warning')|list|length %}
+                    {% set due_soon = compliance_data|selectattr('status', 'equalto', 'due_soon')|list|length %}
+                    {% set expired = compliance_data|selectattr('status', 'equalto', 'expired')|list|length %}
+                    
+                    <div class="bg-green-50 border-l-4 border-green-500 p-4">
+                        <p class="text-green-800 font-semibold">Compliant</p>
+                        <p class="text-3xl font-bold text-green-600">{{ compliant }}</p>
+                    </div>
+                    <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4">
+                        <p class="text-yellow-800 font-semibold">Warning</p>
+                        <p class="text-3xl font-bold text-yellow-600">{{ warning }}</p>
+                    </div>
+                    <div class="bg-orange-50 border-l-4 border-orange-500 p-4">
+                        <p class="text-orange-800 font-semibold">Due Soon</p>
+                        <p class="text-3xl font-bold text-orange-600">{{ due_soon }}</p>
+                    </div>
+                    <div class="bg-red-50 border-l-4 border-red-500 p-4">
+                        <p class="text-red-800 font-semibold">Expired</p>
+                        <p class="text-3xl font-bold text-red-600">{{ expired }}</p>
+                    </div>
+                </div>
+
+                <!-- Detailed Table -->
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Test</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Next Due</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Days Left</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PESO Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Compliance</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for item in compliance_data %}
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    {% if item.type == 'Tank' %}
+                                        <i class="fas fa-database text-purple-500 mr-2"></i>Tank
+                                    {% else %}
+                                        <i class="fas fa-project-diagram text-green-500 mr-2"></i>Pipeline
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ item.id }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ item.name }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {{ item.last_test.strftime('%d/%m/%Y') if item.last_test else 'Never' }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {{ item.next_due.strftime('%d/%m/%Y') if item.next_due else 'N/A' }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    {% if item.days_until_expiry is not none %}
+                                        {% if item.days_until_expiry < 0 %}
+                                            <span class="text-red-600 font-semibold">{{ -item.days_until_expiry }} days overdue</span>
+                                        {% else %}
+                                            <span class="text-gray-900">{{ item.days_until_expiry }} days</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-gray-400">N/A</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    {% if item.peso_approved %}
+                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                            <i class="fas fa-certificate mr-1"></i>Approved
+                                        </span>
+                                    {% else %}
+                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                                            Pending
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    {% if item.status == 'compliant' %}
+                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                            ✓ Compliant
+                                        </span>
+                                    {% elif item.status == 'warning' %}
+                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                            ⚠ Warning
+                                        </span>
+                                    {% elif item.status == 'due_soon' %}
+                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
+                                            ⏰ Due Soon
+                                        </span>
+                                    {% elif item.status == 'expired' %}
+                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                                            ✗ Expired
+                                        </span>
+                                    {% else %}
+                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                                            No Test
+                                        </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Footer -->
+                <div class="mt-8 pt-6 border-t">
+                    <p class="text-sm text-gray-600">
+                        <strong>Note:</strong> This report is generated for PESO compliance verification. 
+                        All equipment must maintain valid hydrotest certificates as per PESO regulations.
+                    </p>
+                    <p class="text-sm text-gray-600 mt-2">
+                        <strong>Legend:</strong> 
+                        Compliant (>90 days) | Warning (30-90 days) | Due Soon (≤30 days) | Expired (overdue)
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            body {
+                background: white;
+            }
+        }
+    </style>
+</body>
+</html>

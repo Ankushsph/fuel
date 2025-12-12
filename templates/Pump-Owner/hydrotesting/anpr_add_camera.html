@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add ANPR Camera - Hydrotesting</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-900">
+    <header class="bg-gradient-to-r from-orange-600 to-orange-700 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold">📹 Add ANPR Camera</h1>
+                    <p class="text-orange-100 mt-1">Configure RTSP camera for number plate detection</p>
+                </div>
+                <a href="{{ url_for('hydrotesting.anpr_cameras', pump_id=pump.id) }}" 
+                   class="bg-white text-orange-600 px-4 py-2 rounded-lg hover:bg-orange-50 transition font-semibold">
+                    <i class="fas fa-arrow-left mr-2"></i>Back to Cameras
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="mb-4 p-4 rounded-lg {% if category == 'error' %}bg-red-600{% else %}bg-green-600{% endif %}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Form -->
+        <div class="bg-gray-800 rounded-xl p-8 shadow-lg border border-gray-700">
+            <form method="POST" enctype="multipart/form-data">
+                <!-- Basic Information -->
+                <div class="mb-8">
+                    <h2 class="text-2xl font-bold mb-4 text-orange-500">
+                        <i class="fas fa-info-circle mr-2"></i>Camera Information
+                    </h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-gray-300 mb-2">Camera Name *</label>
+                            <input type="text" name="camera_name" required
+                                   class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500"
+                                   placeholder="Main Gate Camera">
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-300 mb-2">Camera Location</label>
+                            <input type="text" name="camera_location"
+                                   class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500"
+                                   placeholder="Entry Gate">
+                        </div>
+                    </div>
+
+                    <div class="mt-6">
+                        <label class="block text-gray-300 mb-2">RTSP URL *</label>
+                        <input type="text" name="rtsp_url" required
+                               class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
+                               placeholder="rtsp://username:password@192.168.1.100:554/stream">
+                        <p class="text-gray-400 text-sm mt-1">
+                            <i class="fas fa-info-circle"></i> Format: rtsp://username:password@ip:port/stream
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Camera Settings -->
+                <div class="mb-8">
+                    <h2 class="text-2xl font-bold mb-4 text-purple-500">
+                        <i class="fas fa-cog mr-2"></i>Camera Settings
+                    </h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <label class="flex items-center space-x-3 cursor-pointer">
+                                <input type="checkbox" name="is_active" checked
+                                       class="w-5 h-5 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500">
+                                <span class="text-gray-300">Camera Active</span>
+                            </label>
+                        </div>
+
+                        <div>
+                            <label class="flex items-center space-x-3 cursor-pointer">
+                                <input type="checkbox" name="detection_enabled" checked
+                                       class="w-5 h-5 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500">
+                                <span class="text-gray-300">Detection Enabled</span>
+                            </label>
+                        </div>
+
+                        <div>
+                            <label class="flex items-center space-x-3 cursor-pointer">
+                                <input type="checkbox" name="gate_control_enabled"
+                                       class="w-5 h-5 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500">
+                                <span class="text-gray-300">Gate Control</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detection Settings -->
+                <div class="mb-8">
+                    <h2 class="text-2xl font-bold mb-4 text-green-500">
+                        <i class="fas fa-search mr-2"></i>Detection Settings
+                    </h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-gray-300 mb-2">Confidence Threshold</label>
+                            <input type="number" name="confidence_threshold" step="0.1" min="0" max="1" value="0.7"
+                                   class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500">
+                            <p class="text-gray-400 text-sm mt-1">0.7 = 70% confidence (recommended)</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-300 mb-2">Detection Interval (seconds)</label>
+                            <input type="number" name="detection_interval_seconds" min="1" max="10" value="2"
+                                   class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500">
+                            <p class="text-gray-400 text-sm mt-1">How often to check for plates</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gate Control Settings -->
+                <div class="mb-8">
+                    <h2 class="text-2xl font-bold mb-4 text-red-500">
+                        <i class="fas fa-door-open mr-2"></i>Gate Control Settings
+                    </h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-gray-300 mb-2">Gate Control Type</label>
+                            <select name="gate_control_type"
+                                    class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500">
+                                <option value="">None</option>
+                                <option value="http">HTTP (Network)</option>
+                                <option value="relay">GPIO Relay (Raspberry Pi)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-300 mb-2">Gate IP Address</label>
+                            <input type="text" name="gate_ip_address"
+                                   class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500"
+                                   placeholder="192.168.1.200">
+                            <p class="text-gray-400 text-sm mt-1">For HTTP-based gate control</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-gray-300 mb-2">Auto Close Delay (seconds)</label>
+                            <input type="number" name="auto_close_delay_seconds" min="1" max="60" value="10"
+                                   class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500">
+                            <p class="text-gray-400 text-sm mt-1">Gate closes after this delay</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Info Box -->
+                <div class="bg-gray-700 border border-gray-600 rounded-lg p-4 mb-6">
+                    <h3 class="font-bold text-white mb-2">
+                        <i class="fas fa-lightbulb mr-2"></i>Setup Tips
+                    </h3>
+                    <ul class="text-sm text-gray-300 space-y-1">
+                        <li>• Test RTSP URL with VLC media player first</li>
+                        <li>• Position camera 3-5 meters from vehicle at 30-45° angle</li>
+                        <li>• Ensure good lighting for better detection accuracy</li>
+                        <li>• Start with 0.7 confidence threshold and adjust as needed</li>
+                        <li>• Gate control is optional - can be configured later</li>
+                    </ul>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="flex gap-4">
+                    <button type="submit"
+                            class="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-3 px-6 rounded-lg transition">
+                        <i class="fas fa-save mr-2"></i>Add Camera
+                    </button>
+                    <a href="{{ url_for('hydrotesting.anpr_cameras', pump_id=pump.id) }}"
+                       class="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg text-center transition">
+                        <i class="fas fa-times mr-2"></i>Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

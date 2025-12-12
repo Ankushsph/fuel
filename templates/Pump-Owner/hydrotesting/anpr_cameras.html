@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ANPR Cameras - Hydrotesting</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-900">
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-orange-600 to-orange-700 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold">📹 ANPR Cameras</h1>
+                    <p class="text-orange-100 mt-1">Manage RTSP cameras for vehicle detection</p>
+                </div>
+                <div class="flex gap-3">
+                    <a href="{{ url_for('hydrotesting.anpr_add_camera', pump_id=pump.id) }}" 
+                       class="bg-white text-orange-600 px-4 py-2 rounded-lg hover:bg-orange-50 transition font-semibold">
+                        <i class="fas fa-plus mr-2"></i>Add Camera
+                    </a>
+                    <a href="{{ url_for('hydrotesting.anpr_dashboard', pump_id=pump.id) }}" 
+                       class="bg-orange-700 hover:bg-orange-800 text-white px-4 py-2 rounded-lg transition">
+                        <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container mx-auto px-4 py-8">
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="mb-4 p-4 rounded-lg {% if category == 'error' %}bg-red-600{% elif category == 'warning' %}bg-yellow-600{% else %}bg-green-600{% endif %}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Cameras List -->
+        {% if cameras %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for camera in cameras %}
+            <div class="bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-700">
+                <!-- Camera Header -->
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h3 class="text-xl font-bold text-white">{{ camera.camera_name }}</h3>
+                        <p class="text-gray-300 text-sm">{{ camera.camera_location or 'No location' }}</p>
+                    </div>
+                    <span class="px-3 py-1 rounded-full text-xs font-semibold
+                        {% if camera.is_active %}bg-green-600{% else %}bg-gray-600{% endif %}">
+                        {% if camera.is_active %}Active{% else %}Inactive{% endif %}
+                    </span>
+                </div>
+
+                <!-- Camera Details -->
+                <div class="space-y-3 mb-4">
+                    <div class="flex items-center text-sm">
+                        <i class="fas fa-video w-6 text-purple-600"></i>
+                        <span class="text-gray-300">RTSP:</span>
+                        <span class="ml-2 text-white truncate">{{ camera.rtsp_url[:30] }}...</span>
+                    </div>
+
+                    <div class="flex items-center text-sm">
+                        <i class="fas fa-search w-6 text-blue-600"></i>
+                        <span class="text-gray-300">Detection:</span>
+                        <span class="ml-2 font-semibold {% if camera.detection_enabled %}text-green-600{% else %}text-red-600{% endif %}">
+                            {% if camera.detection_enabled %}Enabled{% else %}Disabled{% endif %}
+                        </span>
+                    </div>
+
+                    <div class="flex items-center text-sm">
+                        <i class="fas fa-door-open w-6 text-red-600"></i>
+                        <span class="text-gray-300">Gate Control:</span>
+                        <span class="ml-2 font-semibold {% if camera.gate_control_enabled %}text-green-600{% else %}text-gray-500{% endif %}">
+                            {% if camera.gate_control_enabled %}Enabled{% else %}Disabled{% endif %}
+                        </span>
+                    </div>
+
+                    <div class="flex items-center text-sm">
+                        <i class="fas fa-percentage w-6 text-yellow-600"></i>
+                        <span class="text-gray-300">Confidence:</span>
+                        <span class="ml-2 text-white font-semibold">{{ (camera.confidence_threshold * 100)|int }}%</span>
+                    </div>
+
+                    <div class="flex items-center text-sm">
+                        <i class="fas fa-clock w-6 text-green-600"></i>
+                        <span class="text-gray-300">Interval:</span>
+                        <span class="ml-2 text-white font-semibold">{{ camera.detection_interval_seconds }}s</span>
+                    </div>
+
+                    {% if camera.last_active_at %}
+                    <div class="flex items-center text-sm">
+                        <i class="fas fa-history w-6 text-blue-600"></i>
+                        <span class="text-gray-300">Last Active:</span>
+                        <span class="ml-2 text-white">{{ camera.last_active_at.strftime('%d/%m %H:%M') }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Gate Control Info -->
+                {% if camera.gate_control_enabled %}
+                <div class="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                    <p class="text-xs text-red-800">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        <strong>Type:</strong> {{ camera.gate_control_type|upper or 'Not Set' }}
+                        {% if camera.gate_ip_address %}
+                        <br><strong>IP:</strong> {{ camera.gate_ip_address }}
+                        {% endif %}
+                    </p>
+                </div>
+                {% endif %}
+
+                <!-- Action Buttons -->
+                <div class="flex gap-2">
+                    <a href="{{ url_for('hydrotesting.anpr_start_camera', camera_id=camera.id, pump_id=pump.id) }}" 
+                       class="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-center text-sm font-semibold transition">
+                        <i class="fas fa-play mr-1"></i>Start
+                    </a>
+                    <a href="{{ url_for('hydrotesting.anpr_stop_camera', camera_id=camera.id, pump_id=pump.id) }}" 
+                       class="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-center text-sm font-semibold transition">
+                        <i class="fas fa-stop mr-1"></i>Stop
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Info Box -->
+        <div class="mt-8 bg-gray-800 border border-gray-700 rounded-lg p-6">
+            <h3 class="font-bold text-orange-600 mb-3">
+                <i class="fas fa-info-circle mr-2"></i>Camera Management Tips
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-300">
+                <div>
+                    <p class="font-semibold mb-1">Starting Detection:</p>
+                    <ul class="space-y-1">
+                        <li>• Click "Start" to begin detecting vehicles</li>
+                        <li>• System processes frames every N seconds</li>
+                        <li>• Detection runs in background thread</li>
+                    </ul>
+                </div>
+                <div>
+                    <p class="font-semibold mb-1">Stopping Detection:</p>
+                    <ul class="space-y-1">
+                        <li>• Click "Stop" to pause detection</li>
+                        <li>• Camera remains configured</li>
+                        <li>• Can restart anytime</li>
+                    </ul>
+                </div>
+                <div>
+                    <p class="font-semibold mb-1">Best Practices:</p>
+                    <ul class="space-y-1">
+                        <li>• Test RTSP URL before adding</li>
+                        <li>• Position camera at 30-45° angle</li>
+                        <li>• Ensure good lighting conditions</li>
+                    </ul>
+                </div>
+                <div>
+                    <p class="font-semibold mb-1">Troubleshooting:</p>
+                    <ul class="space-y-1">
+                        <li>• Check network connectivity</li>
+                        <li>• Verify camera credentials</li>
+                        <li>• Review entry logs for errors</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        {% else %}
+        <!-- Empty State -->
+        <div class="bg-gray-800 rounded-xl p-12 text-center shadow-lg border border-gray-700">
+            <i class="fas fa-video text-6xl text-gray-500 mb-4"></i>
+            <h2 class="text-2xl font-bold mb-2 text-white">No Cameras Configured</h2>
+            <p class="text-gray-300 mb-6">Add your first ANPR camera to start detecting vehicles</p>
+            <a href="{{ url_for('hydrotesting.anpr_add_camera', pump_id=pump.id) }}" 
+               class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold">
+                <i class="fas fa-plus mr-2"></i>Add Your First Camera
+            </a>
+            
+            <div class="mt-8 bg-gray-700 border border-gray-600 rounded-lg p-6 text-left max-w-2xl mx-auto">
+                <h3 class="font-bold text-white mb-3">
+                    <i class="fas fa-lightbulb mr-2"></i>Getting Started
+                </h3>
+                <ol class="text-sm text-gray-300 space-y-2">
+                    <li><strong>1.</strong> Get your camera's RTSP URL (format: rtsp://user:pass@ip:port/stream)</li>
+                    <li><strong>2.</strong> Test the URL with VLC media player to ensure it works</li>
+                    <li><strong>3.</strong> Click "Add Your First Camera" and fill in the details</li>
+                    <li><strong>4.</strong> Configure detection settings (confidence, interval)</li>
+                    <li><strong>5.</strong> Optionally enable gate control integration</li>
+                    <li><strong>6.</strong> Start detection and monitor the dashboard</li>
+                </ol>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

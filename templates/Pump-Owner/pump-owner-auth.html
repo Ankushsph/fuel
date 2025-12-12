@@ -41,7 +41,10 @@
   <nav class="bg-fuel-gray p-2 md:p-4 relative">
     <div class="flex justify-between items-center gap-2">
       <div class="flex items-center gap-1 md:gap-3 flex-1 min-w-0">
-        <img src="{{ url_for('static', filename='images/logo2.png') }}" alt="Fuel Flux Logo" class="h-6 md:h-10 w-auto flex-shrink-0" />
+        <img src="{{ url_for('static', filename='images/logo2.png') }}" 
+             alt="Fuel Flux Logo" 
+             class="h-6 md:h-10 w-auto flex-shrink-0"
+             style="background: none !important; background-color: transparent !important; mix-blend-mode: screen;" />
         <span class="text-fuel-orange font-bold text-xs md:text-xl truncate hidden sm:inline">Pump Owner</span>
       </div>
       <button id="menu-btn" class="md:hidden text-white text-lg focus:outline-none flex-shrink-0">☰</button>
@@ -86,7 +89,7 @@
     <span class="password-toggle" onclick="togglePassword(this)">Show</span>
   </div>
   <div class="text-right">
-    <a href="{{ url_for('password_bp.forgot_password') }}" class="text-fuel-orange text-sm hover:underline">Forgot Password?</a>
+    <a href="{{ url_for('password_bp.forgot_password', type='pump') }}" class="text-fuel-orange text-sm hover:underline">Forgot Password?</a>
   </div>
   <button type="submit" class="w-full bg-fuel-orange hover:bg-orange-600 text-white py-3 rounded-lg font-semibold transition">Login</button>
 
@@ -381,10 +384,11 @@
       formsContainer.style.height = activeForm.offsetHeight + "px";
 
       // Flash messages
+      // Note: Jinja2 template syntax below is processed server-side before JavaScript execution
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
           {% for category, message in messages %}
-            showToast("{{ message }}", "{{ category }}");
+            showToast("{{ message|tojson }}", "{{ category }}");
           {% endfor %}
         {% endif %}
       {% endwith %}

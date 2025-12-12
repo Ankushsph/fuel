@@ -1,0 +1,86 @@
+==========================================================
+  FORGOT PASSWORD FEATURE - EMAIL SETUP REQUIRED
+==========================================================
+
+The "Forgot Password" feature needs email credentials to work.
+
+STEP-BY-STEP SETUP:
+-------------------
+
+1. CREATE .env FILE
+   Create a new file in: E:\fuelflux\Flue_flex_pvt_ltd_\.env
+   
+2. ADD THESE LINES TO .env:
+
+# Email Configuration
+MAIL_USERNAME=your_email@gmail.com
+MAIL_PASSWORD=your_gmail_app_password
+
+# Other required config
+SECRET_KEY=supersecretkey123456789
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+
+
+3. GET GMAIL APP PASSWORD:
+   
+   a) Go to: https://myaccount.google.com/security
+   b) Enable "2-Step Verification" (if not enabled)
+   c) Go to: https://myaccount.google.com/apppasswords
+   d) Create new app password:
+      - App: "Mail"
+      - Device: "Windows Computer"
+   e) Copy the 16-character password (format: xxxx xxxx xxxx xxxx)
+   f) Paste it in .env as MAIL_PASSWORD (remove spaces)
+
+
+4. EXAMPLE .env FILE:
+
+MAIL_USERNAME=ankushscs645852@gmail.com
+MAIL_PASSWORD=abcd efgh ijkl mnop
+SECRET_KEY=supersecretkey123456789
+GOOGLE_CLIENT_ID=1234567890-abcdefg.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-abcdefghijk
+
+
+5. RESTART FLASK APP
+   After creating .env, restart the Flask server
+
+
+==========================================================
+ALTERNATIVE: Use Environment Variables (Windows)
+==========================================================
+
+If you don't want to use .env file, set these in PowerShell:
+
+$env:MAIL_USERNAME="your_email@gmail.com"
+$env:MAIL_PASSWORD="your_app_password"
+
+Then restart Flask app in the same terminal.
+
+
+==========================================================
+WHAT EMAIL IS USED FOR?
+==========================================================
+
+- Forgot Password OTP (6-digit code sent to user's email)
+- Password Reset Confirmation
+- Future notifications (optional)
+
+
+==========================================================
+NEED HELP?
+==========================================================
+
+Tell me your Gmail address and I'll guide you through getting
+the App Password, or we can set up a different email service.
+
+
+
+
+
+
+
+
+
+
