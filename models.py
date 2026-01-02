@@ -3,6 +3,7 @@ from extensions import db
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
 from sqlalchemy import func
+from datetime import datetime
 
 class User(db.Model, UserMixin):  
     __tablename__ = "users"  # explicit table name
@@ -98,6 +99,100 @@ class PumpWallet(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     balance = db.Column(db.Float, default=0.0)
     owner_id = db.Column(db.Integer, db.ForeignKey('pump_owners.id'), nullable=False)
+
+
+class EscrowAccount(db.Model):
+    __tablename__ = "escrow_accounts"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(64), unique=True, nullable=False, default="main")
+    balance = db.Column(db.Float, nullable=False, default=0.0)
+    created_at = db.Column(db.DateTime, server_default=func.now())
+
+
+class WalletTopup(db.Model):
+    __tablename__ = "wallet_topups"
+
+    id = db.Column(db.Integer, primary_key=True)
+    driver_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    wallet_id = db.Column(db.Integer, db.ForeignKey("wallets.id"), nullable=False)
+
+    amount = db.Column(db.Float, nullable=False)
+    currency = db.Column(db.String(8), nullable=False, default="INR")
+
+    txn_uuid = db.Column(db.String(36), nullable=False, unique=True)
+    status = db.Column(db.String(20), nullable=False, default="created")
+
+    razorpay_order_id = db.Column(db.String(100), nullable=True)
+    razorpay_payment_id = db.Column(db.String(100), nullable=True)
+    razorpay_signature = db.Column(db.String(255), nullable=True)
+
+    created_at = db.Column(db.DateTime, server_default=func.now())
+    paid_at = db.Column(db.DateTime, nullable=True)
+
+    driver = db.relationship("User", backref="wallet_topups")
+    wallet = db.relationship("Wallet", backref="topups")
+
+
+class FuelTransaction(db.Model):
+    __tablename__ = "fuel_transactions"
+
+    id = db.Column(db.Integer, primary_key=True)
+    pump_id = db.Column(db.Integer, db.ForeignKey("pumps.id"), nullable=False)
+    vehicle_number = db.Column(db.String(20), nullable=False, index=True)
+    fuel_type = db.Column(db.String(20), nullable=False)
+    quantity_litres = db.Column(db.Float, nullable=False)
+    unit_price = db.Column(db.Float, nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    status = db.Column(db.String(20), nullable=False, default="pending_verification", index=True)  # pending_verification, verified, settled, failed
+    verification_level = db.Column(db.String(20), nullable=False, default="manual")  # manual, semi_auto, auto
+    attendant_id = db.Column(db.Integer, db.ForeignKey("pump_owners.id"), nullable=True)  # who recorded the transaction
+    verifier_id = db.Column(db.Integer, db.ForeignKey("pump_owners.id"), nullable=True)  # who verified
+    verified_at = db.Column(db.DateTime, nullable=True)
+    settled_at = db.Column(db.DateTime, nullable=True)
+    extra_data = db.Column(db.JSON, nullable=True)  # OCR results, pump pulse data, ANPR confidence, etc.
+    created_at = db.Column(db.DateTime, server_default=func.now(), nullable=False)
+    updated_at = db.Column(db.DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationships
+    pump = db.relationship("Pump", backref="fuel_transactions")
+    attendant = db.relationship("PumpOwner", foreign_keys=[attendant_id], backref="attended_transactions")
+    verifier = db.relationship("PumpOwner", foreign_keys=[verifier_id], backref="verified_transactions")
+
+
+class WalletLedgerEntry(db.Model):
+    __tablename__ = "wallet_ledger_entries"
+    id = db.Column(db.Integer, primary_key=True)
+    group_uuid = db.Column(db.String(36), nullable=False, index=True)  # UUID to group related entries (e.g., a fuel transaction)
+    event_type = db.Column(db.String(32), nullable=False)  # fuel_sale, wallet_topup, settlement, refund
+    direction = db.Column(db.String(16), nullable=False)  # debit or credit
+    wallet_type = db.Column(db.String(16), nullable=False)  # driver_wallet, pump_wallet, escrow
+    wallet_id = db.Column(db.Integer, nullable=False)  # driver wallet.id or pump_wallet.id
+    amount = db.Column(db.Float, nullable=False)
+    balance_after = db.Column(db.Float, nullable=False)
+    reference_id = db.Column(db.Integer, nullable=True)  # FuelTransaction.id, WalletTopupVerification.id, etc.
+    reference_type = db.Column(db.String(32), nullable=True)  # fuel_transaction, wallet_topup, settlement
+    created_at = db.Column(db.DateTime, server_default=func.now(), nullable=False)
+    # No updates; ledger entries are immutable
+
+
+class PumpSettlement(db.Model):
+    __tablename__ = "pump_settlements"
+
+    id = db.Column(db.Integer, primary_key=True)
+    pump_wallet_id = db.Column(db.Integer, db.ForeignKey("pump_wallets.id"), nullable=False)
+    pump_owner_id = db.Column(db.Integer, db.ForeignKey("pump_owners.id"), nullable=False)
+
+    amount = db.Column(db.Float, nullable=False)
+    currency = db.Column(db.String(8), nullable=False, default="INR")
+    status = db.Column(db.String(20), nullable=False, default="pending")
+
+    bank_reference = db.Column(db.String(100), nullable=True)
+    requested_at = db.Column(db.DateTime, server_default=func.now())
+    processed_at = db.Column(db.DateTime, nullable=True)
+
+    pump_wallet = db.relationship("PumpWallet", backref="settlements")
+    pump_owner = db.relationship("PumpOwner", backref="settlements")
 
 
 class PumpSubscription(db.Model):
@@ -211,6 +306,29 @@ class PaymentVerification(db.Model):
 
     def __repr__(self):
         return f"<PaymentVerification user={self.user_email} amount={self.amount} status={self.status}>"
+
+
+class WalletTopupVerification(db.Model):
+    __tablename__ = "wallet_topup_verifications"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    user_email = db.Column(db.String(120), nullable=False)
+
+    amount = db.Column(db.Float, nullable=False)
+    screenshot_filename = db.Column(db.String(255), nullable=False)
+    transaction_id = db.Column(db.String(100), nullable=True)
+
+    status = db.Column(db.String(20), default="pending")
+    created_at = db.Column(db.DateTime, server_default=func.now())
+    verified_at = db.Column(db.DateTime, nullable=True)
+    verified_by = db.Column(db.String(120), nullable=True)
+    rejection_reason = db.Column(db.Text, nullable=True)
+
+    user = db.relationship("User", backref="wallet_topup_verifications")
+
+    def __repr__(self):
+        return f"<WalletTopupVerification user={self.user_email} amount={self.amount} status={self.status}>"
 
 
 class PumpRegistrationRequest(db.Model):
@@ -643,7 +761,7 @@ class VehicleEntryLog(db.Model):
     duration_minutes = db.Column(db.Integer)
     
     def __repr__(self):
-        return f"<VehicleEntryLog {self.vehicle_number} | {self.detected_at} | {self.compliance_status}>"
+        return f"<VehicleEntryLog {self.vehicle_number} | Entry: {self.detected_at}>"
 
 
 class ANPRCamera(db.Model):
@@ -680,3 +798,27 @@ class ANPRCamera(db.Model):
     
     def __repr__(self):
         return f"<ANPRCamera {self.camera_name} | Pump: {self.pump_id}>"
+
+
+# ==================== INVESTOR PORTAL MODELS ====================
+
+class Investor(db.Model, UserMixin):
+    """Investor account for accessing investor portal"""
+    __tablename__ = "investors"
+    id = db.Column(db.Integer, primary_key=True)
+    full_name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(200), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def get_id(self):
+        return f"investor_{self.id}"
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+    def __repr__(self):
+        return f"<Investor {self.email}>"

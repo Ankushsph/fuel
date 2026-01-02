@@ -1,7 +1,9 @@
 # dashboard.py
 from flask import Blueprint, redirect, url_for, render_template, request, flash
-from models import User, Vehicle, db
 from flask_login import current_user, login_required
+
+from config import Config
+from models import User, Vehicle, db
 
 dashboard_bp = Blueprint("dashboard", __name__)
 
@@ -17,7 +19,9 @@ def dashboard():
         user=user,
         vehicles=vehicles,
         has_password=bool(user.password_hash),
-        wallet_balance=wallet_balance
+        wallet_balance=wallet_balance,
+        upi_id=Config.UPI_ID,
+        business_name=Config.BUSINESS_NAME,
     )
 
 # Update profile route

@@ -6,6 +6,8 @@ from flask_login import LoginManager
 from models import User, PumpOwner, Admin
 from flask_cors import CORS
 from pump import pump_bp
+from escrow import escrow_bp
+from settlement import settlement_bp
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -59,6 +61,9 @@ def load_user(user_id):
         return PumpOwner.query.get(int(real_id))
     elif user_type == "admin":
         return Admin.query.get(int(real_id))
+    elif user_type == "investor":
+        from models import Investor
+        return Investor.query.get(int(real_id))
     return None
 
 
@@ -82,6 +87,9 @@ from employee import employee_bp
 from attendance_monitor import attendance_monitor_bp
 from vehicle_verification import vehicle_verification_bp
 from hydrotesting import hydrotesting_bp
+from escrow import escrow_bp
+from settlement import settlement_bp
+from investor import investor_bp
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(dashboard_bp)
@@ -97,6 +105,9 @@ app.register_blueprint(employee_bp)
 app.register_blueprint(attendance_monitor_bp, url_prefix="/attendance_monitor")
 app.register_blueprint(vehicle_verification_bp, url_prefix="/vehicle_verification")
 app.register_blueprint(hydrotesting_bp, url_prefix="/hydrotesting")
+app.register_blueprint(escrow_bp, url_prefix="/escrow")
+app.register_blueprint(settlement_bp, url_prefix="/settlement")
+app.register_blueprint(investor_bp, url_prefix="/investor")
 
 # --- Initialize database tables and run migrations (runs even with Gunicorn) ---
 with app.app_context():

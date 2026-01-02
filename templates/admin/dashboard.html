@@ -19,10 +19,16 @@
              style="background: none !important; background-color: transparent !important; mix-blend-mode: screen;" />
         <span class="text-fuel-orange font-bold text-base md:text-lg">Admin Dashboard</span>
       </div>
-      <a href="{{ url_for('admin.admin_logout') }}" 
-         class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-semibold transition">
-        Logout
-      </a>
+      <div class="flex gap-3">
+        <a href="{{ url_for('investor.login') }}" 
+           class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg font-semibold transition">
+          Investor Portal
+        </a>
+        <a href="{{ url_for('admin.admin_logout') }}" 
+           class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-semibold transition">
+          Logout
+        </a>
+      </div>
     </div>
   </header>
 
@@ -47,12 +53,12 @@
     </div>
 
     <!-- Pending Verifications -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
       
-      <!-- Pending Payments -->
+      <!-- Pending Subscription Payments (Pump Owners) -->
       <div class="bg-fuel-gray p-6 rounded-xl">
         <div class="flex justify-between items-center mb-4">
-          <h2 class="text-xl font-bold text-fuel-orange">💳 Pending Payments</h2>
+          <h2 class="text-xl font-bold text-fuel-orange">💳 Pending Pump Payments</h2>
           <span class="bg-orange-600 px-3 py-1 rounded-full text-sm font-semibold">
             {{ pending_payments|length }}
           </span>
@@ -82,6 +88,42 @@
           </a>
         {% else %}
           <div class="text-center text-gray-400 py-8">No pending payments</div>
+        {% endif %}
+      </div>
+
+      <!-- Pending Cab Wallet Top-ups -->
+      <div class="bg-fuel-gray p-6 rounded-xl">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-bold text-fuel-orange">💰 Pending Cab Wallet Top-ups</h2>
+          <span class="bg-green-600 px-3 py-1 rounded-full text-sm font-semibold">
+            {{ pending_wallet_topups|length }}
+          </span>
+        </div>
+
+        {% if pending_wallet_topups %}
+          <div class="space-y-3">
+            {% for t in pending_wallet_topups[:5] %}
+              <div class="bg-fuel-black p-4 rounded-lg">
+                <div class="flex justify-between items-start">
+                  <div>
+                    <div class="font-semibold">{{ t.user_email }}</div>
+                    <div class="text-sm text-gray-400">Wallet top-up request</div>
+                    <div class="text-fuel-orange font-bold mt-1">₹{{ t.amount }}</div>
+                  </div>
+                  <button onclick="verifyWalletTopup({{ t.id }})" 
+                          class="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-sm">
+                    Verify
+                  </button>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+          <a href="{{ url_for('admin.pending_wallet_topups') }}" 
+             class="block mt-4 text-center text-fuel-orange hover:underline">
+            View All →
+          </a>
+        {% else %}
+          <div class="text-center text-gray-400 py-8">No pending cab wallet top-ups</div>
         {% endif %}
       </div>
 
@@ -127,6 +169,10 @@
   <script>
     function verifyPayment(paymentId) {
       window.location.href = `/admin/payments/pending#payment-${paymentId}`;
+    }
+
+    function verifyWalletTopup(topupId) {
+      window.location.href = `/admin/wallet-topups/pending#topup-${topupId}`;
     }
 
     function verifyRegistration(regId) {

@@ -30,28 +30,6 @@
       opacity: 1;
     }
 
-    .locked {
-      filter: blur(2px);
-      position: relative;
-    }
-
-    .locked::after {
-      content: "🔒";
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      color: #FFA500;
-      font-weight: bold;
-      text-align: center;
-      pointer-events: none;
-    }
-
-    .locked:hover {
-      background-color: #1f1f1f;
-      transform: scale(1.02);
-      transition: all 0.2s;
-    }
 
     .sidebar,
     .scrollable {
@@ -487,12 +465,9 @@
 
         const activateLinks = selector => {
           document.querySelectorAll(selector).forEach(el => {
-            el.classList.remove('locked', 'opacity-50', 'pointer-events-none');
             el.classList.add('border-fuel-orange');
             el.classList.remove('border-gray-600');
             el.style.pointerEvents = 'auto';
-            el.style.filter = 'none';
-            el.textContent = el.textContent.replace(' 🔒', '');
           });
         };
 
@@ -561,37 +536,30 @@
           </div>
           
           <a href="#" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition">💳 Subscriptions</a>
+          <a href="#" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition">💳 Billing System</a>
           <a href="#" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition">👤 Profile</a>
         </nav>
 
         <hr class="my-6 border-fuel-black">
 
-        <!-- Gold+ features -->
+        <!-- Gold Features -->
         <div class="text-xs text-gray-500 uppercase tracking-wide mb-2 px-3">Gold Features</div>
         <nav class="space-y-4 mb-6">
-          <a href="#" data-feature="receipts" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">🧾 Receipts 🔒</a>
-          <a href="#" data-feature="daily-comparison" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">📈 Daily Comparison 🔒</a>
-          <a href="#" data-feature="density-calculator" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">🧪 Density Calculator 🔒</a>
+          <a href="#" data-feature="receipts" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition">🧾 Receipts</a>
+          <a href="#" data-feature="daily-comparison" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition">📈 Daily Comparison</a>
+          <a href="#" data-feature="density-calculator" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition">🧪 Density Calculator</a>
         </nav>
 
         <hr class="my-6 border-fuel-black">
 
-        <!-- Silver+ features -->
+        <!-- Silver Features -->
         <div class="text-xs text-gray-500 uppercase tracking-wide mb-2 px-3">Silver Features</div>
         <nav class="space-y-4 mb-6">
-          <a href="{{ url_for('vehicle_verification.vehicle_verification_page', pump_id=pump.id) }}" data-feature="vehicle-verification" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">🕵️ Vehicle verification 🔒</a>
-          <a href="{{ url_for('vehicle_count.station_vehicle_data_page', pump_id=pump.id) }}" data-feature="station-data" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">📊 Station vehicle data 🔒</a>
+          <a href="{{ url_for('vehicle_verification.vehicle_verification_page', pump_id=pump.id) }}" data-feature="vehicle-verification" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition">🕵️ Vehicle verification</a>
+          <a href="{{ url_for('vehicle_count.station_vehicle_data_page', pump_id=pump.id) }}" data-feature="station-data" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition">📊 Station vehicle data</a>
           <a href="{{ url_for('hydrotesting.dashboard', pump_id=pump.id) }}" data-feature="hydrotesting" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition">💧 Hydrotesting</a>
         </nav>
 
-        <hr class="my-6 border-fuel-black">
-
-        <!-- Coming soon -->
-        <div class="text-xs text-gray-500 uppercase tracking-wide mb-2 px-3">Coming Soon</div>
-        <nav class="space-y-4">
-          <a href="#" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">🚨 Smoke and fire detection 🔒</a>
-          <a href="#" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">🔎 Number plate detection 🔒</a>
-        </nav>
       </div>
 
       <div class="mt-10">
@@ -641,9 +609,9 @@
       <!-- Premium Features (Gold+) -->
       <div class="text-xs text-gray-500 uppercase tracking-wide mb-2 px-3">Gold Features</div>
       <nav class="space-y-4 mb-6">
-        <a href="#" data-feature="receipts" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">🧾 Receipts 🔒</a>
-        <a href="#" data-feature="daily-comparison" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">📈 Daily Comparison 🔒</a>
-        <a href="#" data-feature="density-calculator" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">🧪 Density Calculator 🔒</a>
+        <a href="#" data-feature="receipts" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition">🧾 Receipts</a>
+        <a href="#" data-feature="daily-comparison" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition">📈 Daily Comparison</a>
+        <a href="#" data-feature="density-calculator" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition">🧪 Density Calculator</a>
       </nav>
 
       <hr class="my-4 border-fuel-black">
@@ -651,19 +619,13 @@
       <!-- Base Paid Features (Silver+) -->
       <div class="text-xs text-gray-500 uppercase tracking-wide mb-2 px-3">Silver Features</div>
       <nav class="space-y-4 mb-6">
-        <a href="{{ url_for('vehicle_verification.vehicle_verification_page', pump_id=pump.id) }}" data-feature="vehicle-verification" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">🕵️ Vehicle verification 🔒</a>
-        <a href="{{ url_for('vehicle_count.station_vehicle_data_page', pump_id=pump.id) }}" data-feature="station-data" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">📊 Station vehicle data 🔒</a>
-        <a href="{{ url_for('hydrotesting.dashboard', pump_id=pump.id) }}" data-feature="hydrotesting" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition">💧 Hydrotesting</a>
+        <a href="{{ url_for('vehicle_verification.vehicle_verification_page', pump_id=pump.id) }}" data-feature="vehicle-verification" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition">🕵️ Vehicle verification</a>
+        <a href="{{ url_for('vehicle_count.station_vehicle_data_page', pump_id=pump.id) }}" data-feature="station-data" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition">📊 Station vehicle data</a>
+        <a href="{{ url_for('hydrotesting.dashboard', pump_id=pump.id) }}" data-feature="hydrotesting" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition">💧 Hydrotesting</a>
       </nav>
 
       <hr class="my-6 border-fuel-black">
 
-      <!-- Future Features (Coming Soon) -->
-      <div class="text-xs text-gray-500 uppercase tracking-wide mb-2 px-3">Coming Soon</div>
-      <nav class="space-y-4">
-        <a href="#" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">🚨 Smoke and fire detection 🔒</a>
-        <a href="#" class="block py-2 px-3 rounded-lg border border-gray-600 hover:bg-fuel-black transition locked opacity-50 pointer-events-none">🔎 Number plate detection 🔒</a>
-      </nav>
     </div>
 
     <!-- Bottom info: Pump + User -->
@@ -1505,6 +1467,373 @@ case '💳 Subscriptions':
 
   break;
 
+case '💳 Billing System':
+  mainContent.innerHTML = `
+    <h2 class="text-2xl font-bold text-fuel-orange mb-4">Billing System</h2>
+
+    <!-- Record Fuel Sale -->
+    <div class="bg-fuel-black p-4 rounded-lg shadow flex flex-col mb-6">
+      <h3 class="text-lg font-semibold text-gray-200 mb-3">⛽ Record Fuel Sale</h3>
+      <form id="fuelBillingForm" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div>
+          <label class="text-sm text-gray-300 mb-1 block">Vehicle Number</label>
+          <input type="text" id="billingVehicleNumber" class="w-full p-2 rounded bg-fuel-gray text-white focus:outline-none uppercase" placeholder="GJ01AB1234" required>
+        </div>
+        <div>
+          <label class="text-sm text-gray-300 mb-1 block">Fuel Type</label>
+          <select id="billingFuelType" class="w-full p-2 rounded bg-fuel-gray text-white focus:outline-none" required>
+            <option value="">Select</option>
+            <option value="Petrol">Petrol</option>
+            <option value="Diesel">Diesel</option>
+            <option value="CNG">CNG</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-sm text-gray-300 mb-1 block">Quantity (Litres)</label>
+          <input type="number" step="0.01" id="billingQuantity" class="w-full p-2 rounded bg-fuel-gray text-white focus:outline-none" required>
+        </div>
+        <div>
+          <label class="text-sm text-gray-300 mb-1 block">Unit Price (₹/Litre)</label>
+          <input type="number" step="0.01" id="billingUnitPrice" class="w-full p-2 rounded bg-fuel-gray text-white focus:outline-none" required>
+        </div>
+        <div class="md:col-span-2 flex items-center justify-between mt-2">
+          <div class="text-gray-300 text-sm">Total Amount: <span id="billingTotal" class="font-bold text-fuel-orange">₹0.00</span></div>
+          <button type="submit" class="px-4 py-2 bg-fuel-green hover:bg-green-600 rounded-lg font-semibold">Create Transaction</button>
+        </div>
+      </form>
+      <p id="billingError" class="text-sm text-red-400 mt-2 hidden"></p>
+    </div>
+
+    <!-- Pending Verifications -->
+    <div class="bg-fuel-black p-4 rounded-lg shadow flex flex-col mb-6">
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="text-lg font-semibold text-gray-200">⏳ Pending Verifications</h3>
+        <button id="refreshPendingBtn" class="text-sm text-fuel-orange hover:text-orange-400">Refresh</button>
+      </div>
+      <div id="pendingVerificationsList" class="space-y-2 max-h-64 overflow-y-auto pr-2">
+        <p class="text-gray-400 text-sm">Loading pending verifications...</p>
+      </div>
+    </div>
+
+    <!-- Ready to Settle -->
+    <div class="bg-fuel-black p-4 rounded-lg shadow flex flex-col mb-6">
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="text-lg font-semibold text-gray-200">💸 Ready to Settle</h3>
+        <button id="refreshVerifiedBtn" class="text-sm text-fuel-orange hover:text-orange-400">Refresh</button>
+      </div>
+      <div id="verifiedTransactionsList" class="space-y-2 max-h-64 overflow-y-auto pr-2">
+        <p class="text-gray-400 text-sm">Loading verified transactions...</p>
+      </div>
+    </div>
+
+    <!-- Today's Sales Summary -->
+    <div class="bg-fuel-black p-4 rounded-lg shadow flex flex-col mb-6">
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="text-lg font-semibold text-gray-200">📈 Today's Sales</h3>
+        <span id="todayDate" class="text-sm text-gray-400"></span>
+      </div>
+      <div id="todaySalesSummary" class="grid grid-cols-3 gap-4 text-center">
+        <div class="bg-fuel-gray p-3 rounded">
+          <div class="text-2xl font-bold text-fuel-orange" id="todayTransactions">0</div>
+          <div class="text-xs text-gray-400">Transactions</div>
+        </div>
+        <div class="bg-fuel-gray p-3 rounded">
+          <div class="text-2xl font-bold text-green-400" id="todayAmount">₹0</div>
+          <div class="text-xs text-gray-400">Total Amount</div>
+        </div>
+        <div class="bg-fuel-gray p-3 rounded">
+          <div class="text-2xl font-bold text-blue-400" id="todayQuantity">0L</div>
+          <div class="text-xs text-gray-400">Total Litres</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Fuel Sales -->
+    <div class="bg-fuel-black p-4 rounded-lg shadow flex flex-col mb-6">
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="text-lg font-semibold text-gray-200">📊 Recent Fuel Sales</h3>
+        <button id="refreshSalesBtn" class="text-sm text-fuel-orange hover:text-orange-400">Refresh</button>
+      </div>
+      <div id="fuelSalesList" class="space-y-2 max-h-64 overflow-y-auto pr-2">
+        <p class="text-gray-400 text-sm">Loading sales...</p>
+      </div>
+    </div>
+  `;
+
+  (function(){
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const pumpIdVal = "{{ pump.id }}";
+    const form = document.getElementById('fuelBillingForm');
+    const qtyInput = document.getElementById('billingQuantity');
+    const priceInput = document.getElementById('billingUnitPrice');
+    const totalEl = document.getElementById('billingTotal');
+    const errorEl = document.getElementById('billingError');
+    const salesList = document.getElementById('fuelSalesList');
+    const refreshBtn = document.getElementById('refreshSalesBtn');
+    const pendingList = document.getElementById('pendingVerificationsList');
+    const refreshPendingBtn = document.getElementById('refreshPendingBtn');
+
+    // Set today's date
+    document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-IN', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+
+    function updateTotal() {
+      const q = parseFloat(qtyInput.value || '0');
+      const p = parseFloat(priceInput.value || '0');
+      const total = q * p;
+      totalEl.textContent = '₹' + (isNaN(total) ? '0.00' : total.toFixed(2));
+    }
+
+    qtyInput.addEventListener('input', updateTotal);
+    priceInput.addEventListener('input', updateTotal);
+
+    // Load today's sales summary
+    async function loadTodaySales() {
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const res = await fetch(`/escrow/sales/daily?pump_id=${pumpIdVal}&date=${today}`, { credentials: 'include' });
+        const data = await res.json();
+        if (data.success && data.summary) {
+          const s = data.summary;
+          document.getElementById('todayTransactions').textContent = s.total_transactions || 0;
+          document.getElementById('todayAmount').textContent = '₹' + (s.total_amount || 0);
+          document.getElementById('todayQuantity').textContent = (s.total_quantity || 0) + 'L';
+        }
+      } catch (err) {
+        console.error('Failed to load today sales:', err);
+      }
+    }
+
+    // Load pending verifications
+    async function loadPendingVerifications() {
+      if (!pendingList) return;
+      pendingList.innerHTML = '<p class="text-gray-400 text-sm">Loading pending verifications...</p>';
+      try {
+        const res = await fetch(`/escrow/fuel-transactions/pump?pump_id=${pumpIdVal}&status=pending_verification`, { credentials: 'include' });
+        const data = await res.json();
+        if (!data.success || !Array.isArray(data.transactions) || data.transactions.length === 0) {
+          pendingList.innerHTML = '<p class="text-gray-400 text-sm">No pending verifications.</p>';
+          return;
+        }
+        pendingList.innerHTML = data.transactions.map(t => `
+          <div class="bg-fuel-gray p-3 rounded text-sm">
+            <div class="flex justify-between items-start mb-2">
+              <div>
+                <div class="font-semibold text-gray-200">${t.vehicle_number}</div>
+                <div class="text-gray-400 text-xs">${t.fuel_type} • ${t.quantity_litres} L</div>
+              </div>
+              <div class="text-right text-fuel-orange font-bold">₹${t.amount.toFixed(2)}</div>
+            </div>
+            <div class="flex gap-2">
+              <button onclick="verifyTransaction(${t.id})" class="px-2 py-1 bg-green-600 hover:bg-green-700 rounded text-xs">Verify</button>
+              <button onclick="viewTransaction(${t.id})" class="px-2 py-1 bg-gray-600 hover:bg-gray-700 rounded text-xs">View</button>
+            </div>
+          </div>`).join('');
+      } catch (err) {
+        console.error(err);
+        pendingList.innerHTML = '<p class="text-gray-400 text-sm">Failed to load pending verifications.</p>';
+      }
+    }
+
+    // Load verified transactions (ready to settle)
+    async function loadVerifiedTransactions() {
+      const verifiedList = document.getElementById('verifiedTransactionsList');
+      if (!verifiedList) return;
+      verifiedList.innerHTML = '<p class="text-gray-400 text-sm">Loading verified transactions...</p>';
+      try {
+        const res = await fetch(`/escrow/fuel-transactions/pump?pump_id=${pumpIdVal}&status=verified`, { credentials: 'include' });
+        const data = await res.json();
+        if (!data.success || !Array.isArray(data.transactions) || data.transactions.length === 0) {
+          verifiedList.innerHTML = '<p class="text-gray-400 text-sm">No verified transactions ready to settle.</p>';
+          return;
+        }
+        verifiedList.innerHTML = data.transactions.map(t => `
+          <div class="bg-fuel-gray p-3 rounded text-sm">
+            <div class="flex justify-between items-start mb-2">
+              <div>
+                <div class="font-semibold text-gray-200">${t.vehicle_number}</div>
+                <div class="text-gray-400 text-xs">${t.fuel_type} • ${t.quantity_litres} L</div>
+              </div>
+              <div class="text-right text-fuel-orange font-bold">₹${t.amount.toFixed(2)}</div>
+            </div>
+            <div class="flex gap-2">
+              <button onclick="settleTransaction(${t.id})" class="px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs">Settle</button>
+              <button onclick="viewTransaction(${t.id})" class="px-2 py-1 bg-gray-600 hover:bg-gray-700 rounded text-xs">View</button>
+            </div>
+          </div>`).join('');
+      } catch (err) {
+        console.error(err);
+        verifiedList.innerHTML = '<p class="text-gray-400 text-sm">Failed to load verified transactions.</p>';
+      }
+    }
+
+    // Load recent sales (all transactions)
+    async function loadSales() {
+      if (!salesList) return;
+      salesList.innerHTML = '<p class="text-gray-400 text-sm">Loading sales...</p>';
+      try {
+        const res = await fetch(`/escrow/fuel-transactions/pump?pump_id=${pumpIdVal}`, { credentials: 'include' });
+        const data = await res.json();
+        if (!data.success || !Array.isArray(data.transactions) || data.transactions.length === 0) {
+          salesList.innerHTML = '<p class="text-gray-400 text-sm">No transactions yet.</p>';
+          return;
+        }
+        salesList.innerHTML = data.transactions.map(t => {
+          const statusColor = t.status === 'settled' ? 'text-green-400' : t.status === 'verified' ? 'text-blue-400' : t.status === 'failed' ? 'text-red-400' : 'text-yellow-400';
+          const statusText = t.status.charAt(0).toUpperCase() + t.status.slice(1);
+          return `
+          <div class="flex justify-between items-center bg-fuel-gray p-2 rounded text-sm">
+            <div>
+              <div class="font-semibold text-gray-200">${t.vehicle_number}</div>
+              <div class="text-gray-400 text-xs">${t.fuel_type} • ${t.quantity_litres} L</div>
+              <div class="text-gray-500 text-xs">${statusText}</div>
+            </div>
+            <div class="text-right ${statusColor} font-bold">₹${t.amount.toFixed(2)}</div>
+          </div>`}).join('');
+      } catch (err) {
+        console.error(err);
+        salesList.innerHTML = '<p class="text-gray-400 text-sm">Failed to load sales.</p>';
+      }
+    }
+
+    // Verify a transaction
+    window.verifyTransaction = async function(transactionId) {
+      try {
+        const res = await fetch(`/escrow/fuel-transaction/${transactionId}/verify`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+          },
+          credentials: 'include',
+          body: JSON.stringify({})
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('Transaction verified successfully.', 'success');
+          loadPendingVerifications();
+          loadVerifiedTransactions();
+          loadSales();
+        } else {
+          showToast(data.message || 'Verification failed', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Server error during verification', 'error');
+      }
+    };
+
+    // View transaction details
+    window.viewTransaction = async function(transactionId) {
+      try {
+        const res = await fetch(`/escrow/fuel-transaction/${transactionId}/receipt`, { credentials: 'include' });
+        const data = await res.json();
+        if (data.success && data.receipt) {
+          const r = data.receipt;
+          alert(`Transaction Details:\n\nID: ${r.transaction_id}\nVehicle: ${r.vehicle_number}\nFuel: ${r.fuel_type}\nQuantity: ${r.quantity_litres} L\nAmount: ₹${r.amount}\nStatus: ${r.status}\nCreated: ${new Date(r.created_at).toLocaleString('en-IN')}`);
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Failed to load transaction details', 'error');
+      }
+    };
+
+    // Settle a verified transaction (atomic escrow release)
+    window.settleTransaction = async function(transactionId) {
+      try {
+        const res = await fetch(`/escrow/fuel-transaction/${transactionId}/settle`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+          },
+          credentials: 'include'
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('Transaction settled. Funds transferred.', 'success');
+          loadPendingVerifications();
+          loadVerifiedTransactions();
+          loadSales();
+          loadTodaySales();
+        } else {
+          // Show detailed failure reason
+          const reason = data.failure_reason || data.message || 'Settlement failed';
+          showToast(`Settlement failed: ${reason}`, 'error');
+          // Still refresh lists to show updated status
+          loadPendingVerifications();
+          loadVerifiedTransactions();
+          loadSales();
+          loadTodaySales();
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Server error during settlement', 'error');
+      }
+    };
+
+    // Form submission: create fuel transaction (Step 3)
+    form.addEventListener('submit', async function(e){
+      e.preventDefault();
+      errorEl.classList.add('hidden');
+      const vehicleNumber = document.getElementById('billingVehicleNumber').value.trim();
+      const fuelType = document.getElementById('billingFuelType').value;
+      const qty = parseFloat(qtyInput.value || '0');
+      const price = parseFloat(priceInput.value || '0');
+
+      if (!vehicleNumber || !fuelType || !qty || !price) {
+        errorEl.textContent = 'Please fill all fields with valid values.';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        const res = await fetch('/escrow/fuel-transaction', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            pump_id: parseInt(pumpIdVal),
+            vehicle_number: vehicleNumber,
+            fuel_type: fuelType,
+            quantity_litres: qty,
+            unit_price: price
+          })
+        });
+        const data = await res.json();
+        if (!data.success) {
+          errorEl.textContent = data.message || 'Failed to create transaction.';
+          errorEl.classList.remove('hidden');
+          return;
+        }
+        showToast('Fuel transaction created. Pending verification.', 'success');
+        form.reset();
+        updateTotal();
+        loadPendingVerifications();
+      } catch (err) {
+        console.error(err);
+        errorEl.textContent = 'Server error. Please try again.';
+        errorEl.classList.remove('hidden');
+      }
+    });
+
+    // Wire refresh buttons
+    if (refreshBtn) refreshBtn.addEventListener('click', loadSales);
+    if (refreshPendingBtn) refreshPendingBtn.addEventListener('click', loadPendingVerifications);
+    const refreshVerifiedBtn = document.getElementById('refreshVerifiedBtn');
+    if (refreshVerifiedBtn) refreshVerifiedBtn.addEventListener('click', loadVerifiedTransactions);
+
+    // Initial loads
+    loadPendingVerifications();
+    loadVerifiedTransactions();
+    loadSales();
+    loadTodaySales();
+  })();
+
+  break;
+
 
 
 
@@ -1512,6 +1841,62 @@ case '💳 Subscriptions':
         case '🧾 Receipts':
           mainContent.innerHTML = getReceiptTemplate();
           initReceiptSection();
+          break;
+
+        case '💰 Settlements':
+          mainContent.innerHTML = `
+            <h2 class="text-2xl font-bold text-fuel-orange mb-4">Settlements</h2>
+
+            <!-- Settlement Summary -->
+            <div class="bg-fuel-black p-4 rounded-lg shadow flex flex-col mb-6">
+              <h3 class="text-lg font-semibold text-gray-200 mb-3">📊 Settlement Summary</h3>
+              <div id="settlementSummary" class="grid grid-cols-3 gap-4 text-center">
+                <div class="bg-fuel-gray p-3 rounded">
+                  <div class="text-2xl font-bold text-fuel-orange" id="availableBalance">₹0</div>
+                  <div class="text-xs text-gray-400">Available Balance</div>
+                </div>
+                <div class="bg-fuel-gray p-3 rounded">
+                  <div class="text-2xl font-bold text-yellow-400" id="pendingSettlements">₹0</div>
+                  <div class="text-xs text-gray-400">Pending Settlements</div>
+                </div>
+                <div class="bg-fuel-gray p-3 rounded">
+                  <div class="text-2xl font-bold text-green-400" id="todaySales">₹0</div>
+                  <div class="text-xs text-gray-400">Today's Sales</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Request Settlement -->
+            <div class="bg-fuel-black p-4 rounded-lg shadow flex flex-col mb-6">
+              <h3 class="text-lg font-semibold text-gray-200 mb-3">💸 Request Settlement</h3>
+              <form id="settlementForm" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label class="text-sm text-gray-300 mb-1 block">Amount (₹)</label>
+                  <input type="number" step="0.01" id="settlementAmount" class="w-full p-2 rounded bg-fuel-gray text-white focus:outline-none" required>
+                </div>
+                <div>
+                  <label class="text-sm text-gray-300 mb-1 block">Bank Reference (Optional)</label>
+                  <input type="text" id="bankReference" class="w-full p-2 rounded bg-fuel-gray text-white focus:outline-none" placeholder="Bank A/C Number, UPI, etc.">
+                </div>
+                <div class="md:col-span-2">
+                  <button type="submit" class="px-4 py-2 bg-fuel-green hover:bg-green-600 rounded-lg font-semibold">Request Settlement</button>
+                </div>
+              </form>
+              <p id="settlementError" class="text-sm text-red-400 mt-2 hidden"></p>
+            </div>
+
+            <!-- Settlement History -->
+            <div class="bg-fuel-black p-4 rounded-lg shadow flex flex-col mb-6">
+              <div class="flex justify-between items-center mb-3">
+                <h3 class="text-lg font-semibold text-gray-200">📜 Settlement History</h3>
+                <button id="refreshSettlementBtn" class="text-sm text-fuel-orange hover:text-orange-400">Refresh</button>
+              </div>
+              <div id="settlementHistoryList" class="space-y-2 max-h-64 overflow-y-auto pr-2">
+                <p class="text-gray-400 text-sm">Loading settlement history...</p>
+              </div>
+            </div>
+          `;
+          initSettlementSection();
           break;
 
         case '📈 Daily Comparison':
@@ -2105,15 +2490,9 @@ case '🕵️ Vehicle verification':
   link.addEventListener('click', (e) => {
     const selected = e.target.textContent.trim();
 
-          // If the feature is locked, show a toast and do nothing
-          if (link.classList.contains('locked')) {
-            e.preventDefault();
-            showToast('Feature is locked 🔒', 'error');
-            return;
-          }
 
           // If it's one of the dynamic sections, load it in main
-          if (["💳 Subscriptions", "👤 Profile", "📊 Station vehicle data","🕵️ Vehicle verification","🧾 Receipts","📈 Daily Comparison","🧪 Density Calculator"].includes(selected)) {
+          if (["💳 Subscriptions", "💳 Billing System", "💰 Settlements", "👤 Profile", "📊 Station vehicle data","🕵️ Vehicle verification","🧾 Receipts","📈 Daily Comparison","🧪 Density Calculator"].includes(selected)) {
             e.preventDefault();
             updateMainContent(selected);
             localStorage.setItem('selectedSection', selected);
@@ -2499,6 +2878,111 @@ case '🕵️ Vehicle verification':
       submitBtn.disabled = false;
       submitBtn.textContent = 'Submit for Verification';
     }
+  }
+
+  // Settlement Section Functions
+  function initSettlementSection() {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const form = document.getElementById('settlementForm');
+    const errorEl = document.getElementById('settlementError');
+    const historyList = document.getElementById('settlementHistoryList');
+    const refreshBtn = document.getElementById('refreshSettlementBtn');
+
+    async function loadSettlementSummary() {
+      try {
+        const res = await fetch('/settlement/summary', { credentials: 'include' });
+        const data = await res.json();
+        if (data.success && data.summary) {
+          const s = data.summary;
+          document.getElementById('availableBalance').textContent = '₹' + s.available_balance;
+          document.getElementById('pendingSettlements').textContent = '₹' + s.pending_settlements;
+          document.getElementById('todaySales').textContent = '₹' + s.today_sales;
+        }
+      } catch (err) {
+        console.error('Failed to load settlement summary:', err);
+      }
+    }
+
+    async function loadSettlementHistory() {
+      if (!historyList) return;
+      historyList.innerHTML = '<p class="text-gray-400 text-sm">Loading settlement history...</p>';
+      try {
+        const res = await fetch('/settlement/history', { credentials: 'include' });
+        const data = await res.json();
+        if (!data.success || !Array.isArray(data.settlements) || data.settlements.length === 0) {
+          historyList.innerHTML = '<p class="text-gray-400 text-sm">No settlement history yet.</p>';
+          return;
+        }
+        historyList.innerHTML = data.settlements.map(s => `
+          <div class="bg-fuel-gray p-3 rounded text-sm">
+            <div class="flex justify-between items-start mb-2">
+              <div>
+                <div class="font-semibold text-gray-200">₹${s.amount.toFixed(2)}</div>
+                <div class="text-gray-400 text-xs">Status: ${s.status}</div>
+                ${s.bank_reference ? `<div class="text-gray-500 text-xs">Ref: ${s.bank_reference}</div>` : ''}
+              </div>
+              <div class="text-right">
+                <div class="text-gray-400 text-xs">${new Date(s.requested_at).toLocaleDateString('en-IN')}</div>
+                ${s.processed_at ? `<div class="text-gray-500 text-xs">Processed: ${new Date(s.processed_at).toLocaleDateString('en-IN')}</div>` : ''}
+              </div>
+            </div>
+            <div class="text-xs ${s.status === 'pending' ? 'text-yellow-400' : s.status === 'approved' ? 'text-green-400' : 'text-red-400'} capitalize">${s.status}</div>
+          </div>`).join('');
+      } catch (err) {
+        console.error(err);
+        historyList.innerHTML = '<p class="text-gray-400 text-sm">Failed to load settlement history.</p>';
+      }
+    }
+
+    // Form submission: request settlement
+    form.addEventListener('submit', async function(e){
+      e.preventDefault();
+      errorEl.classList.add('hidden');
+      const amount = parseFloat(document.getElementById('settlementAmount').value || '0');
+      const bankRef = document.getElementById('bankReference').value.trim();
+
+      if (!amount || amount <= 0) {
+        errorEl.textContent = 'Please enter a valid amount.';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        const res = await fetch('/settlement/request', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            amount: amount,
+            bank_reference: bankRef
+          })
+        });
+        const data = await res.json();
+        if (!data.success) {
+          errorEl.textContent = data.message || 'Failed to request settlement.';
+          errorEl.classList.remove('hidden');
+          return;
+        }
+        showToast('Settlement request submitted successfully.', 'success');
+        form.reset();
+        loadSettlementSummary();
+        loadSettlementHistory();
+      } catch (err) {
+        console.error(err);
+        errorEl.textContent = 'Server error. Please try again.';
+        errorEl.classList.remove('hidden');
+      }
+    });
+
+    // Wire refresh button
+    if (refreshBtn) refreshBtn.addEventListener('click', () => { loadSettlementSummary(); loadSettlementHistory(); });
+
+    // Initial loads
+    loadSettlementSummary();
+    loadSettlementHistory();
   }
 </script>
 

@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Investor Dashboard - FuelFlux</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .card-bg {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+        .metric-card {
+            transition: all 0.3s ease;
+        }
+        .metric-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="gradient-bg shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center">
+                            <svg class="w-6 h-6 text-purple-600" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="ml-4">
+                        <h1 class="text-white text-xl font-bold">FuelFlux Investor Portal</h1>
+                        <p class="text-purple-100 text-sm">Business Analytics & Performance Metrics</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-white text-sm">Welcome, Investor</span>
+                    <a href="{{ url_for('investor.logout') }}" 
+                       class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg text-sm transition">
+                        Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Key Metrics Overview -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Total Revenue -->
+            <div class="metric-card card-bg rounded-xl p-6 shadow-lg">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-medium">Total Revenue</p>
+                        <p class="text-3xl font-bold text-gray-900">₹{{ "%.2f"|format(total_revenue) }}</p>
+                        <p class="text-sm text-green-600 mt-1">
+                            {{ "%.1f"|format(mom_revenue_growth) }}% growth
+                        </p>
+                    </div>
+                    <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Total Transactions -->
+            <div class="metric-card card-bg rounded-xl p-6 shadow-lg">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-medium">Total Transactions</p>
+                        <p class="text-3xl font-bold text-gray-900">{{ total_transactions }}</p>
+                        <p class="text-sm text-blue-600 mt-1">
+                            {{ "%.1f"|format(mom_transaction_growth) }}% growth
+                        </p>
+                    </div>
+                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Users -->
+            <div class="metric-card card-bg rounded-xl p-6 shadow-lg">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-medium">Active Users</p>
+                        <p class="text-3xl font-bold text-gray-900">{{ total_cab_owners + total_pump_owners }}</p>
+                        <p class="text-sm text-purple-600 mt-1">
+                            {{ total_cab_owners }} drivers, {{ total_pump_owners }} pumps
+                        </p>
+                    </div>
+                    <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Total Pumps -->
+            <div class="metric-card card-bg rounded-xl p-6 shadow-lg">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-medium">Total Pumps</p>
+                        <p class="text-3xl font-bold text-gray-900">{{ total_pumps }}</p>
+                        <p class="text-sm text-orange-600 mt-1">
+                            {{ active_subscriptions }} active subscriptions
+                        </p>
+                    </div>
+                    <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                        <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Revenue Chart -->
+            <div class="bg-white rounded-xl p-4 shadow-sm">
+                <h3 class="text-lg font-semibold text-gray-900 mb-3">Revenue Trend (7 Days)</h3>
+                <div class="h-32">
+                    <canvas id="revenueChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Transaction Volume -->
+            <div class="bg-white rounded-xl p-4 shadow-sm">
+                <h3 class="text-lg font-semibold text-gray-900 mb-3">Transaction Volume (7 Days)</h3>
+                <div class="h-32">
+                    <canvas id="transactionChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Fuel Distribution -->
+            <div class="bg-white rounded-xl p-4 shadow-sm">
+                <h3 class="text-lg font-semibold text-gray-900 mb-3">Fuel Type Distribution</h3>
+                <div class="h-32">
+                    <canvas id="fuelChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Top Pumps -->
+            <div class="bg-white rounded-xl p-4 shadow-sm">
+                <h3 class="text-lg font-semibold text-gray-900 mb-3">Top 5 Pumps</h3>
+                <div class="h-32">
+                    <canvas id="topPumpsChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Financial Summary -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <!-- Wallet Balances -->
+            <div class="card-bg rounded-xl p-6 shadow-lg">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Wallet Balances</h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">Driver Wallets</span>
+                        <span class="font-semibold text-gray-900">₹{{ "%.2f"|format(total_driver_wallet_balance) }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">Pump Wallets</span>
+                        <span class="font-semibold text-gray-900">₹{{ "%.2f"|format(total_pump_wallet_balance) }}</span>
+                    </div>
+                    <div class="flex justify-between items-center pt-2 border-t">
+                        <span class="text-gray-800 font-medium">Total Locked</span>
+                        <span class="font-bold text-green-600">₹{{ "%.2f"|format(total_driver_wallet_balance + total_pump_wallet_balance) }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settlement Status -->
+            <div class="card-bg rounded-xl p-6 shadow-lg">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Settlement Status</h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">Pending Settlements</span>
+                        <span class="font-semibold text-yellow-600">{{ pending_settlements }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">Total Settled</span>
+                        <span class="font-semibold text-green-600">₹{{ "%.2f"|format(total_settled_amount) }}</span>
+                    </div>
+                    <div class="flex justify-between items-center pt-2 border-t">
+                        <span class="text-gray-800 font-medium">Today's Revenue</span>
+                        <span class="font-bold text-blue-600">₹{{ "%.2f"|format(today_revenue) }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Performance Metrics -->
+            <div class="card-bg rounded-xl p-6 shadow-lg">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Performance Metrics</h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">Avg Transaction Value</span>
+                        <span class="font-semibold text-gray-900">₹{{ "%.2f"|format(avg_transaction_value) }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-600">Monthly Revenue</span>
+                        <span class="font-semibold text-green-600">₹{{ "%.2f"|format(monthly_revenue) }}</span>
+                    </div>
+                    <div class="flex justify-between items-center pt-2 border-t">
+                        <span class="text-gray-800 font-medium">Quarterly Revenue</span>
+                        <span class="font-bold text-purple-600">₹{{ "%.2f"|format(quarterly_revenue) }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Business Insights -->
+        <div class="card-bg rounded-xl p-6 shadow-lg">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Business Insights</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="text-center p-4 bg-blue-50 rounded-lg">
+                    <p class="text-2xl font-bold text-blue-600">{{ today_transactions }}</p>
+                    <p class="text-sm text-gray-600">Transactions Today</p>
+                </div>
+                <div class="text-center p-4 bg-green-50 rounded-lg">
+                    <p class="text-2xl font-bold text-green-600">{{ monthly_transactions }}</p>
+                    <p class="text-sm text-gray-600">Monthly Transactions</p>
+                </div>
+                <div class="text-center p-4 bg-purple-50 rounded-lg">
+                    <p class="text-2xl font-bold text-purple-600">{{ total_vehicles }}</p>
+                    <p class="text-sm text-gray-600">Registered Vehicles</p>
+                </div>
+                <div class="text-center p-4 bg-orange-50 rounded-lg">
+                    <p class="text-2xl font-bold text-orange-600">{{ "%.1f"|format(total_subscription_revenue / 1000) }}K</p>
+                    <p class="text-sm text-gray-600">Subscription Revenue</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Prepare data for charts
+        const dailyData = {{ daily_data | tojson }};
+        const fuelDistribution = {{ fuel_distribution | tojson }};
+        const topPumpsData = {{ top_pumps_data | tojson }};
+
+        // Revenue Chart - Simplified
+        const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+        new Chart(revenueCtx, {
+            type: 'line',
+            data: {
+                labels: dailyData.slice(-7).map(d => d.date.slice(5)), // Last 7 days, show only month-day
+                datasets: [{
+                    label: 'Revenue',
+                    data: dailyData.slice(-7).map(d => d.revenue),
+                    borderColor: 'rgb(34, 197, 94)',
+                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '₹' + (value/1000).toFixed(0) + 'K';
+                            }
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            maxRotation: 0
+                        }
+                    }
+                }
+            }
+        });
+
+        // Transaction Volume Chart - Simplified
+        const transactionCtx = document.getElementById('transactionChart').getContext('2d');
+        new Chart(transactionCtx, {
+            type: 'bar',
+            data: {
+                labels: dailyData.slice(-7).map(d => d.date.slice(5)), // Last 7 days
+                datasets: [{
+                    label: 'Transactions',
+                    data: dailyData.slice(-7).map(d => d.transactions),
+                    backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                    borderColor: 'rgb(59, 130, 246)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    },
+                    x: {
+                        ticks: {
+                            maxRotation: 0
+                        }
+                    }
+                }
+            }
+        });
+
+        // Fuel Type Distribution - Simplified
+        const fuelCtx = document.getElementById('fuelChart').getContext('2d');
+        new Chart(fuelCtx, {
+            type: 'doughnut',
+            data: {
+                labels: fuelDistribution.map(d => d.fuel_type),
+                datasets: [{
+                    data: fuelDistribution.map(d => d.count),
+                    backgroundColor: [
+                        'rgba(239, 68, 68, 0.8)',
+                        'rgba(34, 197, 94, 0.8)',
+                        'rgba(59, 130, 246, 0.8)',
+                        'rgba(251, 191, 36, 0.8)'
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            boxWidth: 12,
+                            padding: 10,
+                            font: {
+                                size: 11
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Top Pumps - Simplified
+        const topPumpsCtx = document.getElementById('topPumpsChart').getContext('2d');
+        new Chart(topPumpsCtx, {
+            type: 'bar',
+            data: {
+                labels: topPumpsData.slice(0, 5).map(d => d.name.length > 10 ? d.name.slice(0, 10) + '...' : d.name),
+                datasets: [{
+                    label: 'Revenue',
+                    data: topPumpsData.slice(0, 5).map(d => d.revenue),
+                    backgroundColor: 'rgba(147, 51, 234, 0.8)',
+                    borderColor: 'rgb(147, 51, 234)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '₹' + (value/1000).toFixed(0) + 'K';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Simple auto-refresh every 60 seconds (non-intrusive)
+        setTimeout(() => {
+            window.location.reload();
+        }, 60000);
+    </script>
+</body>
+</html>

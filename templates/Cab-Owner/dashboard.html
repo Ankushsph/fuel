@@ -297,28 +297,40 @@ case '💳 Billing System':
       </div>
     </div>
 
-    <!-- Transaction History Card -->
-      <div class="bg-fuel-black p-4 rounded-lg shadow flex flex-col mb-6">
-        <h3 class="text-lg font-semibold text-gray-200 mb-3">📜 Transaction History</h3>
-        <div id="transactionList" class="space-y-3 max-h-64 overflow-y-auto pr-2 terms-content">
-          <p class="text-gray-400 text-sm">Loading transactions...</p>
-        </div>
-      </div>
+    <!-- How it works Card -->
+    <div class="bg-fuel-black p-4 rounded-lg shadow flex flex-col mb-6">
+      <h3 class="text-lg font-semibold text-gray-200 mb-3">ℹ️ How Add Funds Works</h3>
+      <p class="text-gray-300 text-sm mb-2">1. Scan the below QR code using your UPI app and pay the amount.</p>
+      <p class="text-gray-300 text-sm mb-2">2. Upload the payment screenshot and enter the amount + UTR/transaction ID.</p>
+      <p class="text-gray-300 text-sm">3. Admin verifies the payment. Once approved, the amount will be added to your wallet.</p>
+    </div>
 
 
-    <!-- Add Funds Modal -->
-    <div id="addFundsModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center opacity-0 invisible transition-opacity duration-300 z-50">
+    <!-- Add Funds Modal (QR + Screenshot) -->
+    <div id="addFundsModal" class="fixed inset-0 bg-black bg-opacity-80 z-50 hidden flex items-center justify-center p-3 overflow-y-auto">
       <div class="bg-fuel-gray rounded-xl p-6 w-96 relative">
-        <h3 class="text-xl font-bold text-fuel-orange mb-4" >Add Funds</h3>
-        <form id="addFundsForm" class="flex flex-col space-y-3">
+        <h3 class="text-xl font-bold text-fuel-orange mb-4" >Add Funds via QR</h3>
+        <div class="mb-4 text-center">
+          <p class="text-gray-300 text-sm mb-2">Scan this QR using your UPI app:</p>
+          <img src="{{ url_for('static', filename='images/payment_qr.png') }}" alt="Payment QR" class="mx-auto w-40 h-40 object-contain rounded-lg bg-white">
+          <p class="text-gray-300 text-xs mt-2">UPI ID: {{ upi_id }}<br>Business: {{ business_name }}</p>
+        </div>
+        <form id="addFundsForm" class="flex flex-col space-y-3" enctype="multipart/form-data">
 
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-          <input type="number" id="razorpayAmountInput" name="amount" placeholder="Enter amount" min="1" 
+          <input type="number" id="topupAmountInput" name="amount" placeholder="Enter amount paid" min="1" 
                  class="p-2 rounded bg-fuel-black text-white focus:outline-none" required>
+          <input type="text" id="transactionIdInput" name="transaction_id" placeholder="UPI Transaction ID (optional)" 
+                 class="p-2 rounded bg-fuel-black text-white focus:outline-none">
+          <div>
+            <label class="text-sm text-gray-300 mb-1 block">Payment Screenshot</label>
+            <input type="file" id="screenshotInput" name="screenshot" accept="image/*,application/pdf" 
+                   class="w-full text-sm text-gray-200" required>
+          </div>
           <div class="flex justify-end space-x-2">
             <button type="button" id="cancelAddFundsBtn" class="px-4 py-2 rounded bg-gray-700 hover:bg-gray-600">Cancel</button>
-            <button type="submit" class="px-4 py-2 rounded bg-fuel-green hover:bg-green-600 text-white"  onclick="launchRazorpay()">Add</button>
+            <button type="submit" class="px-4 py-2 rounded bg-fuel-green hover:bg-green-600 text-white">Submit</button>
           </div>
         </form>
       </div>
@@ -330,7 +342,6 @@ case '💳 Billing System':
   const cancelAddFundsBtn = document.getElementById('cancelAddFundsBtn');
   const addFundsForm = document.getElementById('addFundsForm');
   const balanceElement = document.getElementById('walletBalance');
-  const addFundsUrl = mainContent.dataset.addFundsUrl;
   const balanceUrl = mainContent.dataset.balanceUrl;
   // Read CSRF token from meta tag
   const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute("content");
@@ -350,57 +361,61 @@ case '💳 Billing System':
     })
     .catch(() => balanceElement.textContent = "0.00");
 
+  // No transaction history yet for wallet; only show balance.
+
 
   // Modal open
   addFundsBtn.addEventListener('click', () => {
-    addFundsModal.classList.remove('opacity-0','invisible');
-    addFundsModal.classList.add('opacity-100','visible');
+    addFundsModal.classList.remove('hidden');
+    addFundsModal.classList.add('flex');
   });
 
   // Modal close
   cancelAddFundsBtn.addEventListener('click', () => {
-    addFundsModal.classList.remove('opacity-100','visible');
-    addFundsModal.classList.add('opacity-0','invisible');
+    addFundsModal.classList.add('hidden');
+    addFundsModal.classList.remove('flex');
     addFundsForm.reset();
   });
 
   addFundsModal.addEventListener('click', e => {
     if(e.target === addFundsModal){
-      addFundsModal.classList.remove('opacity-100','visible');
-      addFundsModal.classList.add('opacity-0','invisible');
+      addFundsModal.classList.add('hidden');
+      addFundsModal.classList.remove('flex');
       addFundsForm.reset();
     }
   });
 
-  // Add Funds submission
+  // Add Funds submission via QR screenshot upload (manual admin verification)
   addFundsForm.addEventListener("submit", async (e) => {
+    console.log("Add Funds form submit triggered");
     e.preventDefault();
     const formData = new FormData(addFundsForm);
     const amount = parseFloat(formData.get("amount"));
+    if (!amount || amount <= 0) {
+      showToast("Please enter a valid amount.", "error");
+      return;
+    }
 
     try {
-      const res = await fetch(addFundsUrl, {
+      console.log("Sending request to /submit-qr-topup");
+      const res = await fetch("/submit-qr-topup", {
         method: "POST",
-        headers: { "Content-Type": "application/json","X-CSRFToken": csrfToken  },
-        body: JSON.stringify({ amount }),
+        headers: { "X-CSRFToken": csrfToken },
+        body: formData,
         credentials: "include"
       });
-
       const data = await res.json();
-
-      if(data.success){
-        balanceElement.textContent = data.new_balance.toFixed(2);
-        mainContent.dataset.walletBalance = data.new_balance.toFixed(2);
-        showToast(data.message, "success");
-        addFundsModal.classList.remove("opacity-100","visible");
-        addFundsModal.classList.add("opacity-0","invisible");
+      console.log("Response:", data);
+      if (data.success) {
+        showToast(data.message || "Payment screenshot submitted.", "success");
+        addFundsModal.classList.add('hidden');
+        addFundsModal.classList.remove('flex');
         addFundsForm.reset();
       } else {
-        showToast(data.message, "error");
+        showToast(data.message || "Failed to submit payment screenshot.", "error");
       }
-
-    } catch(err){
-      console.error(err);
+    } catch (err) {
+      console.error("Submit error:", err);
       showToast("Server error. Try again.", "error");
     }
   });
@@ -516,45 +531,7 @@ case '💳 Billing System':
     const lastSection = localStorage.getItem('selectedSection') || '👤 Profile';
     updateMainContent(lastSection);
   </script>
-  <!-- Razorpay Script -->
-<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-
-
-<script>
-function launchRazorpay() {
-  const amountInput = document.getElementById("razorpayAmountInput");
-  const amountValue = parseFloat(amountInput.value);
-
-  if (!amountValue || amountValue < 1) {
-    alert("Please enter a valid amount.");
-    return;
-  }
-
-  const amountInPaise = amountValue * 100;
-  const options = {
-    key: "rzp_test_RLoVxeTmO0idx0", // Replace with your Razorpay Test Key
-    amount: amountInPaise,
-    currency: "INR",
-    name: "Fuel Flux Wallet",
-    description: "Add Funds",
-    image: "https://yourdomain.com/logo.png",
-    handler: function (response) {
-      alert("Payment successful! Payment ID: " + response.razorpay_payment_id);
-    },
-    prefill: {
-      name: "Nilesh Saraswat",
-      email: "nilesh@example.com",
-      contact: "9999999999"
-    },
-    theme: {
-      color: "#F97316"
-    }
-  };
-
-  const rzp = new Razorpay(options);
-  rzp.open();
-}
-</script>
+  
 
 </body>
 </html>

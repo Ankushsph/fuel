@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>Pending Wallet Top-ups - Admin Panel</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+</head>
+<body class="bg-fuel-black text-white min-h-screen flex flex-col">
+  <header class="bg-fuel-gray p-4 shadow-md">
+    <div class="flex justify-between items-center">
+      <div class="flex items-center gap-4">
+        <a href="{{ url_for('admin.dashboard') }}" class="text-fuel-orange hover:text-white">
+          ← Back to Dashboard
+        </a>
+        <span class="text-xl font-bold">💰 Pending Cab Wallet Top-ups</span>
+      </div>
+      <a href="{{ url_for('admin.admin_logout') }}" 
+         class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-semibold transition text-sm">
+        Logout
+      </a>
+    </div>
+  </header>
+
+  <main class="flex-1 p-6">
+    <div class="max-w-6xl mx-auto">
+      {% if topups %}
+        <div class="grid gap-6">
+          {% for t in topups %}
+          <div id="topup-{{ t.id }}" class="bg-fuel-gray p-6 rounded-xl shadow-lg">
+            <div class="flex flex-col lg:flex-row gap-6">
+              <div class="flex-1">
+                <div class="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 class="text-xl font-bold text-fuel-orange">Cab Wallet Top-up</h3>
+                    <p class="text-gray-400 text-sm">User: {{ t.user_email }}</p>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-3xl font-bold text-green-500">₹{{ t.amount }}</div>
+                    <div class="text-xs text-gray-400 mt-1">
+                      {{ t.created_at.strftime('%d %b %Y, %H:%M') if t.created_at else '' }}
+                    </div>
+                  </div>
+                </div>
+                <div class="space-y-2 text-sm">
+                  {% if t.transaction_id %}
+                  <div class="flex justify-between">
+                    <span class="text-gray-400">Transaction ID:</span>
+                    <span class="font-mono text-xs">{{ t.transaction_id }}</span>
+                  </div>
+                  {% endif %}
+                </div>
+                <div class="flex gap-3 mt-6">
+                  <button onclick="approveTopup({{ t.id }})" 
+                          class="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-semibold transition">
+                    ✅ Approve & Credit Wallet
+                  </button>
+                  <button onclick="rejectTopup({{ t.id }})" 
+                          class="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-semibold transition">
+                    ❌ Reject
+                  </button>
+                </div>
+              </div>
+              <div class="lg:w-1/3">
+                <div class="bg-fuel-black p-4 rounded-lg">
+                  <p class="text-gray-400 text-sm mb-2">Payment Screenshot:</p>
+                  <img src="{{ url_for('admin.view_screenshot', filename=t.screenshot_filename) }}" 
+                       alt="Payment Proof"
+                       class="w-full rounded-lg cursor-pointer hover:scale-105 transition"
+                       onclick="openImageModal('{{ url_for('admin.view_screenshot', filename=t.screenshot_filename) }}')">
+                  <button onclick="openImageModal('{{ url_for('admin.view_screenshot', filename=t.screenshot_filename) }}')" 
+                          class="w-full mt-2 text-fuel-orange hover:text-white text-sm">
+                    🔍 View Full Size
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="bg-fuel-gray p-12 rounded-xl text-center">
+          <div class="text-6xl mb-4">✅</div>
+          <h2 class="text-2xl font-bold text-gray-400">All Caught Up!</h2>
+          <p class="text-gray-500 mt-2">No pending cab wallet top-ups to verify</p>
+        </div>
+      {% endif %}
+    </div>
+  </main>
+
+  <div id="imageModal" class="hidden fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4" onclick="closeImageModal()">
+    <div class="relative max-w-4xl max-h-full">
+      <button onclick="closeImageModal()" class="absolute -top-10 right-0 text-white text-3xl hover:text-fuel-orange">&times;</button>
+      <img id="modalImage" src="" class="max-w-full max-h-screen rounded-lg">
+    </div>
+  </div>
+
+  <div id="toast" class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg hidden z-50"></div>
+
+  <script>
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = `fixed top-4 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg z-50 ${type === 'success' ? 'bg-green-600' : 'bg-red-600'} text-white`;
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 3000);
+    }
+
+    async function approveTopup(topupId) {
+      if (!confirm('Approve this wallet top-up and credit the cab wallet?')) return;
+      try {
+        const response = await fetch(`/admin/wallet-topups/verify/${topupId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+          },
+          body: JSON.stringify({ action: 'approve' })
+        });
+        const result = await response.json();
+        if (result.success) {
+          showToast(result.message, 'success');
+          document.getElementById(`topup-${topupId}`).remove();
+          if (document.querySelectorAll('[id^="topup-"]').length === 0) {
+            location.reload();
+          }
+        } else {
+          showToast(result.error || 'Failed to approve top-up', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Network error. Try again.', 'error');
+      }
+    }
+
+    async function rejectTopup(topupId) {
+      const reason = prompt('Enter rejection reason (optional):');
+      if (reason === null) return;
+      try {
+        const response = await fetch(`/admin/wallet-topups/verify/${topupId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+          },
+          body: JSON.stringify({ action: 'reject', reason: reason || 'Invalid payment proof' })
+        });
+        const result = await response.json();
+        if (result.success) {
+          showToast(result.message, 'success');
+          document.getElementById(`topup-${topupId}`).remove();
+          if (document.querySelectorAll('[id^="topup-"]').length === 0) {
+            location.reload();
+          }
+        } else {
+          showToast(result.error || 'Failed to reject top-up', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showToast('Network error. Try again.', 'error');
+      }
+    }
+
+    function openImageModal(imageUrl) {
+      event.stopPropagation();
+      document.getElementById('modalImage').src = imageUrl;
+      document.getElementById('imageModal').classList.remove('hidden');
+    }
+
+    function closeImageModal() {
+      document.getElementById('imageModal').classList.add('hidden');
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeImageModal();
+    });
+  </script>
+</body>
+</html>

@@ -2,7 +2,17 @@
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, flash, session
 from flask_login import login_required, current_user
 from functools import wraps
-from models import db, PumpOwner, Pump, PumpSubscription, PaymentVerification, PumpRegistrationRequest
+from models import (
+    db,
+    PumpOwner,
+    Pump,
+    PumpSubscription,
+    PaymentVerification,
+    PumpRegistrationRequest,
+    WalletTopupVerification,
+    User,
+    Wallet,
+)
 from datetime import datetime, timedelta
 from werkzeug.security import check_password_hash
 import os
@@ -61,8 +71,8 @@ def admin_logout():
 @admin_required
 def dashboard():
     """Main admin dashboard"""
-    # Get pending verifications
     pending_payments = PaymentVerification.query.filter_by(status='pending').all()
+    pending_wallet_topups = WalletTopupVerification.query.filter_by(status='pending').all()
     pending_registrations = PumpRegistrationRequest.query.filter_by(status='pending').all()
     
     # Get statistics
@@ -70,12 +80,78 @@ def dashboard():
     total_owners = PumpOwner.query.count()
     active_subs = PumpSubscription.query.filter_by(subscription_status='active').count()
     
-    return render_template('admin/dashboard.html',
-                         pending_payments=pending_payments,
-                         pending_registrations=pending_registrations,
-                         total_pumps=total_pumps,
-                         total_owners=total_owners,
-                         active_subs=active_subs)
+    return render_template(
+        'admin/dashboard.html',
+        pending_payments=pending_payments,
+        pending_wallet_topups=pending_wallet_topups,
+        pending_registrations=pending_registrations,
+        total_pumps=total_pumps,
+        total_owners=total_owners,
+        active_subs=active_subs,
+    )
+
+
+@admin_bp.route('/wallet-topups/pending')
+@admin_required
+def pending_wallet_topups():
+    topups = (
+        WalletTopupVerification.query
+        .filter_by(status='pending')
+        .order_by(WalletTopupVerification.created_at.desc())
+        .all()
+    )
+    return render_template('admin/pending_wallet_topups.html', topups=topups)
+
+
+@admin_bp.route('/wallet-topups/verify/<int:topup_id>', methods=['POST'])
+@admin_required
+def verify_wallet_topup(topup_id):
+    topup = WalletTopupVerification.query.get_or_404(topup_id)
+
+    if topup.status != 'pending':
+        return jsonify({"error": "Top-up already processed"}), 400
+
+    data = request.get_json() or {}
+    action = data.get('action')
+
+    if action == 'approve':
+        user = topup.user
+        if not user:
+            return jsonify({"error": "User not found for this top-up"}), 404
+
+        wallet = user.wallet
+        if not wallet:
+            wallet = Wallet(user_id=user.id, balance=0.0)
+            db.session.add(wallet)
+            db.session.flush()
+            user.wallet = wallet
+
+        wallet.balance += topup.amount
+
+        topup.status = 'approved'
+        topup.verified_at = datetime.utcnow()
+        topup.verified_by = session.get('admin_email')
+
+        db.session.commit()
+
+        return jsonify(
+            {
+                "success": True,
+                "message": f"Wallet top-up of ₹{topup.amount:.2f} approved and credited.",
+            }
+        )
+
+    if action == 'reject':
+        topup.status = 'rejected'
+        topup.verified_at = datetime.utcnow()
+        topup.verified_by = session.get('admin_email')
+        topup.rejection_reason = data.get('reason', 'Invalid payment proof')
+
+        db.session.commit()
+
+        return jsonify({"success": True, "message": "Wallet top-up rejected"})
+
+    return jsonify({"error": "Invalid action"}), 400
 
 
 # ========================
