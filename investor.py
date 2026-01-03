@@ -47,6 +47,107 @@ def logout():
     return redirect(url_for('investor.login'))
 
 
+@investor_bp.route('/forgot_password', methods=['GET', 'POST'])
+def forgot_password():
+    """Handle forgot password requests with OTP"""
+    if request.method == 'POST':
+        email = request.form.get('email')
+        
+        if not email:
+            flash('Email is required', 'error')
+            return render_template('Investor/forgot_password.html')
+        
+        # Check if investor exists
+        investor = Investor.query.filter_by(email=email).first()
+        if not investor:
+            flash('If an account with this email exists, you will receive a password reset OTP', 'info')
+            return render_template('Investor/forgot_password.html')
+        
+        # Generate OTP
+        import random
+        import string
+        otp = ''.join(random.choices(string.digits, k=6))
+        
+        # Store OTP (in production, use Redis or database with expiry)
+        # For now, we'll store it in session
+        from flask import session
+        session['reset_otp'] = otp
+        session['reset_email'] = email
+        session['reset_otp_time'] = datetime.utcnow().timestamp()
+        
+        # Send OTP email (you'll need to configure email service)
+        try:
+            # TODO: Configure actual email service like SendGrid, AWS SES, or SMTP
+            # For now, just log the OTP for development
+            print(f"OTP for {email}: {otp}")
+            
+            # Send to specific email as requested
+            if email == 'web3.ankitrai@gmail.com':
+                print(f"OTP sent to web3.ankitrai@gmail.com: {otp}")
+                print("NOTE: Configure email service to send actual OTP emails")
+            
+            flash('A 6-digit OTP has been sent to your email', 'success')
+            return redirect(url_for('investor.verify_otp'))
+            
+        except Exception as e:
+            flash('Error sending OTP. Please try again.', 'error')
+            return render_template('Investor/forgot_password.html')
+    
+    return render_template('Investor/forgot_password.html')
+
+
+@investor_bp.route('/verify_otp', methods=['GET', 'POST'])
+def verify_otp():
+    """Verify OTP and allow password reset"""
+    from flask import session
+    
+    if request.method == 'POST':
+        otp = request.form.get('otp')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        
+        if not otp or not new_password or not confirm_password:
+            flash('All fields are required', 'error')
+            return render_template('Investor/verify_otp.html')
+        
+        # Check OTP
+        stored_otp = session.get('reset_otp')
+        stored_email = session.get('reset_email')
+        otp_time = session.get('reset_otp_time', 0)
+        
+        # Check OTP expiry (15 minutes)
+        if datetime.utcnow().timestamp() - otp_time > 900:  # 15 minutes
+            flash('OTP has expired. Please request a new one.', 'error')
+            return redirect(url_for('investor.forgot_password'))
+        
+        if otp != stored_otp:
+            flash('Invalid OTP. Please try again.', 'error')
+            return render_template('Investor/verify_otp.html')
+        
+        if new_password != confirm_password:
+            flash('Passwords do not match', 'error')
+            return render_template('Investor/verify_otp.html')
+        
+        # Update password
+        investor = Investor.query.filter_by(email=stored_email).first()
+        if investor:
+            investor.set_password(new_password)
+            db.session.commit()
+            
+            # Clear session
+            session.pop('reset_otp', None)
+            session.pop('reset_email', None)
+            session.pop('reset_otp_time', None)
+            
+            flash('Password has been reset successfully. Please login with your new password.', 'success')
+            return redirect(url_for('investor.login'))
+        else:
+            flash('Invalid session. Please try again.', 'error')
+            return redirect(url_for('investor.forgot_password'))
+    
+    return render_template('Investor/verify_otp.html')
+
+
 @investor_bp.route('/dashboard')
 @login_required
 def dashboard():
