@@ -207,21 +207,22 @@
   <div id="profileModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center opacity-0 invisible transition-opacity duration-300 z-50">
     <div class="bg-fuel-gray rounded-xl p-6 w-96 relative">
       <h3 class="text-xl font-bold text-fuel-orange mb-4">Profile Settings</h3>
-      <form id="profileForm" class="flex flex-col space-y-3" method="POST" action="{{ url_for('dashboard.update_profile') }}">
+      <form id="profileForm" class="flex flex-col space-y-3" method="POST" action="{{ url_for('dashboard.change_password') }}">
           
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-                  <input type="password" name="old_password" placeholder="Current Password" 
-                         class="w-full p-2 rounded bg-fuel-gray text-white focus:outline-none" required>
-                  <input type="password" name="new_password" placeholder="New Password" 
-                         class="w-full p-2 rounded bg-fuel-gray text-white focus:outline-none" required>
-                  <input type="password" name="confirm_password" placeholder="Confirm New Password" 
-                         class="w-full p-2 rounded bg-fuel-gray text-white focus:outline-none" required>
-                  <button type="submit" 
-                          class="px-4 py-2 bg-fuel-orange hover:bg-orange-600 rounded-lg font-semibold">
-                          Update Password
-                  </button>
-                </form>
+          <input type="password" name="old_password" placeholder="Current Password" 
+                 class="w-full p-2 rounded bg-fuel-gray text-white focus:outline-none" required>
+          <input type="password" name="new_password" placeholder="New Password" 
+                 class="w-full p-2 rounded bg-fuel-gray text-white focus:outline-none" required>
+          <input type="password" name="confirm_password" placeholder="Confirm New Password" 
+                 class="w-full p-2 rounded bg-fuel-gray text-white focus:outline-none" required>
+
+          <div class="flex gap-2">
+            <button type="button" id="cancelProfileBtn" class="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-semibold transition">Cancel</button>
+            <button type="submit" class="flex-1 px-4 py-2 bg-fuel-orange hover:bg-orange-600 rounded-lg font-semibold transition">Update Password</button>
+          </div>
+        </form>
     </div>
   </div>
 
