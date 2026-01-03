@@ -53,7 +53,8 @@
     <aside class="w-64 bg-fuel-gray flex flex-col justify-between p-6 hidden lg:flex">
       <div>
         <nav class="space-y-4">
-          <a href="#" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition">💳 Billing System</a>
+          <a href="{{ url_for('dashboard.dashboard') }}" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition">🏠 Dashboard</a>
+          <a href="{{ url_for('dashboard.transactions') }}" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition">💳 Transactions</a>
           <a href="#" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition">👤 Profile</a>
         </nav>
 
@@ -91,7 +92,8 @@
 
         <!-- Menu -->
         <nav class="space-y-4 mb-6">
-          <a href="#" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition">💳 Billing System</a>
+          <a href="{{ url_for('dashboard.dashboard') }}" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition">🏠 Dashboard</a>
+          <a href="{{ url_for('dashboard.transactions') }}" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition">💳 Transactions</a>
           <a href="#" class="block py-2 px-3 rounded-lg border border-fuel-orange hover:bg-fuel-black transition">👤 Profile</a>
         </nav>
 
