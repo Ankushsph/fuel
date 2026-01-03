@@ -70,7 +70,7 @@ def transactions():
     # Get all fuel transactions for this user's vehicles
     transactions = db.session.query(FuelTransaction, Pump, Vehicle)\
         .join(Pump, FuelTransaction.pump_id == Pump.id)\
-        .join(Vehicle, FuelTransaction.vehicle_number == Vehicle.number)\
+        .join(Vehicle, FuelTransaction.vehicle_number == Vehicle.name)\
         .filter(Vehicle.user_id == user.id)\
         .order_by(FuelTransaction.created_at.desc())\
         .limit(50)\
@@ -81,7 +81,7 @@ def transactions():
     for transaction, pump, vehicle in transactions:
         transaction_list.append({
             'id': transaction.id,
-            'vehicle_number': vehicle.number,
+            'vehicle_number': vehicle.name,
             'vehicle_type': vehicle.vehicle_type,
             'pump_name': pump.name if pump else 'Unknown',
             'pump_location': pump.location if pump else 'Unknown',
@@ -119,7 +119,7 @@ def transaction_details(transaction_id):
     # Get transaction with pump and vehicle details
     transaction = db.session.query(FuelTransaction, Pump, Vehicle)\
         .join(Pump, FuelTransaction.pump_id == Pump.id)\
-        .join(Vehicle, FuelTransaction.vehicle_number == Vehicle.number)\
+        .join(Vehicle, FuelTransaction.vehicle_number == Vehicle.name)\
         .filter(FuelTransaction.id == transaction_id)\
         .filter(Vehicle.user_id == user.id)\
         .first()
@@ -131,7 +131,7 @@ def transaction_details(transaction_id):
     
     return jsonify({
         'id': trans.id,
-        'vehicle_number': vehicle.number,
+        'vehicle_number': vehicle.name,
         'vehicle_type': vehicle.vehicle_type,
         'pump_name': pump.name if pump else 'Unknown',
         'pump_location': pump.location if pump else 'Unknown',
