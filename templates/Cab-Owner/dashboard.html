@@ -116,26 +116,18 @@
             {% endfor %}
           </ul>
         </div>
-
-        <hr class="my-4 border-fuel-black">
-
-        <!-- Recent Bookings Section -->
-        <div>
-          <h3 class="text-sm font-semibold text-gray-300 mb-3">🕒 Recent Bookings</h3>
-          <ul class="space-y-2 text-gray-300">
-            <li class="bg-fuel-black p-2 rounded-lg text-sm">Cab #3 → Pump C (Yesterday, 4:00 PM)</li>
-            <li class="bg-fuel-black p-2 rounded-lg text-sm">Cab #8 → Pump A (Today, 8:30 AM)</li>
-            <li class="bg-fuel-black p-2 rounded-lg text-sm">Cab #5 → Pump B (Today, 9:15 AM)</li>
-          </ul>
-        </div>
       </aside>
     </div>
 
     <!-- Main Content -->
-    <main class="flex-1 bg-fuel-black p-3 md:p-6 flex flex-col overflow-y-auto">
-      <header class="flex justify-between items-center mb-4 md:mb-6">
-        <h1 class="text-xl md:text-3xl font-bold text-fuel-orange">Welcome, {{ user.full_name }} 🎉</h1>
-      </header>
+    <main class="flex-1 p-4 md:p-6 overflow-y-auto">
+      <!-- Wallet Balance Display -->
+      <div class="bg-fuel-gray p-4 rounded-lg mb-6">
+        <div class="flex justify-between items-center">
+          <span class="text-gray-300">Current Wallet Balance</span>
+          <span class="text-2xl font-bold text-fuel-orange">₹{{ "%.2f"|format(user.wallet_balance if user.wallet_balance else 0.00) }}</span>
+        </div>
+      </div>
 
       <div class="flex-1 bg-fuel-gray rounded-xl shadow-lg p-4 md:p-6 flex flex-col overflow-y-auto text-gray-300" id="mainWorkspace" 
            data-wallet-balance="{{ user.wallet_balance or 0.00 }}"
@@ -144,23 +136,12 @@
         <p>Select an option from the left menu.</p>
       </div>
     </main>
-
-    <!-- Right Panel (Desktop Recent Bookings) -->
-    <aside class="w-72 bg-fuel-gray p-6 hidden lg:block">
-      <h2 class="text-xl font-bold text-fuel-orange mb-4">🕒 Recent Bookings</h2>
-      <ul class="space-y-3 text-gray-300">
-        <li class="bg-fuel-black p-3 rounded-lg">Cab #3 → Pump C (Yesterday, 4:00 PM)</li>
-        <li class="bg-fuel-black p-3 rounded-lg">Cab #8 → Pump A (Today, 8:30 AM)</li>
-        <li class="bg-fuel-black p-3 rounded-lg">Cab #5 → Pump B (Today, 9:15 AM)</li>
-      </ul>
-    </aside>
-
   </div>
 
- <!-- Vehicle Modal -->
-    <div id="vehicleModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center opacity-0 invisible transition-opacity duration-300 z-50">
-      <div class="bg-fuel-gray rounded-xl p-6 w-96 relative">
-        <h3 class="text-xl font-bold text-fuel-orange mb-4">Add Vehicle</h3>
+  <!-- Vehicle Modal -->
+  <div id="vehicleModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center opacity-0 invisible transition-opacity duration-300 z-50">
+    <div class="bg-fuel-gray rounded-xl p-6 w-96 relative">
+      <h3 class="text-xl font-bold text-fuel-orange mb-4">Add Vehicle</h3>
         <form id="vehicleForm" class="flex flex-col space-y-3" method="POST" action="{{ url_for('vehicle.add_vehicle') }}">
           
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -169,7 +150,6 @@
           
           <input type="text" name="type" id="vehicleTypeInput" placeholder="Vehicle Type" class="p-2 rounded bg-fuel-black text-white focus:outline-none" required>
           
-
           <input type="text" name="year" id="vehicleYearInput" placeholder="Year of Manufacture" class="p-2 rounded bg-fuel-black text-white focus:outline-none" required>
           
           <input 
@@ -180,32 +160,78 @@
             class="p-2 rounded bg-fuel-black text-white focus:outline-none uppercase" 
             pattern="^([A-Z]{2})(\d{1,2})([A-Z]{1,2}|BH)(\d{4})$"
             title="Enter a valid Indian vehicle number (e.g., GJ01AB1234, MH20BH1234)"
-            required
-          >
+            required>
 
-          <select name="fuel_type" id="vehicleFuelType" class="p-2 rounded bg-fuel-black text-white focus:outline-none" required>
-            <option value="" disabled selected>Fuel Type</option>
-            <option value="Petrol">Petrol</option>
-            <option value="Diesel">Diesel</option>
-            <option value="CNG">CNG</option>
-            <option value="Electric">Electric</option>
-          </select>
-
-          <div class="flex justify-end space-x-2">
-            <button type="button" id="cancelVehicleBtn" class="px-4 py-2 rounded bg-gray-700 hover:bg-gray-600">Cancel</button>
-            <button type="submit" class="px-4 py-2 rounded bg-fuel-orange hover:bg-orange-600 text-white">Add</button>
+          <div class="flex gap-2">
+            <button type="button" id="cancelVehicleBtn" class="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-semibold transition">Cancel</button>
+            <button type="submit" class="flex-1 px-4 py-2 bg-fuel-orange hover:bg-orange-600 rounded-lg font-semibold transition">Add Vehicle</button>
           </div>
         </form>
-      </div>
     </div>
+  </div>
 
-    <script>
-      // Force uppercase input for vehicle number
-      const vehicleLicenseInput = document.getElementById('vehicleLicenseInput');
-      vehicleLicenseInput.addEventListener('input', () => {
-        vehicleLicenseInput.value = vehicleLicenseInput.value.toUpperCase();
-      });
-    </script>
+  <!-- Add Funds Modal -->
+  <div id="addFundsModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center opacity-0 invisible transition-opacity duration-300 z-50">
+    <div class="bg-fuel-gray rounded-xl p-6 w-96 relative">
+      <h3 class="text-xl font-bold text-fuel-orange mb-4">Add Funds</h3>
+      <div class="bg-fuel-black p-4 rounded-lg mb-6">
+        <h3 class="text-lg font-semibold text-gray-200 mb-3">ℹ️ How Add Funds Works</h3>
+        <p class="text-gray-300 text-sm mb-2">1. Scan the QR code using your UPI app and pay the amount.</p>
+        <p class="text-gray-300 text-sm mb-2">2. Upload the payment screenshot and enter the amount + UTR/transaction ID.</p>
+        <p class="text-gray-300 text-sm">3. Admin verifies the payment. Once approved, the amount will be added to your wallet.</p>
+      </div>
+
+      <form id="addFundsForm" class="flex flex-col space-y-3" method="POST" action="{{ url_for('wallet.add_funds') }}" enctype="multipart/form-data">
+          
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+          <input type="number" id="topupAmountInput" name="amount" placeholder="Enter amount paid" min="1" 
+                 class="p-2 rounded bg-fuel-black text-white focus:outline-none" required>
+          <input type="text" id="transactionIdInput" name="transaction_id" placeholder="UPI Transaction ID (optional)" 
+                 class="p-2 rounded bg-fuel-black text-white focus:outline-none">
+          <div>
+            <label class="text-sm text-gray-300 mb-1 block">Payment Screenshot</label>
+            <input type="file" id="screenshotInput" name="screenshot" accept="image/*" required
+                   class="w-full p-2 rounded bg-fuel-black text-white focus:outline-none">
+          </div>
+
+          <div class="flex gap-2">
+            <button type="button" id="cancelAddFundsBtn" class="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-semibold transition">Cancel</button>
+            <button type="submit" class="flex-1 px-4 py-2 bg-fuel-orange hover:bg-orange-600 rounded-lg font-semibold transition">Submit</button>
+          </div>
+        </form>
+    </div>
+  </div>
+
+  <!-- Profile Modal -->
+  <div id="profileModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center opacity-0 invisible transition-opacity duration-300 z-50">
+    <div class="bg-fuel-gray rounded-xl p-6 w-96 relative">
+      <h3 class="text-xl font-bold text-fuel-orange mb-4">Profile Settings</h3>
+      <form id="profileForm" class="flex flex-col space-y-3" method="POST" action="{{ url_for('dashboard.update_profile') }}">
+          
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                  <input type="password" name="old_password" placeholder="Current Password" 
+                         class="w-full p-2 rounded bg-fuel-gray text-white focus:outline-none" required>
+                  <input type="password" name="new_password" placeholder="New Password" 
+                         class="w-full p-2 rounded bg-fuel-gray text-white focus:outline-none" required>
+                  <input type="password" name="confirm_password" placeholder="Confirm New Password" 
+                         class="w-full p-2 rounded bg-fuel-gray text-white focus:outline-none" required>
+                  <button type="submit" 
+                          class="px-4 py-2 bg-fuel-orange hover:bg-orange-600 rounded-lg font-semibold">
+                          Update Password
+                  </button>
+                </form>
+    </div>
+  </div>
+
+  <script>
+    // Force uppercase input for vehicle number
+    const vehicleLicenseInput = document.getElementById('vehicleLicenseInput');
+    vehicleLicenseInput.addEventListener('input', () => {
+      vehicleLicenseInput.value = vehicleLicenseInput.value.toUpperCase();
+    });
+  </script>
 
 
 
@@ -247,293 +273,65 @@
     addVehicleBtn.addEventListener('click', openModal);
     addVehicleBtnMobile.addEventListener('click', openModal);
     cancelVehicleBtn.addEventListener('click', () => {
-      vehicleModal.classList.remove('opacity-100','visible');
       vehicleModal.classList.add('opacity-0','invisible');
-      document.getElementById('vehicleForm').reset();
-    });
-    vehicleModal.addEventListener('click', (e) => {
-      if(e.target === vehicleModal) {
-        vehicleModal.classList.remove('opacity-100','visible');
-        vehicleModal.classList.add('opacity-0','invisible');
-        document.getElementById('vehicleForm').reset();
-      }
+      vehicleModal.classList.remove('opacity-100','visible');
     });
 
-    // Mobile Sidebar toggle
-    const mobileSidebar = document.getElementById('mobileSidebar');
-    const openMobileSidebarBtn = document.getElementById('openMobileSidebar');
-    const closeMobileSidebarBtn = document.getElementById('closeMobileSidebar');
+    // Add Funds Modal
+    const addFundsModal = document.getElementById('addFundsModal');
+    const addFundsBtn = document.getElementById('addFundsBtn');
+    const cancelAddFundsBtn = document.getElementById('cancelAddFundsBtn');
 
-    openMobileSidebarBtn.addEventListener('click', () => {
-      mobileSidebar.classList.remove('opacity-0','invisible');
-      mobileSidebar.classList.add('opacity-100','visible');
+    function openAddFundsModal() {
+      addFundsModal.classList.remove('opacity-0','invisible');
+      addFundsModal.classList.add('opacity-100','visible');
+    }
+    addFundsBtn.addEventListener('click', openAddFundsModal);
+    cancelAddFundsBtn.addEventListener('click', () => {
+      addFundsModal.classList.add('opacity-0','invisible');
+      addFundsModal.classList.remove('opacity-100','visible');
     });
-    closeMobileSidebarBtn.addEventListener('click', () => {
-      mobileSidebar.classList.remove('opacity-100','visible');
-      mobileSidebar.classList.add('opacity-0','invisible');
+
+    // Profile Modal
+    const profileModal = document.getElementById('profileModal');
+    const profileBtn = document.getElementById('profileBtn');
+    const cancelProfileBtn = document.getElementById('cancelProfileBtn');
+
+    function openProfileModal() {
+      profileModal.classList.remove('opacity-0','invisible');
+      profileModal.classList.add('opacity-100','visible');
+    }
+    profileBtn.addEventListener('click', openProfileModal);
+    cancelProfileBtn.addEventListener('click', () => {
+      profileModal.classList.add('opacity-0','invisible');
+      profileModal.classList.remove('opacity-100','visible');
     });
 
-    // Dynamic main content
-    const mainContent = document.getElementById('mainWorkspace');
-    const menuLinks = document.querySelectorAll('nav a');
-    const walletBalance = mainContent.dataset.walletBalance;
+    // Mobile sidebar toggle
+    document.getElementById('openMobileSidebar').addEventListener('click', function() {
+      document.getElementById('mobileSidebar').classList.remove('opacity-0','invisible');
+      document.getElementById('mobileSidebar').classList.add('opacity-100','visible');
+    });
+    document.getElementById('closeMobileSidebar').addEventListener('click', function() {
+      document.getElementById('mobileSidebar').classList.add('opacity-0','invisible');
+      document.getElementById('mobileSidebar').classList.remove('opacity-100','visible');
+    });
 
-    function updateMainContent(selected) {
-      let content = '';
-      switch(selected){
-case '💳 Billing System':
-  mainContent.innerHTML = `
-    <h2 class="text-2xl font-bold text-fuel-orange mb-4">Billing System</h2>
-
-    <!-- Wallet Card -->
-    <div class="bg-fuel-black p-4 rounded-lg shadow flex flex-col mb-6">
-      <h3 class="text-lg font-semibold text-gray-200 mb-2">💰 Wallet</h3>
-      <div class="flex items-center justify-between space-x-4">
-        <div>
-          <p class="text-gray-300">Current Balance:</p>
-          <p class="text-3xl font-bold text-fuel-orange mt-1">₹<span id="walletBalance">Loading...</span></p>
-        </div>
-        <button id="addFundsBtn" class="px-4 py-2 bg-fuel-green hover:bg-green-600 rounded-lg font-semibold">
-          Add Funds
-        </button>
-      </div>
-    </div>
-
-    <!-- How it works Card -->
-    <div class="bg-fuel-black p-4 rounded-lg shadow flex flex-col mb-6">
-      <h3 class="text-lg font-semibold text-gray-200 mb-3">ℹ️ How Add Funds Works</h3>
-      <p class="text-gray-300 text-sm mb-2">1. Scan the below QR code using your UPI app and pay the amount.</p>
-      <p class="text-gray-300 text-sm mb-2">2. Upload the payment screenshot and enter the amount + UTR/transaction ID.</p>
-      <p class="text-gray-300 text-sm">3. Admin verifies the payment. Once approved, the amount will be added to your wallet.</p>
-    </div>
-
-
-    <!-- Add Funds Modal (QR + Screenshot) -->
-    <div id="addFundsModal" class="fixed inset-0 bg-black bg-opacity-80 z-50 hidden flex items-center justify-center p-3 overflow-y-auto">
-      <div class="bg-fuel-gray rounded-xl p-6 w-96 relative">
-        <h3 class="text-xl font-bold text-fuel-orange mb-4" >Add Funds via QR</h3>
-        <div class="mb-4 text-center">
-          <p class="text-gray-300 text-sm mb-2">Scan this QR using your UPI app:</p>
-          <img src="{{ url_for('static', filename='images/payment_qr.png') }}" alt="Payment QR" class="mx-auto w-40 h-40 object-contain rounded-lg bg-white">
-          <p class="text-gray-300 text-xs mt-2">UPI ID: {{ upi_id }}<br>Business: {{ business_name }}</p>
-        </div>
-        <form id="addFundsForm" class="flex flex-col space-y-3" enctype="multipart/form-data">
-
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-          <input type="number" id="topupAmountInput" name="amount" placeholder="Enter amount paid" min="1" 
-                 class="p-2 rounded bg-fuel-black text-white focus:outline-none" required>
-          <input type="text" id="transactionIdInput" name="transaction_id" placeholder="UPI Transaction ID (optional)" 
-                 class="p-2 rounded bg-fuel-black text-white focus:outline-none">
-          <div>
-            <label class="text-sm text-gray-300 mb-1 block">Payment Screenshot</label>
-            <input type="file" id="screenshotInput" name="screenshot" accept="image/*,application/pdf" 
-                   class="w-full text-sm text-gray-200" required>
-          </div>
-          <div class="flex justify-end space-x-2">
-            <button type="button" id="cancelAddFundsBtn" class="px-4 py-2 rounded bg-gray-700 hover:bg-gray-600">Cancel</button>
-            <button type="submit" class="px-4 py-2 rounded bg-fuel-green hover:bg-green-600 text-white">Submit</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  `;
-
-  const addFundsBtn = document.getElementById('addFundsBtn');
-  const addFundsModal = document.getElementById('addFundsModal');
-  const cancelAddFundsBtn = document.getElementById('cancelAddFundsBtn');
-  const addFundsForm = document.getElementById('addFundsForm');
-  const balanceElement = document.getElementById('walletBalance');
-  const balanceUrl = mainContent.dataset.balanceUrl;
-  // Read CSRF token from meta tag
-  const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute("content");
-
-  // Fetch current balance immediately
-    fetch(balanceUrl, {
-        method: "GET",
-        credentials: "include" 
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            balanceElement.textContent = parseFloat(data.balance).toFixed(2);
-        } else {
-            balanceElement.textContent = "0.00";
-        }
-    })
-    .catch(() => balanceElement.textContent = "0.00");
-
-  // No transaction history yet for wallet; only show balance.
-
-
-  // Modal open
-  addFundsBtn.addEventListener('click', () => {
-    addFundsModal.classList.remove('hidden');
-    addFundsModal.classList.add('flex');
-  });
-
-  // Modal close
-  cancelAddFundsBtn.addEventListener('click', () => {
-    addFundsModal.classList.add('hidden');
-    addFundsModal.classList.remove('flex');
-    addFundsForm.reset();
-  });
-
-  addFundsModal.addEventListener('click', e => {
-    if(e.target === addFundsModal){
-      addFundsModal.classList.add('hidden');
-      addFundsModal.classList.remove('flex');
-      addFundsForm.reset();
-    }
-  });
-
-  // Add Funds submission via QR screenshot upload (manual admin verification)
-  addFundsForm.addEventListener("submit", async (e) => {
-    console.log("Add Funds form submit triggered");
-    e.preventDefault();
-    const formData = new FormData(addFundsForm);
-    const amount = parseFloat(formData.get("amount"));
-    if (!amount || amount <= 0) {
-      showToast("Please enter a valid amount.", "error");
-      return;
-    }
-
-    try {
-      console.log("Sending request to /submit-qr-topup");
-      const res = await fetch("/submit-qr-topup", {
-        method: "POST",
-        headers: { "X-CSRFToken": csrfToken },
-        body: formData,
-        credentials: "include"
-      });
-      const data = await res.json();
-      console.log("Response:", data);
-      if (data.success) {
-        showToast(data.message || "Payment screenshot submitted.", "success");
-        addFundsModal.classList.add('hidden');
-        addFundsModal.classList.remove('flex');
-        addFundsForm.reset();
-      } else {
-        showToast(data.message || "Failed to submit payment screenshot.", "error");
-      }
-    } catch (err) {
-      console.error("Submit error:", err);
-      showToast("Server error. Try again.", "error");
-    }
-  });
-  break;
-
-        case '👤 Profile':
-          content = `
-            <h2 class="text-2xl font-bold text-fuel-orange mb-4">Profile</h2>
-            <div class="space-y-6">
-
-              <!-- User Info -->
-              <div class="bg-fuel-black p-4 rounded-lg shadow mb-6">
-                <h3 class="text-lg font-semibold text-gray-200 mb-2">Your Information</h3>
-                <p><span class="font-semibold">Full Name:</span> {{ user.full_name }}</p>
-                <p><span class="font-semibold">Email:</span> {{ user.email }}</p>
-              </div>
-
-              <!-- Update Profile Form -->
-              <div class="bg-fuel-black p-4 rounded-lg shadow mb-6">
-                <h3 class="text-lg font-semibold text-gray-200 mb-3">Update Profile</h3>
-                <form method="POST" action="{{ url_for('dashboard.update_profile') }}" class="space-y-3">
-                    
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-                  <input type="text" name="full_name" value="{{ user.full_name }}" 
-                         class="w-full p-2 rounded bg-fuel-gray text-white focus:outline-none" required>
-                  <button type="submit" 
-                          class="px-4 py-2 bg-fuel-orange hover:bg-orange-600 rounded-lg font-semibold">
-                    Save Changes
-                  </button>
-                </form>
-              </div>
-
-              <!-- Change Password -->
-              {% if user.password_hash %}
-              <div class="bg-fuel-black p-4 rounded-lg shadow">
-                <h3 class="text-lg font-semibold text-gray-200 mb-3">Change Password</h3>
-                <form method="POST" action="{{ url_for('password_bp.change_password') }}" class="space-y-3">
-                  
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-
-                  <input type="password" name="old_password" placeholder="Current Password" 
-                         class="w-full p-2 rounded bg-fuel-gray text-white focus:outline-none" required>
-                  <input type="password" name="new_password" placeholder="New Password" 
-                         class="w-full p-2 rounded bg-fuel-gray text-white focus:outline-none" required>
-                  <input type="password" name="confirm_password" placeholder="Confirm New Password" 
-                         class="w-full p-2 rounded bg-fuel-gray text-white focus:outline-none" required>
-                  <button type="submit" 
-                          class="px-4 py-2 bg-fuel-orange hover:bg-orange-600 rounded-lg font-semibold">
-                    Update Password
-                  </button>
-                </form>
-              </div>
-              {% else %}
-                <p class="bg-yellow-500 bg-opacity-20 text-yellow-400 px-3 py-2 rounded text-sm">
-                  Password change not available for OAuth users.</p>
-              {% endif %}
-              <!-- User Vehicles Section -->
-              <div class="bg-fuel-black p-4 rounded-lg shadow mb-6">
-              <h3 class="text-lg font-semibold text-gray-200 mb-3">Your Vehicles</h3>
-              {% if user.vehicles %}
-              <ul class="space-y-2 text-gray-300">
-                {% for v in user.vehicles %}
-                  <li class="flex flex-col justify-between bg-fuel-gray p-3 rounded-lg">
-                    <div class="flex justify-between items-center mb-1">
-                      <span class="font-semibold">{{ v.name }} ({{ v.type }})</span>
-                      <form method="POST" action="{{ url_for('vehicle.remove_vehicle', vehicle_id=v.id) }}">
-                        <button type="submit" class="px-2 py-1 bg-fuel-red hover:bg-red-600 rounded text-sm">
-                          Remove
-                        </button>
-                      </form>
-                    </div>
-                    <div class="text-sm text-gray-200 space-y-1">
-                      <p><span class="font-semibold">Year:</span> {{ v.year }}</p>
-                      <p><span class="font-semibold">License:</span> {{ v.license }}</p>
-                      <p><span class="font-semibold">Fuel Type:</span> {{ v.fuel_type }}</p>
-                    </div>
-                  </li>
-                {% endfor %}
-              </ul>
-              {% else %}
-                <p class="text-gray-400 text-sm">No vehicles added yet.</p>
-              {% endif %}
-            </div>
-            `;
-          mainContent.innerHTML = content;
-          break;
-
-        default:
-          mainContent.innerHTML = `<p>Select an option from the left menu.</p>`;
-      }
-    }
-
-    menuLinks.forEach(link => {
-    link.addEventListener('click', (e) => {
-      e.preventDefault();
-      const selected = e.target.textContent.trim();
-      updateMainContent(selected);
-      
-      // Save selection to localStorage
-      localStorage.setItem('selectedSection', selected);
-
-      // Close mobile sidebar if needed
-      if(!link.closest('.lg\\:flex')) {
-        mobileSidebar.classList.remove('opacity-100','visible');
-        mobileSidebar.classList.add('opacity-0','invisible');
+    // Auto-refresh wallet balance
+    const balanceElement = document.getElementById('walletBalance');
+    const balanceUrl = document.getElementById('mainWorkspace').dataset.balanceUrl;
+    if (balanceUrl && balanceElement) {
+      setInterval(() => {
+        fetch(balanceUrl)
+          .then(response => response.json())
+          .then(data => {
+            if (data.balance !== undefined) {
+              balanceElement.textContent = data.balance.toFixed(2);
             }
-          });
-        });
-
-
-    // Default content
-    const lastSection = localStorage.getItem('selectedSection') || '👤 Profile';
-    updateMainContent(lastSection);
+          })
+          .catch(() => balanceElement.textContent = "0.00");
+      }, 30000); // Refresh every 30 seconds
+    }
   </script>
-  
-
 </body>
 </html>
