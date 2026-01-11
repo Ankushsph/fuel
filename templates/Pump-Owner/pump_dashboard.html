@@ -4324,13 +4324,9 @@ case '🕵️ Vehicle verification':
 
   function showSubscriptionRequired() {
     showToast('Subscription required to access this feature', 'warning');
-    
-    // Show subscription modal
-    const modal = document.getElementById('subscriptionModal');
-    if (modal) {
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-    }
+
+    updateMainContent('💳 Subscriptions');
+    localStorage.setItem('selectedSection', '💳 Subscriptions');
   }
 
   function loadFeature(feature) {
@@ -4387,7 +4383,10 @@ case '🕵️ Vehicle verification':
         const data = await response.json();
         if (data.is_new) {
           // New pump - show subscription immediately
-          setTimeout(() => showSubscriptionRequired(), 1000);
+          setTimeout(() => {
+            updateMainContent('💳 Subscriptions');
+            localStorage.setItem('selectedSection', '💳 Subscriptions');
+          }, 1000);
           showToast('Welcome! Please subscribe to access all features', 'info');
         }
       }
