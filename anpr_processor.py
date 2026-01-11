@@ -30,6 +30,24 @@ class ANPRProcessor:
         except Exception as e:
             print(f"⚠️ EasyOCR initialization failed: {e}")
             self.reader = None
+
+    def _resolve_video_source(self, rtsp_or_file: str):
+        src = (rtsp_or_file or "").strip()
+        if src.lower().startswith("file:"):
+            rel_path = src[5:].lstrip("/\\")
+            rel_path_norm = rel_path.replace("\\", "/")
+            if not rel_path_norm.lower().startswith("uploads/videos/") or not rel_path_norm.lower().endswith(".mp4"):
+                raise ValueError("Invalid video file source")
+
+            base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "uploads", "videos"))
+            abs_path = os.path.abspath(os.path.join(os.path.dirname(__file__), rel_path_norm))
+            if not abs_path.startswith(base_dir + os.sep):
+                raise ValueError("Invalid video file path")
+            if not os.path.exists(abs_path):
+                raise FileNotFoundError("Video file not found")
+            return abs_path, True
+
+        return src, False
     
     def preprocess_image(self, image):
         """Preprocess image for better OCR results"""
@@ -155,8 +173,14 @@ class ANPRProcessor:
         """Process RTSP stream for continuous plate detection"""
         print(f"🎥 Starting ANPR stream for camera {camera_id}")
         print(f"📹 RTSP URL: {rtsp_url}")
-        
-        cap = cv2.VideoCapture(rtsp_url)
+
+        try:
+            capture_source, is_file_source = self._resolve_video_source(rtsp_url)
+        except Exception as e:
+            print(f"❌ Invalid video source: {e}")
+            return
+
+        cap = cv2.VideoCapture(capture_source)
         
         if not cap.isOpened():
             print(f"❌ Failed to open RTSP stream: {rtsp_url}")
@@ -172,6 +196,13 @@ class ANPRProcessor:
             ret, frame = cap.read()
             
             if not ret:
+                if is_file_source:
+                    try:
+                        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                        time.sleep(0.05)
+                        continue
+                    except Exception:
+                        pass
                 print(f"⚠️ Failed to read frame from camera {camera_id}")
                 time.sleep(1)
                 continue

@@ -1,6 +1,7 @@
 # vehicle_verification.py
 
 import cv2
+import os
 import threading
 import time
 from flask import Blueprint, jsonify, current_app, render_template, request
@@ -28,6 +29,8 @@ def get_ocr_reader():
 # Keep track of active threads per verification ID
 threads = {}
 lock = threading.Lock()
+_thread_lock = threading.Lock()
+_stop_events = {}
 
 
 def read_license_plate(frame):
@@ -53,7 +56,26 @@ def read_license_plate(frame):
         return []
 
 
-def process_rtsp(verification: VehicleVerification):
+def _resolve_video_source(rtsp_or_file: str):
+    src = (rtsp_or_file or "").strip()
+    if src.lower().startswith("file:"):
+        rel_path = src[5:].lstrip("/\\")
+        rel_path_norm = rel_path.replace("\\", "/")
+        if not rel_path_norm.lower().startswith("uploads/videos/") or not rel_path_norm.lower().endswith(".mp4"):
+            raise ValueError("Invalid video file source")
+
+        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "uploads", "videos"))
+        abs_path = os.path.abspath(os.path.join(os.path.dirname(__file__), rel_path_norm))
+        if not abs_path.startswith(base_dir + os.sep):
+            raise ValueError("Invalid video file path")
+        if not os.path.exists(abs_path):
+            raise FileNotFoundError("Video file not found")
+        return abs_path, True
+
+    return src, False
+
+
+def process_rtsp(app_obj, verification: VehicleVerification, stop_event=None):
     """
     Process RTSP feed in a background thread, detect license plates.
     """
@@ -64,35 +86,60 @@ def process_rtsp(verification: VehicleVerification):
     print(f"🔄 Starting plate detection for {station_name}...")
     print(f"📹 RTSP URL: {rtsp_url}")
 
-    # Try multiple backends
-    cap = None
-    backends = [(cv2.CAP_FFMPEG, "FFMPEG"), (cv2.CAP_ANY, "ANY")]
-    
-    for backend, backend_name in backends:
-        print(f"🔌 Trying {backend_name} backend...")
-        cap = cv2.VideoCapture(rtsp_url, backend)
-        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-        cap.set(cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, 20000)
-        cap.set(cv2.CAP_PROP_READ_TIMEOUT_MSEC, 20000)
-        
-        # Verify connection with frame read
-        max_attempts = 8
-        connected = False
-        for attempt in range(max_attempts):
-            if cap.isOpened():
-                ret, test_frame = cap.read()
-                if ret and test_frame is not None:
-                    print(f"✅ Connected with {backend_name} on attempt {attempt + 1}")
-                    connected = True
-                    break
-            time.sleep(1.5)
-        
-        if connected:
-            break
+    try:
+        capture_source, is_file_source = _resolve_video_source(rtsp_url)
+    except Exception as e:
+        print(f"❌ Invalid video source for {station_name}: {e}")
+        return
+
+    if is_file_source:
+        print(f"📁 Resolved file source for {station_name}: {capture_source}")
+        import os
+        if not os.path.exists(capture_source):
+            print(f"❌ File does not exist: {capture_source}")
+            return
         else:
-            if cap:
-                cap.release()
-            cap = None
+            print(f"✅ File exists and size: {os.path.getsize(capture_source)} bytes")
+    else:
+        print(f"🌐 Using RTSP source for {station_name}: {capture_source}")
+
+    cap = None
+    if is_file_source:
+        cap = cv2.VideoCapture(capture_source, cv2.CAP_FFMPEG)
+        if not cap or not cap.isOpened():
+            print(f"⚠️ FFMPEG backend failed, trying ANY backend for {capture_source}")
+            cap = cv2.VideoCapture(capture_source, cv2.CAP_ANY)
+        if not cap or not cap.isOpened():
+            print(f"❌ Both backends failed to open file: {capture_source}")
+            return
+        else:
+            print(f"✅ Opened file with backend: {cap.getBackendName()}")
+    else:
+        backends = [(cv2.CAP_FFMPEG, "FFMPEG"), (cv2.CAP_ANY, "ANY")]
+        for backend, backend_name in backends:
+            print(f"🔌 Trying {backend_name} backend...")
+            cap = cv2.VideoCapture(capture_source, backend)
+            cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+            cap.set(cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, 20000)
+            cap.set(cv2.CAP_PROP_READ_TIMEOUT_MSEC, 20000)
+            
+            max_attempts = 8
+            connected = False
+            for attempt in range(max_attempts):
+                if cap.isOpened():
+                    ret, test_frame = cap.read()
+                    if ret and test_frame is not None:
+                        print(f"✅ Connected with {backend_name} on attempt {attempt + 1}")
+                        connected = True
+                        break
+                time.sleep(1.5)
+            
+            if connected:
+                break
+            else:
+                if cap:
+                    cap.release()
+                cap = None
     
     if not cap or not cap.isOpened():
         print(f"❌ Failed to open RTSP for {station_name} after all attempts")
@@ -107,10 +154,25 @@ def process_rtsp(verification: VehicleVerification):
     plates_detected = 0
     last_log_time = time.time()
 
-    with flask_app.app_context():
+    if app_obj is None:
+        print(f"❌ No Flask app context available for {station_name}, cannot write DB results")
+        cap.release()
+        return
+
+    with app_obj.app_context():
         while True:
+            if stop_event is not None and stop_event.is_set():
+                break
             ret, frame = cap.read()
             if not ret or frame is None:
+                if is_file_source:
+                    try:
+                        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                        time.sleep(0.05)
+                        continue
+                    except Exception:
+                        pass
+
                 consecutive_failures += 1
                 print(f"⚠️  Frame read failed for {station_name} (attempt {consecutive_failures}/{max_failures})")
                 if consecutive_failures >= max_failures:
@@ -175,22 +237,46 @@ def process_rtsp(verification: VehicleVerification):
     print(f"Stopped monitoring RTSP for {station_name}")
 
 
-def start_rtsp_thread(verification: VehicleVerification):
+def start_rtsp_thread(verification: VehicleVerification, force_restart: bool = False):
     """
     Start a background thread for RTSP monitoring if not already running.
     """
-    if verification.id in threads:
-        thread = threads[verification.id]
-        if thread.is_alive():
-            return  # Already running
+    with _thread_lock:
+        existing_thread = threads.get(verification.id)
+        if existing_thread is not None and existing_thread.is_alive():
+            if not force_restart:
+                return
+
+            ev = _stop_events.get(verification.id)
+            if ev is not None:
+                ev.set()
+            try:
+                existing_thread.join(timeout=2)
+            except Exception:
+                pass
     
-    thread = threading.Thread(target=process_rtsp, args=(verification,), daemon=True)
-    threads[verification.id] = thread
+    app_obj = None
+    try:
+        app_obj = current_app._get_current_object()
+    except Exception:
+        app_obj = None
+
+    stop_event = threading.Event()
+    with _thread_lock:
+        _stop_events[verification.id] = stop_event
+
+    thread = threading.Thread(target=process_rtsp, args=(app_obj, verification, stop_event), daemon=True)
+    with _thread_lock:
+        threads[verification.id] = thread
     thread.start()
     try:
         current_app.logger.info(f"Started monitoring thread for verification {verification.id}")
     except:
         print(f"Started monitoring thread for verification {verification.id}")
+
+
+def restart_rtsp_thread(verification: VehicleVerification):
+    return start_rtsp_thread(verification, force_restart=True)
 
 
 @vehicle_verification_bp.route("/start-vehicle-monitoring")

@@ -1,6 +1,7 @@
 #config.py
 import os
 from dotenv import load_dotenv
+from sqlalchemy.pool import NullPool
 
 load_dotenv()
 
@@ -9,7 +10,8 @@ class Config:
 
     # ---------------- DATABASE ----------------
     # Use DATABASE_URL from environment (for production) or SQLite for local dev
-    DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///data.db")
+    _DEFAULT_SQLITE_PATH = os.path.join(os.path.abspath(os.path.dirname(__file__)), "instance", "data.db")
+    DATABASE_URL = os.getenv("DATABASE_URL") or ("sqlite:///" + _DEFAULT_SQLITE_PATH.replace("\\", "/"))
     
     # Fix for Render's postgres:// URL (SQLAlchemy needs postgresql://)
     if DATABASE_URL.startswith("postgres://"):
@@ -17,6 +19,13 @@ class Config:
     
     SQLALCHEMY_DATABASE_URI = DATABASE_URL
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    SQLALCHEMY_ENGINE_OPTIONS = {}
+    if DATABASE_URL.startswith("sqlite:"):
+        SQLALCHEMY_ENGINE_OPTIONS = {
+            "connect_args": {"check_same_thread": False},
+            "poolclass": NullPool,
+        }
 
     # ---------------- MAIL ----------------
     MAIL_SERVER = 'smtp.gmail.com'

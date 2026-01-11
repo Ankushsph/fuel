@@ -19,9 +19,8 @@ import os
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
 
-# Admin credentials (hardcoded for now)
-ADMIN_EMAIL = "web3.ankitrai@gmail.com"
-ADMIN_PASSWORD = "123466"  # In production, hash this!
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "").strip().lower()
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
 
 def admin_required(f):
     """Decorator to ensure only admin can access certain routes"""
@@ -41,6 +40,9 @@ def admin_required(f):
 def admin_login():
     """Admin login page"""
     if request.method == 'POST':
+        if not ADMIN_EMAIL or not ADMIN_PASSWORD:
+            flash("Admin login is not configured.", "error")
+            return redirect(url_for('admin.admin_login'))
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
         
@@ -259,12 +261,34 @@ def pending_registrations():
 @admin_required
 def verify_registration(registration_id):
     """Verify or reject a pump registration"""
+    print(f"DEBUG: verify_registration called for ID: {registration_id}")
+    print(f"DEBUG: Admin session: {session.get('is_admin')}")
+    print(f"DEBUG: Admin email: {session.get('admin_email')}")
+    
     registration = PumpRegistrationRequest.query.get_or_404(registration_id)
+    print(f"DEBUG: Registration found: {registration.id}, status: {registration.status}")
     
     if registration.status != 'pending':
         return jsonify({"error": "Registration already processed"}), 400
     
-    action = request.json.get('action')  # 'approve' or 'reject'
+    try:
+        # Get JSON data
+        if not request.is_json:
+            print("DEBUG: Request is not JSON")
+            return jsonify({"error": "Content-Type must be application/json"}), 400
+            
+        data = request.get_json()
+        print(f"DEBUG: Request data: {data}")
+        
+        if not data:
+            return jsonify({"error": "No JSON data received"}), 400
+            
+        action = data.get('action')
+        print(f"DEBUG: Action: {action}")
+        
+    except Exception as e:
+        print(f"DEBUG: Error parsing JSON: {e}")
+        return jsonify({"error": f"Invalid JSON data: {str(e)}"}), 400
     
     if action == 'approve':
         # Activate the pump (mark as verified)
@@ -278,6 +302,7 @@ def verify_registration(registration_id):
         registration.verified_by = session.get('admin_email')
         
         db.session.commit()
+        print("DEBUG: Registration approved successfully")
         
         return jsonify({
             "success": True,
@@ -288,7 +313,7 @@ def verify_registration(registration_id):
         registration.status = 'rejected'
         registration.verified_at = datetime.utcnow()
         registration.verified_by = session.get('admin_email')
-        registration.rejection_reason = request.json.get('reason', 'Invalid documents or information')
+        registration.rejection_reason = data.get('reason', 'Invalid documents or information')
         
         # Optionally block the pump
         pump = Pump.query.get(registration.pump_id)
@@ -296,12 +321,14 @@ def verify_registration(registration_id):
             pump.is_blocked = True
         
         db.session.commit()
+        print("DEBUG: Registration rejected successfully")
         
         return jsonify({
             "success": True,
             "message": "❌ Pump registration rejected"
         })
     
+    print(f"DEBUG: Invalid action: {action}")
     return jsonify({"error": "Invalid action"}), 400
 
 

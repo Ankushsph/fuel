@@ -7,9 +7,9 @@
 ## 📋 **What's Changed:**
 
 ### 1. **Admin Login Email** ✅
-- **Old:** `ankushn2005@gmail.com`
-- **New:** `web3.ankitrai@gmail.com`
-- **Password:** `123466` (unchanged)
+- **Old:** `(removed)`
+- **New:** `(set via env var ADMIN_EMAIL)`
+- **Password:** `(set via env var ADMIN_PASSWORD)`
 
 ### 2. **Payment UPI Details** ✅
 - **UPI ID:** `fuelf933676611@barodampay`
@@ -67,8 +67,8 @@ This will:
 
 ### **1. Test Admin Login**
 - URL: http://127.0.0.1:5001/admin/login
-- Email: `web3.ankitrai@gmail.com`
-- Password: `123466`
+- Email: `ADMIN_EMAIL`
+- Password: `ADMIN_PASSWORD`
 
 ### **2. Test Forgot Password (Cab Owner)**
 1. Go to: http://127.0.0.1:5001/cab-owner-auth
@@ -118,6 +118,7 @@ If anything doesn't work:
 ---
 
 **Current Status:** 🟢 Ready for testing (after saving images)
+
 
 
 

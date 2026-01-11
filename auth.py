@@ -3,8 +3,19 @@ from flask import Blueprint, request, redirect, url_for, flash, render_template,
 from models import User, Wallet, PumpOwner, PumpWallet
 from extensions import db, oauth, csrf
 from config import Config
-from flask_login import login_user, logout_user
+from flask_login import login_user, logout_user, login_required, current_user
 from flask_wtf.csrf import validate_csrf, CSRFError
+
+
+def _safe_redirect_url(value: str | None) -> str | None:
+    if not value:
+        return None
+    value = str(value).strip()
+    if not value.startswith("/"):
+        return None
+    if value.startswith("//"):
+        return None
+    return value
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -32,13 +43,13 @@ def cab_owner_auth():
 def pump_owner_auth():
     return render_template('/Pump-Owner/pump-owner-auth.html')
 
-
 # -------------------------
 # Unified Register
 # -------------------------
 @auth_bp.route('/register', methods=["POST"])
 def register():
     # Determine if request is AJAX
+    redirect_url_override = None
     if request.is_json:
         csrf_token = request.headers.get("X-CSRFToken")
         try:
@@ -51,12 +62,14 @@ def register():
         email = data.get("email", "").strip().lower()
         password = data.get("password")
         confirm = data.get("confirm_password")
+        redirect_url_override = _safe_redirect_url(data.get("redirect_url"))
     else:
         owner_type = request.form.get("owner_type", "cab")
         full_name = request.form.get("full_name")
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password")
         confirm = request.form.get("confirm_password")
+        redirect_url_override = _safe_redirect_url(request.form.get("redirect_url"))
 
     # Determine model and wallet
     if owner_type == "pump":
@@ -110,6 +123,9 @@ def register():
         redirect_url = url_for("pump.select_pump")
     else:
         redirect_url = url_for("dashboard.dashboard")
+
+    if redirect_url_override:
+        redirect_url = redirect_url_override
     
     if request.is_json:
         return jsonify({"success": True, "message": msg, "redirect_url": redirect_url})
@@ -123,6 +139,7 @@ def register():
 # -------------------------
 @auth_bp.route('/login', methods=["POST"])
 def login():
+    redirect_url_override = None
     if request.is_json:
         csrf_token = request.headers.get("X-CSRFToken")
         try:
@@ -133,10 +150,12 @@ def login():
         owner_type = data.get("owner_type", "cab")
         email = data.get("email", "").strip().lower()
         password = data.get("password")
+        redirect_url_override = _safe_redirect_url(data.get("redirect_url"))
     else:
         owner_type = request.form.get("owner_type", "cab")
         email = request.form.get("email", "").strip().lower()
         password = request.form.get("password")
+        redirect_url_override = _safe_redirect_url(request.form.get("redirect_url"))
 
     # Determine model
     if owner_type == "pump":
@@ -156,6 +175,9 @@ def login():
             redirect_url = url_for("pump.select_pump")
         else:
             redirect_url = url_for("dashboard.dashboard")
+
+        if redirect_url_override:
+            redirect_url = redirect_url_override
         
         if request.is_json:
             return jsonify({"success": True, "message": msg, "redirect_url": redirect_url})
@@ -176,14 +198,24 @@ def login():
 @auth_bp.route("/auth/google")
 def auth_google():
     owner_type = request.args.get("owner_type", "cab")  # cab or pump
+    redirect_url_override = _safe_redirect_url(request.args.get("redirect_url"))
     redirect_uri = url_for("auth.auth_google_callback", _external=True)
-    return google.authorize_redirect(redirect_uri, state=owner_type)
+    state = owner_type
+    if redirect_url_override:
+        state = f"{owner_type}|{redirect_url_override}"
+    return google.authorize_redirect(redirect_uri, state=state)
 
 
 @csrf.exempt
 @auth_bp.route("/auth/google/callback")
 def auth_google_callback():
-    owner_type = request.args.get("state", "cab")
+    state = request.args.get("state", "cab")
+    if "|" in state:
+        owner_type, requested_redirect = state.split("|", 1)
+        redirect_url_override = _safe_redirect_url(requested_redirect)
+    else:
+        owner_type = state
+        redirect_url_override = None
 
     # Determine model and wallet
     if owner_type == "pump":
@@ -226,10 +258,10 @@ def auth_google_callback():
     # Redirect based on user type
     if owner_type == "pump":
         flash("Login successful with Google as Pump Owner!", "success")
-        return redirect(url_for("pump.select_pump"))  # change to your pump dashboard endpoint
+        return redirect(redirect_url_override or url_for("pump.select_pump"))
     else:
         flash("Login successful with Google as Cab Owner!", "success")
-        return redirect(url_for("dashboard.dashboard"))  # change to your cab dashboard endpoint
+        return redirect(redirect_url_override or url_for("dashboard.dashboard"))
 
 
 

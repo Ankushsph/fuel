@@ -1,0 +1,3 @@
+# Ensure Linux shell scripts work on Railway/Render
+*.sh text eol=lf
+Procfile text eol=lf

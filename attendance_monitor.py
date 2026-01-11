@@ -2,13 +2,15 @@
 Live CCTV Monitoring with Face Recognition for Attendance
 """
 import cv2
+import hashlib
+import os
 import threading
 import time
 import base64
 import re
 import urllib.parse
 from datetime import datetime, date
-from flask import Blueprint, render_template, request, jsonify, Response, current_app
+from flask import Blueprint, render_template, request, jsonify, Response, current_app, stream_with_context, send_file
 from flask_login import login_required, current_user
 from extensions import db
 from models import Pump, PumpOwner, Employee, Attendance, StationVehicle
@@ -17,6 +19,192 @@ attendance_monitor_bp = Blueprint("attendance_monitor", __name__)
 
 # Lazy initialization of face recognition service
 _face_service = None
+
+_people_model = None
+
+_people_count_lock = threading.Lock()
+_people_counts = {}
+_people_count_last_access = {}
+_people_count_threads = {}
+
+
+def get_people_model():
+    global _people_model
+    if _people_model is not None:
+        return _people_model
+    try:
+        from ultralytics import YOLO
+        model_path = os.path.join(os.path.dirname(__file__), "model", "yolov8m.pt")
+        if not os.path.exists(model_path):
+            _people_model = None
+            return None
+
+        _people_model = YOLO(model_path)
+        return _people_model
+    except Exception as e:
+        current_app.logger.warning(f"People counting model unavailable: {e}")
+        _people_model = None
+        return None
+
+
+def _resolve_uploaded_video_abs_path(file_source: str):
+    src = (file_source or "").strip()
+    if not src.lower().startswith("file:"):
+        raise ValueError("Not a file source")
+
+    rel_path = src[5:].lstrip("/\\")
+    rel_path_norm = rel_path.replace("\\", "/")
+    if not rel_path_norm.lower().startswith("uploads/videos/") or not rel_path_norm.lower().endswith(".mp4"):
+        raise ValueError("Invalid video file source")
+
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "uploads", "videos"))
+    abs_path = os.path.abspath(os.path.join(os.path.dirname(__file__), rel_path_norm))
+    if not abs_path.startswith(base_dir + os.sep):
+        raise ValueError("Invalid video file path")
+    if not os.path.exists(abs_path):
+        raise FileNotFoundError("Video file not found")
+    return abs_path
+
+
+def _people_count_worker(app_obj, key: str, source: str, is_file_source: bool):
+    cap = None
+    try:
+        with app_obj.app_context():
+            model = get_people_model()
+            if model is None:
+                with _people_count_lock:
+                    _people_counts[key] = None
+                return
+
+            if is_file_source:
+                abs_path = _resolve_uploaded_video_abs_path(source)
+                cap = cv2.VideoCapture(abs_path, cv2.CAP_FFMPEG)
+                if not cap or not cap.isOpened():
+                    cap = cv2.VideoCapture(abs_path, cv2.CAP_ANY)
+            else:
+                cap = cv2.VideoCapture(source, cv2.CAP_FFMPEG)
+                if not cap or not cap.isOpened():
+                    cap = cv2.VideoCapture(source, cv2.CAP_ANY)
+
+            if not cap or not cap.isOpened():
+                with _people_count_lock:
+                    _people_counts[key] = None
+                return
+
+            frame_idx = 0
+            while True:
+                with _people_count_lock:
+                    last = _people_count_last_access.get(key)
+                if not last or (time.time() - last) > 45:
+                    break
+
+                ret, frame = cap.read()
+                if not ret or frame is None:
+                    if is_file_source:
+                        try:
+                            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                            time.sleep(0.05)
+                            continue
+                        except Exception:
+                            break
+                    time.sleep(0.25)
+                    continue
+
+                frame_idx += 1
+                if frame_idx % 5 != 0:
+                    time.sleep(0.02)
+                    continue
+
+                try:
+                    results = model(frame, classes=[0], verbose=False, conf=0.35)
+                    count = 0
+                    for r in results:
+                        if hasattr(r, "boxes") and r.boxes is not None:
+                            count += len(r.boxes)
+                    with _people_count_lock:
+                        _people_counts[key] = int(count)
+                except Exception:
+                    with _people_count_lock:
+                        _people_counts[key] = None
+                time.sleep(0.05)
+
+    finally:
+        try:
+            if cap is not None:
+                cap.release()
+        except Exception:
+            pass
+
+        with _people_count_lock:
+            _people_count_threads.pop(key, None)
+            _people_count_last_access.pop(key, None)
+
+
+@attendance_monitor_bp.route("/<int:pump_id>/video_file")
+@login_required
+def video_file(pump_id):
+    owner = current_user
+    if not isinstance(owner, PumpOwner):
+        return Response("Access denied", status=403)
+
+    pump = _pump_with_access(owner, pump_id)
+    if not pump:
+        return Response("Pump not found", status=404)
+
+    src = request.args.get("src")
+    if not src:
+        return Response("src required", status=400)
+
+    try:
+        abs_path = _resolve_uploaded_video_abs_path(src)
+    except FileNotFoundError:
+        return Response("Video file not found", status=404)
+    except Exception:
+        return Response("Invalid video file source", status=400)
+
+    resp = send_file(abs_path, mimetype="video/mp4", conditional=True)
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
+
+
+@attendance_monitor_bp.route("/<int:pump_id>/people_count")
+@login_required
+def people_count(pump_id):
+    owner = current_user
+    if not isinstance(owner, PumpOwner):
+        return jsonify({"success": False, "message": "Access denied"}), 403
+
+    pump = _pump_with_access(owner, pump_id)
+    if not pump:
+        return jsonify({"success": False, "message": "Pump not found"}), 404
+
+    src = (request.args.get("src") or "").strip()
+    if not src:
+        return jsonify({"success": False, "message": "src required"}), 400
+
+    is_file_source = src.lower().startswith("file:")
+    key = f"{pump_id}:{hashlib.sha1(src.encode('utf-8')).hexdigest()}"
+
+    with _people_count_lock:
+        _people_count_last_access[key] = time.time()
+
+        t = _people_count_threads.get(key)
+        if t is None or not t.is_alive():
+            app_obj = current_app._get_current_object()
+            thread = threading.Thread(
+                target=_people_count_worker,
+                args=(app_obj, key, src, is_file_source),
+                daemon=True,
+            )
+            _people_count_threads[key] = thread
+            _people_counts.setdefault(key, None)
+            thread.start()
+
+        count = _people_counts.get(key)
+
+    return jsonify({"success": True, "count": count})
 
 def get_face_service():
     """Get or initialize face recognition service - returns None if unavailable"""
@@ -226,7 +414,7 @@ def video_feed(pump_id):
     if not pump:
         return Response("Pump not found", status=404)
     
-    # Get RTSP URL from query parameter
+    # Get video source from query parameter
     rtsp_url = request.args.get("rtsp_url")
     if not rtsp_url:
         current_app.logger.error("RTSP URL missing from request")
@@ -241,55 +429,41 @@ def video_feed(pump_id):
     except Exception as e:
         current_app.logger.warning(f"URL decode warning: {e}")
     
-    # Basic validation - just check format
-    if not rtsp_url.startswith(('rtsp://', 'rtsps://')):
-        current_app.logger.warning(f"Invalid RTSP URL format from user {owner.id}: {rtsp_url}")
-        return Response("Invalid RTSP URL format", status=400)
+    rtsp_url = (rtsp_url or "").strip()
+    is_file_source = rtsp_url.lower().startswith("file:")
+    capture_source = rtsp_url
+    if is_file_source:
+        rel_path = rtsp_url[5:].lstrip("/\\")
+        rel_path_norm = rel_path.replace("\\", "/")
+        if not rel_path_norm.lower().startswith("uploads/videos/") or not rel_path_norm.lower().endswith(".mp4"):
+            current_app.logger.warning(f"Invalid video file source from user {owner.id}: {rtsp_url}")
+            return Response("Invalid video file source", status=400)
+
+        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "uploads", "videos"))
+        abs_path = os.path.abspath(os.path.join(os.path.dirname(__file__), rel_path_norm))
+        if not abs_path.startswith(base_dir + os.sep) or not os.path.exists(abs_path):
+            return Response("Video file not found", status=404)
+
+        capture_source = abs_path
+    else:
+        if not rtsp_url.startswith(('rtsp://', 'rtsps://')):
+            current_app.logger.warning(f"Invalid RTSP URL format from user {owner.id}: {rtsp_url}")
+            return Response("Invalid RTSP URL format", status=400)
     
     # Log the connection attempt
     current_app.logger.info(f"Starting RTSP stream for pump {pump_id}: {rtsp_url}")
     # Connection will be attempted during actual streaming with proper timeouts
-    
-    # Get employee encodings
-    employees = Employee.query.filter_by(
-        pump_id=pump_id,
-        owner_id=owner.id,
-        is_active=True
-    ).all()
-    
-    employee_encodings = {}
-    employee_info = {}
-    
-    # Get face service (may be None if CUDA/dlib unavailable)
-    face_service = get_face_service()
-    
-    # Only process employees if face service is available
-    if face_service and employees:
-        for emp in employees:
-            if emp.face_encoding:
-                try:
-                    encoding = face_service.deserialize_encoding(emp.face_encoding)
-                    employee_encodings[emp.id] = encoding
-                    employee_info[emp.id] = {
-                        "name": emp.name,
-                        "designation": emp.designation
-                    }
-                except Exception as e:
-                    current_app.logger.warning(f"Failed to deserialize encoding for employee {emp.id}: {e}")
-                    continue
-    
-    # Allow stream viewing even without employees or face recognition
-    if not employee_encodings:
-        if not face_service:
-            current_app.logger.info(f"Face recognition unavailable (CUDA/dlib issue) - streaming video only for pump {pump_id}")
-        else:
-            current_app.logger.info(f"No employees registered for pump {pump_id} - streaming without face recognition")
     
     def generate_frames():
         """Generate video frames with face detection"""
         cap = None
         consecutive_failures = 0
         max_failures = 10  # Max consecutive frame read failures before giving up
+
+        employee_encodings = {}
+        employee_info = {}
+        face_service = None
+        face_init_done = False
         
         try:
             # Try multiple connection methods for better compatibility
@@ -299,35 +473,56 @@ def video_feed(pump_id):
                 (cv2.CAP_ANY, "ANY")
             ]
             
-            for backend, backend_name in connection_methods:
-                current_app.logger.info(f"Attempting connection with {backend_name} backend...")
-                cap = cv2.VideoCapture(rtsp_url, backend)
-                
-                # Set properties before opening
-                cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-                cap.set(cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, 20000)  # 20 second timeout
-                cap.set(cv2.CAP_PROP_READ_TIMEOUT_MSEC, 20000)
-                
-                # Try to read a test frame
-                max_connect_attempts = 8
-                connected = False
-                
-                for attempt in range(max_connect_attempts):
-                    if cap.isOpened():
-                        # Try to read a frame to verify connection
-                        ret, test_frame = cap.read()
-                        if ret and test_frame is not None:
-                            current_app.logger.info(f"Successfully connected with {backend_name} backend on attempt {attempt + 1}")
-                            connected = True
-                            break
-                    time.sleep(1.5)
-                
-                if connected:
-                    break
-                else:
-                    if cap:
-                        cap.release()
-                    cap = None
+            if is_file_source:
+                cap = cv2.VideoCapture(capture_source, cv2.CAP_FFMPEG)
+                if not cap or not cap.isOpened():
+                    cap = cv2.VideoCapture(capture_source, cv2.CAP_ANY)
+
+                if not cap or not cap.isOpened():
+                    current_app.logger.error(f"Failed to open video file: {rtsp_url}")
+                    for _ in range(10):
+                        yield _error_frame("Video file could not be opened.")
+                        time.sleep(1)
+                    return
+
+                ret, test_frame = cap.read()
+                if not ret or test_frame is None:
+                    current_app.logger.error(f"Failed to read first frame from video file: {rtsp_url}")
+                    for _ in range(10):
+                        yield _error_frame("Video file opened but frame decode failed.")
+                        time.sleep(1)
+                    return
+                try:
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                except Exception:
+                    pass
+            else:
+                for backend, backend_name in connection_methods:
+                    current_app.logger.info(f"Attempting connection with {backend_name} backend...")
+                    cap = cv2.VideoCapture(capture_source, backend)
+                    
+                    cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+                    cap.set(cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, 20000)  # 20 second timeout
+                    cap.set(cv2.CAP_PROP_READ_TIMEOUT_MSEC, 20000)
+                    
+                    max_connect_attempts = 8
+                    connected = False
+                    
+                    for attempt in range(max_connect_attempts):
+                        if cap.isOpened():
+                            ret, test_frame = cap.read()
+                            if ret and test_frame is not None:
+                                current_app.logger.info(f"Successfully connected with {backend_name} backend on attempt {attempt + 1}")
+                                connected = True
+                                break
+                        time.sleep(1.5)
+                    
+                    if connected:
+                        break
+                    else:
+                        if cap:
+                            cap.release()
+                        cap = None
             
             if not cap or not cap.isOpened():
                 current_app.logger.error(f"Failed to open RTSP stream after trying all backends: {rtsp_url}")
@@ -338,17 +533,78 @@ def video_feed(pump_id):
                 return
             
             current_app.logger.info(f"RTSP stream opened successfully for pump {pump_id}")
-            
+
+            # Yield a first frame ASAP to avoid frontend timeouts, then do heavier init.
+            ret, first_frame = cap.read()
+            if not ret or first_frame is None:
+                if is_file_source:
+                    try:
+                        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                        ret, first_frame = cap.read()
+                    except Exception:
+                        ret = False
+                if not ret or first_frame is None:
+                    for _ in range(5):
+                        yield _error_frame("Unable to decode video frame.")
+                        time.sleep(1)
+                    return
+
+            ret_jpg, buffer = cv2.imencode('.jpg', first_frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+            if ret_jpg:
+                first_bytes = buffer.tobytes()
+                yield (b'--frame\r\n'
+                       b'Content-Type: image/jpeg\r\n\r\n' + first_bytes + b'\r\n')
+
             # Track last attendance mark per employee (to avoid duplicate marks)
             last_attendance_mark = {}
             attendance_cooldown = 30  # seconds between attendance marks for same employee
             
             frame_count = 0
             detection_interval = 5  # Process every 5th frame for performance
+
+            people_model = get_people_model()
+            last_people_count = None
+            last_people_update_frame = 0
+            people_interval = 5
             
             while True:
+                if not face_init_done:
+                    face_init_done = True
+                    try:
+                        face_service = get_face_service()
+                        employees = Employee.query.filter_by(
+                            pump_id=pump_id,
+                            owner_id=owner.id,
+                            is_active=True
+                        ).all()
+
+                        if face_service and employees:
+                            for emp in employees:
+                                if emp.face_encoding:
+                                    try:
+                                        encoding = face_service.deserialize_encoding(emp.face_encoding)
+                                        employee_encodings[emp.id] = encoding
+                                        employee_info[emp.id] = {
+                                            "name": emp.name,
+                                            "designation": emp.designation
+                                        }
+                                    except Exception as e:
+                                        current_app.logger.warning(f"Failed to deserialize encoding for employee {emp.id}: {e}")
+                                        continue
+                    except Exception as e:
+                        current_app.logger.warning(f"Face/employee init failed: {e}")
+
                 ret, frame = cap.read()
                 if not ret or frame is None:
+                    if is_file_source:
+                        try:
+                            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                            consecutive_failures = 0
+                            time.sleep(0.1)
+                            continue
+                        except Exception:
+                            pass
+
                     consecutive_failures += 1
                     current_app.logger.warning(f"Frame read failed (attempt {consecutive_failures}/{max_failures})")
                     if consecutive_failures >= max_failures:
@@ -411,6 +667,45 @@ def video_feed(pump_id):
                     
                     except Exception as e:
                         current_app.logger.warning(f"Error in face detection: {e}")
+
+                if people_model is not None and frame_count - last_people_update_frame >= people_interval:
+                    last_people_update_frame = frame_count
+                    try:
+                        if hasattr(people_model, "track"):
+                            results = people_model.track(frame, classes=[0], verbose=False, conf=0.35, persist=True)
+                            person_ids = set()
+                            for r in results:
+                                if hasattr(r, "boxes") and r.boxes is not None:
+                                    ids = getattr(r.boxes, "id", None)
+                                    if ids is not None:
+                                        try:
+                                            person_ids |= set(int(x) for x in ids.tolist())
+                                        except Exception:
+                                            pass
+                            if person_ids:
+                                last_people_count = len(person_ids)
+                            else:
+                                last_people_count = 0
+                        else:
+                            results = people_model(frame, classes=[0], verbose=False, conf=0.35)
+                            count = 0
+                            for r in results:
+                                if hasattr(r, "boxes") and r.boxes is not None:
+                                    count += len(r.boxes)
+                            last_people_count = count
+                    except Exception as e:
+                        current_app.logger.warning(f"People counting error: {e}")
+
+                if last_people_count is not None:
+                    cv2.putText(
+                        frame,
+                        f"People: {last_people_count}",
+                        (10, 60),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.8,
+                        (255, 255, 0),
+                        2,
+                    )
                 
                 # Encode frame as JPEG
                 ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
@@ -438,10 +733,15 @@ def video_feed(pump_id):
 
 
     # Return the streaming response
-    return Response(
-        generate_frames(),
+    resp = Response(
+        stream_with_context(generate_frames()),
         mimetype='multipart/x-mixed-replace; boundary=frame'
     )
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    resp.headers["X-Accel-Buffering"] = "no"
+    return resp
 
 
 def _error_frame(message: str) -> bytes:

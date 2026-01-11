@@ -8,6 +8,8 @@
   <title>Transactions - Fuel Flux</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
   <style>
     #toast {
       position: fixed;
@@ -53,7 +55,21 @@
              style="background: none !important; background-color: transparent !important; mix-blend-mode: screen;" />
         <span class="text-fuel-orange font-bold text-xs md:text-xl truncate hidden sm:inline">Transactions</span>
       </div>
-      <a href="/logout" class="bg-fuel-orange hover:bg-orange-600 px-2 py-1.5 md:px-4 md:py-2 rounded-lg font-semibold transition text-xs md:text-base whitespace-nowrap flex-shrink-0">Logout</a>
+      <div class="flex gap-2">
+        <button onclick="exportTransactions('csv')" 
+                class="bg-green-600 hover:bg-green-700 px-2 py-1.5 md:px-4 md:py-2 rounded-lg font-semibold transition text-xs md:text-base whitespace-nowrap flex-shrink-0 flex items-center gap-1">
+          📊 Export CSV
+        </button>
+        <button onclick="exportTransactions('pdf')" 
+                class="bg-blue-600 hover:bg-blue-700 px-2 py-1.5 md:px-4 md:py-2 rounded-lg font-semibold transition text-xs md:text-base whitespace-nowrap flex-shrink-0 flex items-center gap-1">
+          📄 Export PDF
+        </button>
+        <button onclick="printTransactions()" 
+                class="bg-gray-600 hover:bg-gray-700 px-2 py-1.5 md:px-4 md:py-2 rounded-lg font-semibold transition text-xs md:text-base whitespace-nowrap flex-shrink-0 flex items-center gap-1">
+          🖨️ Print
+        </button>
+        <a href="/logout" class="bg-fuel-orange hover:bg-orange-600 px-2 py-1.5 md:px-4 md:py-2 rounded-lg font-semibold transition text-xs md:text-base whitespace-nowrap flex-shrink-0">Logout</a>
+      </div>
     </div>
   </header>
 
@@ -346,6 +362,145 @@
 
     function closeModal() {
       document.getElementById('transactionModal').classList.add('hidden');
+    }
+
+    // Export Functions
+    function exportTransactions(format) {
+      const transactions = {{ transactions|tojson }};
+      
+      if (format === 'csv') {
+        exportTransactionsToCSV(transactions);
+      } else if (format === 'pdf') {
+        exportTransactionsToPDF(transactions);
+      }
+    }
+
+    function exportTransactionsToCSV(transactions) {
+      let csv = 'Fuel Flux Transaction History\n';
+      csv += `Export Date: ${new Date().toISOString()}\n`;
+      csv += `Wallet Balance: ₹{{ "%.2f"|format(wallet_balance) }}\n\n`;
+      
+      csv += 'Date & Time,Vehicle Number,Vehicle Type,Pump Name,Pump Location,Fuel Type,Quantity (L),Price/L,Amount,Status\n';
+      
+      transactions.forEach(transaction => {
+        const date = transaction.created_at ? new Date(transaction.created_at).toLocaleString() : 'N/A';
+        csv += `"${date}","${transaction.vehicle_number}","${transaction.vehicle_type}","${transaction.pump_name}","${transaction.pump_location}","${transaction.fuel_type}","${transaction.quantity_litres}","${transaction.unit_price}","${transaction.amount}","${transaction.status}"\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `fuel_flux_transactions_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function exportTransactionsToPDF(transactions) {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      
+      // Title
+      doc.setFontSize(20);
+      doc.text('Fuel Flux Transaction History', 14, 20);
+      doc.setFontSize(10);
+      doc.text(`Export Date: ${new Date().toLocaleDateString()}`, 14, 30);
+      doc.text(`Wallet Balance: ₹{{ "%.2f"|format(wallet_balance) }}`, 14, 40);
+      
+      // Prepare table data
+      const tableData = transactions.map(transaction => [
+        transaction.created_at ? new Date(transaction.created_at).toLocaleDateString() : 'N/A',
+        transaction.vehicle_number || 'N/A',
+        transaction.pump_name || 'N/A',
+        transaction.fuel_type || 'N/A',
+        transaction.quantity_litres || 'N/A',
+        `₹${transaction.unit_price || '0'}`,
+        `₹${transaction.amount || '0'}`,
+        transaction.status || 'N/A'
+      ]);
+      
+      // Add table
+      doc.autoTable({
+        head: [['Date', 'Vehicle', 'Pump', 'Fuel', 'Qty (L)', 'Price/L', 'Amount', 'Status']],
+        body: tableData,
+        startY: 60,
+        theme: 'grid',
+        styles: {
+          fontSize: 8,
+          cellPadding: 2,
+          fillColor: [31, 41, 55],
+          textColor: [255, 255, 255],
+          lineColor: [75, 85, 99]
+        },
+        headStyles: {
+          fillColor: [251, 146, 60],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold'
+        }
+      });
+      
+      doc.save(`fuel_flux_transactions_${new Date().toISOString().split('T')[0]}.pdf`);
+    }
+
+    function printTransactions() {
+      const transactions = {{ transactions|tojson }};
+      
+      const printContent = `
+        <div style="font-family: Arial, sans-serif; padding: 20px;">
+          <h1 style="color: #FB923C; margin-bottom: 20px;">Fuel Flux Transaction History</h1>
+          <p style="margin-bottom: 30px;"><strong>Export Date:</strong> ${new Date().toLocaleDateString()}</p>
+          <p style="margin-bottom: 20px;"><strong>Wallet Balance:</strong> ₹{{ "%.2f"|format(wallet_balance) }}</p>
+          
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+            <thead>
+              <tr style="background-color: #1F2937; color: #FB923C;">
+                <th style="padding: 10px; border: 1px solid #374151; text-align: left;">Date</th>
+                <th style="padding: 10px; border: 1px solid #374151; text-align: left;">Vehicle</th>
+                <th style="padding: 10px; border: 1px solid #374151; text-align: left;">Pump</th>
+                <th style="padding: 10px; border: 1px solid #374151; text-align: left;">Fuel</th>
+                <th style="padding: 10px; border: 1px solid #374151; text-align: left;">Qty (L)</th>
+                <th style="padding: 10px; border: 1px solid #374151; text-align: left;">Price/L</th>
+                <th style="padding: 10px; border: 1px solid #374151; text-align: left;">Amount</th>
+                <th style="padding: 10px; border: 1px solid #374151; text-align: left;">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${transactions.map(transaction => `
+                <tr>
+                  <td style="padding: 10px; border: 1px solid #374151;">${transaction.created_at ? new Date(transaction.created_at).toLocaleDateString() : 'N/A'}</td>
+                  <td style="padding: 10px; border: 1px solid #374151;">${transaction.vehicle_number || 'N/A'}</td>
+                  <td style="padding: 10px; border: 1px solid #374151;">${transaction.pump_name || 'N/A'}</td>
+                  <td style="padding: 10px; border: 1px solid #374151;">${transaction.fuel_type || 'N/A'}</td>
+                  <td style="padding: 10px; border: 1px solid #374151;">${transaction.quantity_litres || 'N/A'}</td>
+                  <td style="padding: 10px; border: 1px solid #374151;">₹${transaction.unit_price || '0'}</td>
+                  <td style="padding: 10px; border: 1px solid #374151;">₹${transaction.amount || '0'}</td>
+                  <td style="padding: 10px; border: 1px solid #374151;">${transaction.status || 'N/A'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+      
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(`
+        <html>
+          <head>
+            <title>Fuel Flux Transactions - Print</title>
+            <style>
+              body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+              table { width: 100%; border-collapse: collapse; }
+              th, td { padding: 10px; border: 1px solid #374151; text-align: left; }
+              th { background-color: #1F2937; color: #FB923C; }
+            </style>
+          </head>
+          <body>${printContent}</body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.print();
     }
 
     // Close modal when clicking outside

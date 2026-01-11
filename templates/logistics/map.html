@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>Logistics Map - FuelFlux</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css"
+  />
+  <style>
+    #map { height: calc(100vh - 120px); }
+  </style>
+</head>
+<body class="bg-fuel-black text-white min-h-screen flex flex-col">
+  <nav class="bg-fuel-gray p-2 md:p-4">
+    <div class="w-full flex justify-between items-center gap-2">
+      <div class="flex items-center gap-2 flex-1 min-w-0">
+        <img src="{{ url_for('static', filename='images/logo2.png') }}"
+             alt="Fuel Flux Logo"
+             class="h-6 md:h-10 w-auto flex-shrink-0"
+             style="background: none !important; background-color: transparent !important; mix-blend-mode: screen;" />
+        <span class="text-fuel-orange font-bold text-xs md:text-xl truncate hidden sm:inline">Logistics Map</span>
+      </div>
+      <div class="flex items-center space-x-4 md:space-x-6 flex-shrink-0">
+        <a href="/" class="hidden md:inline-block text-fuel-orange hover:text-white transition-colors">Home</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="flex-1">
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-0">
+      <div class="lg:col-span-3">
+        <div id="map" class="w-full"></div>
+      </div>
+      <div class="lg:col-span-1 bg-fuel-gray border-l border-gray-800 p-4">
+        <h2 class="text-lg font-bold text-fuel-orange">Nearby FuelFlux Pumps</h2>
+        <p class="text-gray-300 text-sm mt-1">For logistics cost savings, plan refueling at FuelFlux-connected bunks.</p>
+
+        <div class="mt-4 space-y-3">
+          <button id="btn-set-my-pump" class="w-full bg-transparent border border-fuel-orange text-fuel-orange hover:bg-fuel-orange hover:text-white transition font-semibold py-2 rounded-lg" type="button">
+            Set My Pump Location (Current)
+          </button>
+
+          <div>
+            <label class="text-sm text-gray-300">Search radius (km)</label>
+            <input id="radius" type="number" min="1" value="25" class="w-full mt-1 p-2 rounded-lg bg-fuel-black text-white border border-gray-600" />
+          </div>
+
+          <label class="flex items-center gap-2 text-sm text-gray-300">
+            <input id="toggle-public" type="checkbox" class="h-4 w-4">
+            Show public petrol pumps (OSM)
+          </label>
+
+          <div id="pumps-list" class="text-sm text-gray-200 space-y-2"></div>
+          <div id="public-pumps-list" class="text-sm text-gray-200 space-y-2"></div>
+        </div>
+
+        <div class="mt-6 border-t border-gray-700 pt-4">
+          <h3 class="text-sm font-bold text-white">Live Vehicle Tracking</h3>
+          <p class="text-gray-300 text-xs mt-1">Shows your latest reported vehicle GPS points (demo-ready, can be fed by a driver app later).</p>
+          <div id="vehicles-list" class="text-sm text-gray-200 space-y-2 mt-3"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+
+  <script>
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+    const map = L.map('map', { zoomControl: true });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    let myMarker = null;
+    let pumpsLayer = L.layerGroup().addTo(map);
+    let publicPumpsLayer = L.layerGroup().addTo(map);
+    let vehiclesLayer = L.layerGroup().addTo(map);
+    let routingControl = null;
+
+    const radiusInput = document.getElementById('radius');
+    const pumpsList = document.getElementById('pumps-list');
+    const publicPumpsList = document.getElementById('public-pumps-list');
+    const togglePublic = document.getElementById('toggle-public');
+    const vehiclesList = document.getElementById('vehicles-list');
+
+    function setRoute(fromLatLng, toLatLng) {
+      if (routingControl) {
+        try { map.removeControl(routingControl); } catch (e) {}
+        routingControl = null;
+      }
+      routingControl = L.Routing.control({
+        waypoints: [fromLatLng, toLatLng],
+        routeWhileDragging: false,
+        show: false,
+        addWaypoints: false,
+      }).addTo(map);
+    }
+
+    function renderPublicPumps(resp, origin) {
+      publicPumpsLayer.clearLayers();
+      publicPumpsList.innerHTML = '';
+
+      if (!resp || !resp.enabled) {
+        return;
+      }
+
+      const pumps = resp.pumps || [];
+      if (!togglePublic.checked) {
+        return;
+      }
+
+      if (pumps.length === 0) {
+        publicPumpsList.innerHTML = '<div class="text-gray-400">No public petrol pumps found.</div>';
+        return;
+      }
+
+      const header = document.createElement('div');
+      header.className = 'text-xs text-gray-400 pt-2';
+      header.textContent = 'Public petrol pumps (OSM)';
+      publicPumpsList.appendChild(header);
+
+      pumps.forEach((p) => {
+        const latlng = L.latLng(p.latitude, p.longitude);
+        const marker = L.circleMarker(latlng, { radius: 6, color: '#eab308', fillColor: '#eab308', fillOpacity: 0.8 }).addTo(publicPumpsLayer);
+        marker.bindPopup(`<div style="color:#000"><b>${p.name}</b><br/>${p.brand || ''}<br/>${p.distance_km.toFixed(2)} km</div>`);
+
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'w-full text-left bg-fuel-black border border-gray-700 hover:border-fuel-orange transition rounded-lg p-3';
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <div class="font-semibold text-white">${p.name}</div>
+              <div class="text-xs text-gray-400 mt-1">${p.brand || ''}</div>
+            </div>
+            <div class="text-right">
+              <div class="text-xs text-gray-300">${p.distance_km.toFixed(2)} km</div>
+            </div>
+          </div>
+        `;
+        card.addEventListener('click', () => {
+          map.setView(latlng, 14);
+          marker.openPopup();
+          if (origin) setRoute(origin, latlng);
+        });
+        publicPumpsList.appendChild(card);
+      });
+    }
+
+    function renderPumps(pumps, origin) {
+      pumpsLayer.clearLayers();
+      pumpsList.innerHTML = '';
+
+      if (!pumps || pumps.length === 0) {
+        pumpsList.innerHTML = '<div class="text-gray-400">No FuelFlux pumps found in radius.</div>';
+        return;
+      }
+
+      pumps.forEach((p) => {
+        const latlng = L.latLng(p.latitude, p.longitude);
+        const marker = L.marker(latlng).addTo(pumpsLayer);
+        const badge = p.is_verified ? '<span class="text-green-400">Verified</span>' : '<span class="text-gray-400">Unverified</span>';
+        marker.bindPopup(`<div style="color:#000"><b>${p.name}</b><br/>${p.location}<br/>${badge}<br/>${p.fuel_types || ''}<br/>${p.distance_km.toFixed(2)} km</div>`);
+
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'w-full text-left bg-fuel-black border border-gray-700 hover:border-fuel-orange transition rounded-lg p-3';
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <div class="font-semibold text-white">${p.name}</div>
+              <div class="text-xs text-gray-400 mt-1">${p.location}</div>
+              <div class="text-xs text-gray-300 mt-1">${p.fuel_types || ''}</div>
+            </div>
+            <div class="text-right">
+              <div class="text-xs text-gray-300">${p.distance_km.toFixed(2)} km</div>
+              <div class="text-xs">${p.is_verified ? 'Verified' : 'Unverified'}</div>
+            </div>
+          </div>
+        `;
+        card.addEventListener('click', () => {
+          map.setView(latlng, 14);
+          marker.openPopup();
+          if (origin) setRoute(origin, latlng);
+        });
+        pumpsList.appendChild(card);
+      });
+    }
+
+    function renderVehicles(vehicles) {
+      vehiclesLayer.clearLayers();
+      vehiclesList.innerHTML = '';
+
+      if (!vehicles || vehicles.length === 0) {
+        vehiclesList.innerHTML = '<div class="text-gray-400">No live vehicle locations yet.</div>';
+        return;
+      }
+
+      vehicles.forEach((v) => {
+        const latlng = L.latLng(v.latitude, v.longitude);
+        const marker = L.circleMarker(latlng, { radius: 7, color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.9 }).addTo(vehiclesLayer);
+        marker.bindPopup(`<div style="color:#000"><b>${v.vehicle_number}</b><br/>${v.recorded_at || ''}</div>`);
+
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'w-full text-left bg-fuel-black border border-gray-700 hover:border-fuel-orange transition rounded-lg p-3';
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="font-semibold text-white">${v.vehicle_number}</div>
+              <div class="text-xs text-gray-400 mt-1">${v.recorded_at || ''}</div>
+            </div>
+            <div class="text-xs text-gray-300">${v.speed_kmph ? v.speed_kmph.toFixed(1) + ' km/h' : ''}</div>
+          </div>
+        `;
+        card.addEventListener('click', () => {
+          map.setView(latlng, 15);
+          marker.openPopup();
+        });
+        vehiclesList.appendChild(card);
+      });
+    }
+
+    async function refreshData(originLatLng) {
+      const radiusKm = parseFloat(radiusInput.value || '25');
+
+      const pumpsRes = await fetch(`/api/logistics/fuelflux_pumps?lat=${originLatLng.lat}&lon=${originLatLng.lng}&radius_km=${radiusKm}`);
+      const pumpsJson = await pumpsRes.json();
+      renderPumps(pumpsJson.pumps || [], originLatLng);
+
+      if (togglePublic.checked) {
+        const pubRes = await fetch(`/api/logistics/public_pumps?lat=${originLatLng.lat}&lon=${originLatLng.lng}&radius_km=${Math.min(radiusKm, 10)}`);
+        const pubJson = await pubRes.json();
+        renderPublicPumps(pubJson, originLatLng);
+      } else {
+        publicPumpsLayer.clearLayers();
+        publicPumpsList.innerHTML = '';
+      }
+
+      const vehRes = await fetch(`/api/logistics/vehicles/latest?scope=me`);
+      const vehJson = await vehRes.json();
+      renderVehicles(vehJson.vehicles || []);
+    }
+
+    function locateAndStart() {
+      if (!navigator.geolocation) {
+        map.setView([20.5937, 78.9629], 5);
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const latlng = L.latLng(pos.coords.latitude, pos.coords.longitude);
+          map.setView(latlng, 13);
+          myMarker = L.marker(latlng).addTo(map).bindPopup('You are here').openPopup();
+          await refreshData(latlng);
+
+          setInterval(async () => {
+            try {
+              await refreshData(latlng);
+            } catch (e) {}
+          }, 10000);
+        },
+        () => {
+          map.setView([20.5937, 78.9629], 5);
+        },
+        { enableHighAccuracy: true, timeout: 12000 }
+      );
+    }
+
+    document.getElementById('btn-set-my-pump').addEventListener('click', async () => {
+      if (!myMarker) return;
+      const latlng = myMarker.getLatLng();
+      const res = await fetch('/api/logistics/my_pump/set_location', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+        body: JSON.stringify({ latitude: latlng.lat, longitude: latlng.lng })
+      });
+      const json = await res.json();
+      if (json && json.message) {
+        alert(json.message);
+      }
+    });
+
+    radiusInput.addEventListener('change', async () => {
+      if (!myMarker) return;
+      try { await refreshData(myMarker.getLatLng()); } catch (e) {}
+    });
+
+    togglePublic.addEventListener('change', async () => {
+      if (!myMarker) return;
+      try { await refreshData(myMarker.getLatLng()); } catch (e) {}
+    });
+
+    locateAndStart();
+  </script>
+</body>
+</html>

@@ -4,9 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="csrf-token" content="{{ csrf_token() }}">
+  <meta name="pump-id" content="{{ pump.id }}">
   <title>Station Vehicle Data - Fuel Flux</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
   <style>
     #toast {
       position: fixed;
@@ -56,7 +59,25 @@
         <a href="{{ url_for('pump.pump_dashboard', pump_id=pump.id) }}" class="text-fuel-orange hover:text-white">← Back to Dashboard</a>
         <h1 class="text-xl font-bold text-fuel-orange">📊 Station Vehicle Data</h1>
       </div>
-      <a href="{{ url_for('auth.logout') }}" class="bg-fuel-orange hover:bg-orange-600 px-4 py-2 rounded-lg">Logout</a>
+      <div class="flex gap-3 flex-wrap">
+        <button onclick="testExportButtons()" 
+                class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-semibold shadow-lg">
+          🧪 Test Buttons
+        </button>
+        <button onclick="exportStationData('csv')" 
+                class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-semibold shadow-lg">
+          📊 Export CSV
+        </button>
+        <button onclick="exportStationData('pdf')" 
+                class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-semibold shadow-lg">
+          📄 Export PDF
+        </button>
+        <button onclick="printStationData()" 
+                class="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-semibold shadow-lg">
+          🖨️ Print
+        </button>
+        <a href="{{ url_for('auth.logout') }}" class="bg-fuel-orange hover:bg-orange-600 px-4 py-2 rounded-lg text-sm font-semibold shadow-lg">Logout</a>
+      </div>
     </div>
   </nav>
 
@@ -82,6 +103,18 @@
             <input type="text" name="rtsp_url" placeholder="rtsp://username:password@ip:port/stream" required
                    class="w-full p-3 rounded-lg bg-fuel-black text-white border border-gray-600">
             <p class="text-xs text-gray-400 mt-1">Example: rtsp://admin:password@192.168.1.100:554/stream1</p>
+            <div class="mt-3">
+              <label class="block text-xs font-medium mb-1 text-gray-300">Or upload MP4 video (optional)</label>
+              <div class="flex gap-2 flex-wrap">
+                <input type="file" id="mp4UploadInput" accept="video/mp4"
+                       class="flex-1 p-3 rounded-lg bg-fuel-black text-white border border-gray-600">
+                <button type="button" onclick="uploadMp4ToRtspField()"
+                        class="bg-blue-600 hover:bg-blue-700 px-4 py-3 rounded-lg text-sm font-semibold">
+                  Upload & Use
+                </button>
+              </div>
+              <p class="text-xs text-gray-500 mt-1">This will fill the RTSP field with a file source like: file:uploads/videos/xxx.mp4</p>
+            </div>
           </div>
         </div>
         <button type="submit" class="bg-fuel-orange hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold">
@@ -150,7 +183,7 @@
   </div>
 
   <script>
-    const pumpId = {{ pump.id }};
+    const pumpId = Number(document.querySelector('meta[name="pump-id"]')?.getAttribute('content') || '0');
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     
     let vehicleChart = null;
@@ -165,6 +198,48 @@
       toast.textContent = message;
       toast.className = 'show ' + type;
       setTimeout(() => toast.className = '', 3000);
+    }
+
+    async function uploadMp4ToRtspField() {
+      const input = document.getElementById('mp4UploadInput');
+      if (!input || !input.files || input.files.length === 0) {
+        showToast('Please select an MP4 file', 'error');
+        return;
+      }
+
+      const file = input.files[0];
+      const formData = new FormData();
+      formData.append('video', file);
+
+      try {
+        showToast('Uploading video...', 'success');
+        const res = await fetch(`/pump/${pumpId}/video/upload`, {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': csrfToken
+          },
+          body: formData
+        });
+        if (!res.ok) {
+          const errText = await res.text();
+          showToast('Upload failed (server). Open console for details.', 'error');
+          console.error('Upload failed:', res.status, errText);
+          return;
+        }
+
+        const data = await res.json();
+        if (!data.success) {
+          showToast(data.message || 'Upload failed', 'error');
+          return;
+        }
+
+        const rtspInput = document.querySelector('input[name="rtsp_url"]');
+        rtspInput.value = data.video_source;
+        showToast('Video uploaded. Saved as file source.', 'success');
+      } catch (err) {
+        console.error(err);
+        showToast('Upload error', 'error');
+      }
     }
 
     // Initialize Chart
@@ -403,6 +478,247 @@
     
     // Auto-refresh every 2 seconds
     setInterval(updateVehicleCount, 2000);
+
+    // Export Functions
+    function testExportButtons() {
+      console.log('Test button clicked - checking if export functions exist');
+      alert('Export buttons are working! Functions available: exportStationData, printStationData');
+      showToast('Export buttons are functional! Try clicking the export buttons.', 'success');
+    }
+
+    async function exportStationData(format) {
+      try {
+        // Test function to ensure button works
+        console.log('Export button clicked for format:', format);
+        showToast(`Exporting ${format.toUpperCase()} data...`, 'success');
+        
+        // Get current station data
+        const streamsRes = await fetch(`/vehicle_count/list-streams/${pumpId}`);
+        const streamsData = await streamsRes.json();
+        
+        // Get historical data
+        const historyRes = await fetch(`/vehicle_count/history/${pumpId}?limit=1000`);
+        const historyData = await historyRes.json();
+        
+        const stationData = {
+          pump_id: pumpId,
+          pump_name: '{{ pump.name if pump else "Unknown Pump" }}',
+          export_date: new Date().toISOString(),
+          current_vehicles: parseInt(document.getElementById('currentVehicles').textContent) || 0,
+          station_status: document.getElementById('stationStatus').textContent,
+          last_updated: document.getElementById('lastUpdated').textContent,
+          streams: streamsData.success ? streamsData.streams || [] : [],
+          history: historyData.success ? historyData.history || [] : []
+        };
+
+        if (format === 'csv') {
+          exportStationToCSV(stationData);
+        } else if (format === 'pdf') {
+          exportStationToPDF(stationData);
+        }
+      } catch (error) {
+        console.error('Export error:', error);
+        showToast('Error exporting station data', 'error');
+      }
+    }
+
+    function exportStationToCSV(data) {
+      let csv = 'Fuel Flux Station Vehicle Data Export\n';
+      csv += `Pump: ${data.pump_name}\n`;
+      csv += `Export Date: ${data.export_date}\n`;
+      csv += `Current Vehicles: ${data.current_vehicles}\n`;
+      csv += `Station Status: ${data.station_status}\n`;
+      csv += `Last Updated: ${data.last_updated}\n\n`;
+      
+      // Stream Information
+      csv += 'STREAM CONFIGURATION\n';
+      csv += 'Station Name,Location,RTSP URL,Status\n';
+      data.streams.forEach(stream => {
+        csv += `"${stream.station_name}","${stream.location}","${stream.rtsp_url}","${stream.status || 'Active'}"\n`;
+      });
+      csv += '\n';
+      
+      // Historical Data
+      csv += 'VEHICLE COUNT HISTORY\n';
+      csv += 'Date,Time,Vehicle Count,Status\n';
+      data.history.forEach(record => {
+        const date = new Date(record.timestamp);
+        csv += `"${date.toLocaleDateString()}","${date.toLocaleTimeString()}","${record.vehicle_count}","${record.status || 'Normal'}"\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `fuel_flux_station_data_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      showToast('Station data exported successfully', 'success');
+    }
+
+    function exportStationToPDF(data) {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      
+      // Title
+      doc.setFontSize(20);
+      doc.text('Fuel Flux Station Vehicle Data', 14, 20);
+      doc.setFontSize(10);
+      doc.text(`Pump: ${data.pump_name}`, 14, 30);
+      doc.text(`Export Date: ${new Date().toLocaleDateString()}`, 14, 40);
+      doc.text(`Current Vehicles: ${data.current_vehicles}`, 14, 50);
+      doc.text(`Station Status: ${data.station_status}`, 14, 60);
+      
+      let yPosition = 80;
+      
+      // Stream Information
+      doc.setFontSize(14);
+      doc.text('Stream Configuration', 14, yPosition);
+      yPosition += 10;
+      doc.setFontSize(10);
+      
+      data.streams.slice(0, 5).forEach(stream => {
+        doc.text(`• ${stream.station_name} - ${stream.location}`, 20, yPosition);
+        yPosition += 7;
+        if (yPosition > 270) {
+          doc.addPage();
+          yPosition = 20;
+        }
+      });
+      
+      yPosition += 15;
+      
+      // Recent History
+      doc.setFontSize(14);
+      doc.text('Recent Vehicle Count History', 14, yPosition);
+      yPosition += 10;
+      doc.setFontSize(10);
+      
+      const tableData = data.history.slice(0, 10).map(record => {
+        const date = new Date(record.timestamp);
+        return [
+          date.toLocaleDateString(),
+          date.toLocaleTimeString(),
+          record.vehicle_count.toString(),
+          record.status || 'Normal'
+        ];
+      });
+      
+      doc.autoTable({
+        head: [['Date', 'Time', 'Vehicle Count', 'Status']],
+        body: tableData,
+        startY: yPosition,
+        theme: 'grid',
+        styles: {
+          fontSize: 8,
+          cellPadding: 2,
+          fillColor: [31, 41, 55],
+          textColor: [255, 255, 255],
+          lineColor: [75, 85, 99]
+        },
+        headStyles: {
+          fillColor: [251, 146, 60],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold'
+        }
+      });
+      
+      doc.save(`fuel_flux_station_data_${new Date().toISOString().split('T')[0]}.pdf`);
+      showToast('Station PDF exported successfully', 'success');
+    }
+
+    async function printStationData() {
+      try {
+        console.log('Print button clicked');
+        showToast('Preparing print data...', 'success');
+        
+        const streamsRes = await fetch(`/vehicle_count/list-streams/${pumpId}`);
+        const streamsData = await streamsRes.json();
+        
+        const historyRes = await fetch(`/vehicle_count/history/${pumpId}?limit=50`);
+        const historyData = await historyRes.json();
+
+        const printContent = `
+          <div style="font-family: Arial, sans-serif; padding: 20px;">
+            <h1 style="color: #FB923C; margin-bottom: 20px;">Fuel Flux Station Vehicle Data</h1>
+            <p style="margin-bottom: 10px;"><strong>Pump:</strong> {{ pump.name if pump else "Unknown Pump" }}</p>
+            <p style="margin-bottom: 10px;"><strong>Export Date:</strong> ${new Date().toLocaleDateString()}</p>
+            <p style="margin-bottom: 10px;"><strong>Current Vehicles:</strong> ${document.getElementById('currentVehicles').textContent}</p>
+            <p style="margin-bottom: 30px;"><strong>Station Status:</strong> ${document.getElementById('stationStatus').textContent}</p>
+            
+            <h2 style="color: #FB923C; margin-bottom: 15px;">Stream Configuration</h2>
+            <table style="width: 100%; margin-bottom: 30px; border-collapse: collapse;">
+              <thead>
+                <tr style="background-color: #1F2937; color: #FB923C;">
+                  <th style="padding: 10px; border: 1px solid #374151; text-align: left;">Station Name</th>
+                  <th style="padding: 10px; border: 1px solid #374151; text-align: left;">Location</th>
+                  <th style="padding: 10px; border: 1px solid #374151; text-align: left;">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${(streamsData.success ? streamsData.streams || [] : []).map(stream => `
+                  <tr>
+                    <td style="padding: 10px; border: 1px solid #374151;">${stream.station_name || 'N/A'}</td>
+                    <td style="padding: 10px; border: 1px solid #374151;">${stream.location || 'N/A'}</td>
+                    <td style="padding: 10px; border: 1px solid #374151;">${stream.status || 'Active'}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+            
+            <h2 style="color: #FB923C; margin-bottom: 15px;">Vehicle Count History</h2>
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr style="background-color: #1F2937; color: #FB923C;">
+                  <th style="padding: 10px; border: 1px solid #374151; text-align: left;">Date</th>
+                  <th style="padding: 10px; border: 1px solid #374151; text-align: left;">Time</th>
+                  <th style="padding: 10px; border: 1px solid #374151; text-align: left;">Vehicle Count</th>
+                  <th style="padding: 10px; border: 1px solid #374151; text-align: left;">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${(historyData.success ? historyData.history || [] : []).map(record => {
+                  const date = new Date(record.timestamp);
+                  return `
+                    <tr>
+                      <td style="padding: 10px; border: 1px solid #374151;">${date.toLocaleDateString()}</td>
+                      <td style="padding: 10px; border: 1px solid #374151;">${date.toLocaleTimeString()}</td>
+                      <td style="padding: 10px; border: 1px solid #374151;">${record.vehicle_count}</td>
+                      <td style="padding: 10px; border: 1px solid #374151;">${record.status || 'Normal'}</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+        
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+          <html>
+            <head>
+              <title>Fuel Flux Station Data - Print</title>
+              <style>
+                body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+                table { width: 100%; border-collapse: collapse; }
+                th, td { padding: 10px; border: 1px solid #374151; text-align: left; }
+                th { background-color: #1F2937; color: #FB923C; }
+              </style>
+            </head>
+            <body>${printContent}</body>
+          </html>
+        `);
+        printWindow.document.close();
+        printWindow.print();
+        showToast('Print dialog opened', 'success');
+      } catch (error) {
+        console.error('Print error:', error);
+        showToast('Error preparing print data', 'error');
+      }
+    }
   </script>
 </body>
 </html>

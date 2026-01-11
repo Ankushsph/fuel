@@ -3,49 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Investor Dashboard - FuelFlux</title>
+    <title>Investor Dashboard - Fuel Flux</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <style>
-        .gradient-bg {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
         .card-bg {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
+            background: rgba(31, 41, 55, 0.95);
         }
         .metric-card {
             transition: all 0.3s ease;
         }
         .metric-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 20px 25px -5px rgba(251, 146, 60, 0.2);
         }
     </style>
 </head>
-<body class="bg-gray-50">
+<body class="bg-fuel-black text-white min-h-screen">
     <!-- Header -->
-    <header class="gradient-bg shadow-lg">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center py-4">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0">
-                        <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-                            <svg class="w-6 h-6 text-purple-600" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="ml-4">
-                        <h1 class="text-white text-xl font-bold">FuelFlux Investor Portal</h1>
-                        <p class="text-purple-100 text-sm">Business Analytics & Performance Metrics</p>
-                    </div>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <span class="text-white text-sm">Welcome, Investor</span>
-                    <a href="{{ url_for('investor.logout') }}" 
-                       class="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg text-sm transition">
+    <header class="bg-fuel-gray p-4 shadow-lg">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <img src="{{ url_for('static', filename='images/logo2.png') }}" 
+                     alt="Fuel Flux Logo" 
+                     class="h-10 w-auto"
+                     style="background: none !important; background-color: transparent !important; mix-blend-mode: screen;" />
+                <h1 class="text-2xl font-bold text-fuel-orange">Investor Dashboard</h1>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="exportInvestorData('csv')" 
+                        class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-semibold transition flex items-center gap-2">
+                    Export CSV
+                </button>
+                <button onclick="exportInvestorData('pdf')" 
+                        class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg font-semibold transition flex items-center gap-2">
+                    Export PDF
+                </button>
+                <button onclick="printInvestorDashboard()" 
+                        class="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg font-semibold transition flex items-center gap-2">
+                    Print
+                </button>
+                <a href="{{ url_for('investor.logout') }}" 
+                   class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-semibold transition">
+                    Logout
+                </a>
+                       class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm transition">
                         Logout
                     </a>
                 </div>
@@ -58,17 +62,17 @@
         <!-- Key Metrics Overview -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <!-- Total Revenue -->
-            <div class="metric-card card-bg rounded-xl p-6 shadow-lg">
+            <div class="metric-card bg-fuel-gray rounded-xl p-6 shadow-lg">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-gray-500 text-sm font-medium">Total Revenue</p>
-                        <p class="text-3xl font-bold text-gray-900">₹{{ "%.2f"|format(total_revenue) }}</p>
-                        <p class="text-sm text-green-600 mt-1">
+                        <p class="text-gray-400 text-sm font-medium">Total Revenue</p>
+                        <p class="text-3xl font-bold text-fuel-orange">₹{{ "%.2f"|format(total_revenue) }}</p>
+                        <p class="text-sm text-green-500 mt-1">
                             {{ "%.1f"|format(mom_revenue_growth) }}% growth
                         </p>
                     </div>
-                    <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="w-12 h-12 bg-green-900/30 rounded-full flex items-center justify-center">
+                        <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/>
                         </svg>
                     </div>
@@ -76,17 +80,17 @@
             </div>
 
             <!-- Total Transactions -->
-            <div class="metric-card card-bg rounded-xl p-6 shadow-lg">
+            <div class="metric-card bg-fuel-gray rounded-xl p-6 shadow-lg">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-gray-500 text-sm font-medium">Total Transactions</p>
-                        <p class="text-3xl font-bold text-gray-900">{{ total_transactions }}</p>
-                        <p class="text-sm text-blue-600 mt-1">
+                        <p class="text-gray-400 text-sm font-medium">Total Transactions</p>
+                        <p class="text-3xl font-bold text-fuel-orange">{{ total_transactions }}</p>
+                        <p class="text-sm text-blue-500 mt-1">
                             {{ "%.1f"|format(mom_transaction_growth) }}% growth
                         </p>
                     </div>
-                    <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="w-12 h-12 bg-blue-900/30 rounded-full flex items-center justify-center">
+                        <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
                         </svg>
                     </div>
@@ -94,17 +98,17 @@
             </div>
 
             <!-- Active Users -->
-            <div class="metric-card card-bg rounded-xl p-6 shadow-lg">
+            <div class="metric-card bg-fuel-gray rounded-xl p-6 shadow-lg">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-gray-500 text-sm font-medium">Active Users</p>
-                        <p class="text-3xl font-bold text-gray-900">{{ total_cab_owners + total_pump_owners }}</p>
-                        <p class="text-sm text-purple-600 mt-1">
+                        <p class="text-gray-400 text-sm font-medium">Active Users</p>
+                        <p class="text-3xl font-bold text-fuel-orange">{{ total_cab_owners + total_pump_owners }}</p>
+                        <p class="text-sm text-fuel-orange mt-1">
                             {{ total_cab_owners }} drivers, {{ total_pump_owners }} pumps
                         </p>
                     </div>
-                    <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="w-12 h-12 bg-fuel-orange/20 rounded-full flex items-center justify-center">
+                        <svg class="w-6 h-6 text-fuel-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
                         </svg>
                     </div>
@@ -112,17 +116,17 @@
             </div>
 
             <!-- Total Pumps -->
-            <div class="metric-card card-bg rounded-xl p-6 shadow-lg">
+            <div class="metric-card bg-fuel-gray rounded-xl p-6 shadow-lg">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-gray-500 text-sm font-medium">Total Pumps</p>
-                        <p class="text-3xl font-bold text-gray-900">{{ total_pumps }}</p>
-                        <p class="text-sm text-orange-600 mt-1">
+                        <p class="text-gray-400 text-sm font-medium">Total Pumps</p>
+                        <p class="text-3xl font-bold text-fuel-orange">{{ total_pumps }}</p>
+                        <p class="text-sm text-fuel-orange mt-1">
                             {{ active_subscriptions }} active subscriptions
                         </p>
                     </div>
-                    <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
-                        <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="w-12 h-12 bg-fuel-orange/20 rounded-full flex items-center justify-center">
+                        <svg class="w-6 h-6 text-fuel-orange" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
                         </svg>
                     </div>
@@ -133,32 +137,32 @@
         <!-- Charts Section -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             <!-- Revenue Chart -->
-            <div class="bg-white rounded-xl p-4 shadow-sm">
-                <h3 class="text-lg font-semibold text-gray-900 mb-3">Revenue Trend (7 Days)</h3>
+            <div class="bg-fuel-gray rounded-xl p-4 shadow-lg">
+                <h3 class="text-lg font-semibold text-fuel-orange mb-3">Revenue Trend (7 Days)</h3>
                 <div class="h-32">
                     <canvas id="revenueChart"></canvas>
                 </div>
             </div>
 
             <!-- Transaction Volume -->
-            <div class="bg-white rounded-xl p-4 shadow-sm">
-                <h3 class="text-lg font-semibold text-gray-900 mb-3">Transaction Volume (7 Days)</h3>
+            <div class="bg-fuel-gray rounded-xl p-4 shadow-lg">
+                <h3 class="text-lg font-semibold text-fuel-orange mb-3">Transaction Volume (7 Days)</h3>
                 <div class="h-32">
                     <canvas id="transactionChart"></canvas>
                 </div>
             </div>
 
             <!-- Fuel Distribution -->
-            <div class="bg-white rounded-xl p-4 shadow-sm">
-                <h3 class="text-lg font-semibold text-gray-900 mb-3">Fuel Type Distribution</h3>
+            <div class="bg-fuel-gray rounded-xl p-4 shadow-lg">
+                <h3 class="text-lg font-semibold text-fuel-orange mb-3">Fuel Type Distribution</h3>
                 <div class="h-32">
                     <canvas id="fuelChart"></canvas>
                 </div>
             </div>
 
             <!-- Top Pumps -->
-            <div class="bg-white rounded-xl p-4 shadow-sm">
-                <h3 class="text-lg font-semibold text-gray-900 mb-3">Top 5 Pumps</h3>
+            <div class="bg-fuel-gray rounded-xl p-4 shadow-lg">
+                <h3 class="text-lg font-semibold text-fuel-orange mb-3">Top 5 Pumps</h3>
                 <div class="h-32">
                     <canvas id="topPumpsChart"></canvas>
                 </div>
@@ -168,82 +172,82 @@
         <!-- Financial Summary -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <!-- Wallet Balances -->
-            <div class="card-bg rounded-xl p-6 shadow-lg">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Wallet Balances</h3>
+            <div class="bg-fuel-gray rounded-xl p-6 shadow-lg">
+                <h3 class="text-lg font-semibold text-fuel-orange mb-4">Wallet Balances</h3>
                 <div class="space-y-3">
                     <div class="flex justify-between items-center">
-                        <span class="text-gray-600">Driver Wallets</span>
-                        <span class="font-semibold text-gray-900">₹{{ "%.2f"|format(total_driver_wallet_balance) }}</span>
+                        <span class="text-gray-400">Driver Wallets</span>
+                        <span class="font-semibold text-fuel-orange">₹{{ "%.2f"|format(total_driver_wallet_balance) }}</span>
                     </div>
                     <div class="flex justify-between items-center">
-                        <span class="text-gray-600">Pump Wallets</span>
-                        <span class="font-semibold text-gray-900">₹{{ "%.2f"|format(total_pump_wallet_balance) }}</span>
+                        <span class="text-gray-400">Pump Wallets</span>
+                        <span class="font-semibold text-fuel-orange">₹{{ "%.2f"|format(total_pump_wallet_balance) }}</span>
                     </div>
-                    <div class="flex justify-between items-center pt-2 border-t">
-                        <span class="text-gray-800 font-medium">Total Locked</span>
-                        <span class="font-bold text-green-600">₹{{ "%.2f"|format(total_driver_wallet_balance + total_pump_wallet_balance) }}</span>
+                    <div class="flex justify-between items-center pt-2 border-t border-gray-700">
+                        <span class="text-gray-300 font-medium">Total Locked</span>
+                        <span class="font-bold text-green-500">₹{{ "%.2f"|format(total_driver_wallet_balance + total_pump_wallet_balance) }}</span>
                     </div>
                 </div>
             </div>
 
             <!-- Settlement Status -->
-            <div class="card-bg rounded-xl p-6 shadow-lg">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Settlement Status</h3>
+            <div class="bg-fuel-gray rounded-xl p-6 shadow-lg">
+                <h3 class="text-lg font-semibold text-fuel-orange mb-4">Settlement Status</h3>
                 <div class="space-y-3">
                     <div class="flex justify-between items-center">
-                        <span class="text-gray-600">Pending Settlements</span>
-                        <span class="font-semibold text-yellow-600">{{ pending_settlements }}</span>
+                        <span class="text-gray-400">Pending Settlements</span>
+                        <span class="font-semibold text-yellow-500">{{ pending_settlements }}</span>
                     </div>
                     <div class="flex justify-between items-center">
-                        <span class="text-gray-600">Total Settled</span>
-                        <span class="font-semibold text-green-600">₹{{ "%.2f"|format(total_settled_amount) }}</span>
+                        <span class="text-gray-400">Total Settled</span>
+                        <span class="font-semibold text-green-500">₹{{ "%.2f"|format(total_settled_amount) }}</span>
                     </div>
-                    <div class="flex justify-between items-center pt-2 border-t">
-                        <span class="text-gray-800 font-medium">Today's Revenue</span>
-                        <span class="font-bold text-blue-600">₹{{ "%.2f"|format(today_revenue) }}</span>
+                    <div class="flex justify-between items-center pt-2 border-t border-gray-700">
+                        <span class="text-gray-300 font-medium">Today's Revenue</span>
+                        <span class="font-bold text-blue-500">₹{{ "%.2f"|format(today_revenue) }}</span>
                     </div>
                 </div>
             </div>
 
             <!-- Performance Metrics -->
-            <div class="card-bg rounded-xl p-6 shadow-lg">
-                <h3 class="text-lg font-semibold text-gray-900 mb-4">Performance Metrics</h3>
+            <div class="bg-fuel-gray rounded-xl p-6 shadow-lg">
+                <h3 class="text-lg font-semibold text-fuel-orange mb-4">Performance Metrics</h3>
                 <div class="space-y-3">
                     <div class="flex justify-between items-center">
-                        <span class="text-gray-600">Avg Transaction Value</span>
-                        <span class="font-semibold text-gray-900">₹{{ "%.2f"|format(avg_transaction_value) }}</span>
+                        <span class="text-gray-400">Avg Transaction Value</span>
+                        <span class="font-semibold text-fuel-orange">₹{{ "%.2f"|format(avg_transaction_value) }}</span>
                     </div>
                     <div class="flex justify-between items-center">
-                        <span class="text-gray-600">Monthly Revenue</span>
-                        <span class="font-semibold text-green-600">₹{{ "%.2f"|format(monthly_revenue) }}</span>
+                        <span class="text-gray-400">Monthly Revenue</span>
+                        <span class="font-semibold text-green-500">₹{{ "%.2f"|format(monthly_revenue) }}</span>
                     </div>
-                    <div class="flex justify-between items-center pt-2 border-t">
-                        <span class="text-gray-800 font-medium">Quarterly Revenue</span>
-                        <span class="font-bold text-purple-600">₹{{ "%.2f"|format(quarterly_revenue) }}</span>
+                    <div class="flex justify-between items-center pt-2 border-t border-gray-700">
+                        <span class="text-gray-300 font-medium">Quarterly Revenue</span>
+                        <span class="font-bold text-fuel-orange">₹{{ "%.2f"|format(quarterly_revenue) }}</span>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Business Insights -->
-        <div class="card-bg rounded-xl p-6 shadow-lg">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">Business Insights</h3>
+        <div class="bg-fuel-gray rounded-xl p-6 shadow-lg">
+            <h3 class="text-lg font-semibold text-fuel-orange mb-4">Business Insights</h3>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div class="text-center p-4 bg-blue-50 rounded-lg">
-                    <p class="text-2xl font-bold text-blue-600">{{ today_transactions }}</p>
-                    <p class="text-sm text-gray-600">Transactions Today</p>
+                <div class="text-center p-4 bg-blue-900/30 rounded-lg">
+                    <p class="text-2xl font-bold text-blue-500">{{ today_transactions }}</p>
+                    <p class="text-sm text-gray-300">Transactions Today</p>
                 </div>
-                <div class="text-center p-4 bg-green-50 rounded-lg">
-                    <p class="text-2xl font-bold text-green-600">{{ monthly_transactions }}</p>
-                    <p class="text-sm text-gray-600">Monthly Transactions</p>
+                <div class="text-center p-4 bg-green-900/30 rounded-lg">
+                    <p class="text-2xl font-bold text-green-500">{{ monthly_transactions }}</p>
+                    <p class="text-sm text-gray-300">Monthly Transactions</p>
                 </div>
-                <div class="text-center p-4 bg-purple-50 rounded-lg">
-                    <p class="text-2xl font-bold text-purple-600">{{ total_vehicles }}</p>
-                    <p class="text-sm text-gray-600">Registered Vehicles</p>
+                <div class="text-center p-4 bg-fuel-orange/20 rounded-lg">
+                    <p class="text-2xl font-bold text-fuel-orange">{{ total_vehicles }}</p>
+                    <p class="text-sm text-gray-300">Registered Vehicles</p>
                 </div>
-                <div class="text-center p-4 bg-orange-50 rounded-lg">
-                    <p class="text-2xl font-bold text-orange-600">{{ "%.1f"|format(total_subscription_revenue / 1000) }}K</p>
-                    <p class="text-sm text-gray-600">Subscription Revenue</p>
+                <div class="text-center p-4 bg-fuel-orange/20 rounded-lg">
+                    <p class="text-2xl font-bold text-fuel-orange">{{ "%.1f"|format(total_subscription_revenue / 1000) }}K</p>
+                    <p class="text-sm text-gray-300">Subscription Revenue</p>
                 </div>
             </div>
         </div>
@@ -264,8 +268,8 @@
                 datasets: [{
                     label: 'Revenue',
                     data: dailyData.slice(-7).map(d => d.revenue),
-                    borderColor: 'rgb(34, 197, 94)',
-                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                    borderColor: 'rgb(251, 146, 60)',
+                    backgroundColor: 'rgba(251, 146, 60, 0.1)',
                     tension: 0.4,
                     fill: true
                 }]
@@ -282,12 +286,20 @@
                         ticks: {
                             callback: function(value) {
                                 return '₹' + (value/1000).toFixed(0) + 'K';
-                            }
+                            },
+                            color: '#9CA3AF'
+                        },
+                        grid: {
+                            color: 'rgba(75, 85, 99, 0.3)'
                         }
                     },
                     x: {
                         ticks: {
-                            maxRotation: 0
+                            maxRotation: 0,
+                            color: '#9CA3AF'
+                        },
+                        grid: {
+                            color: 'rgba(75, 85, 99, 0.3)'
                         }
                     }
                 }
@@ -316,11 +328,21 @@
                 },
                 scales: {
                     y: {
-                        beginAtZero: true
+                        beginAtZero: true,
+                        ticks: {
+                            color: '#9CA3AF'
+                        },
+                        grid: {
+                            color: 'rgba(75, 85, 99, 0.3)'
+                        }
                     },
                     x: {
                         ticks: {
-                            maxRotation: 0
+                            maxRotation: 0,
+                            color: '#9CA3AF'
+                        },
+                        grid: {
+                            color: 'rgba(75, 85, 99, 0.3)'
                         }
                     }
                 }
@@ -336,13 +358,13 @@
                 datasets: [{
                     data: fuelDistribution.map(d => d.count),
                     backgroundColor: [
-                        'rgba(239, 68, 68, 0.8)',
+                        'rgba(251, 146, 60, 0.8)',
                         'rgba(34, 197, 94, 0.8)',
                         'rgba(59, 130, 246, 0.8)',
                         'rgba(251, 191, 36, 0.8)'
                     ],
                     borderWidth: 2,
-                    borderColor: '#fff'
+                    borderColor: '#1F2937'
                 }]
             },
             options: {
@@ -356,7 +378,8 @@
                             padding: 10,
                             font: {
                                 size: 11
-                            }
+                            },
+                            color: '#9CA3AF'
                         }
                     }
                 }
@@ -372,8 +395,8 @@
                 datasets: [{
                     label: 'Revenue',
                     data: topPumpsData.slice(0, 5).map(d => d.revenue),
-                    backgroundColor: 'rgba(147, 51, 234, 0.8)',
-                    borderColor: 'rgb(147, 51, 234)',
+                    backgroundColor: 'rgba(251, 146, 60, 0.8)',
+                    borderColor: 'rgb(251, 146, 60)',
                     borderWidth: 1
                 }]
             },
@@ -390,17 +413,355 @@
                         ticks: {
                             callback: function(value) {
                                 return '₹' + (value/1000).toFixed(0) + 'K';
+                            },
+                            color: '#9CA3AF'
+                        },
+                        grid: {
+                            color: 'rgba(75, 85, 99, 0.3)'
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            color: '#9CA3AF'
+                        },
+                        grid: {
+                    }
+                }
+            });
+
+            // Transaction Volume Chart - Simplified
+            const transactionCtx = document.getElementById('transactionChart').getContext('2d');
+            new Chart(transactionCtx, {
+                type: 'bar',
+                data: {
+                    labels: dailyData.slice(-7).map(d => d.date.slice(5)), // Last 7 days
+                    datasets: [{
+                        label: 'Transactions',
+                        data: dailyData.slice(-7).map(d => d.transactions),
+                        backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                        borderColor: 'rgb(59, 130, 246)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: '#9CA3AF'
+                            },
+                            grid: {
+                                color: 'rgba(75, 85, 99, 0.3)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                maxRotation: 0,
+                                color: '#9CA3AF'
+                            },
+                            grid: {
+                                color: 'rgba(75, 85, 99, 0.3)'
                             }
                         }
                     }
                 }
-            }
-        });
+            });
 
-        // Simple auto-refresh every 60 seconds (non-intrusive)
-        setTimeout(() => {
-            window.location.reload();
-        }, 60000);
-    </script>
-</body>
-</html>
+            // Fuel Type Distribution - Simplified
+            const fuelCtx = document.getElementById('fuelChart').getContext('2d');
+            new Chart(fuelCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: fuelDistribution.map(d => d.fuel_type),
+                    datasets: [{
+                        data: fuelDistribution.map(d => d.count),
+                        backgroundColor: [
+                            'rgba(251, 146, 60, 0.8)',
+                            'rgba(34, 197, 94, 0.8)',
+                            'rgba(59, 130, 246, 0.8)',
+                            'rgba(251, 191, 36, 0.8)'
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#1F2937'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                boxWidth: 12,
+                                padding: 10,
+                                font: {
+                                    size: 11
+                                },
+                                color: '#9CA3AF'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Top Pumps - Simplified
+            const topPumpsCtx = document.getElementById('topPumpsChart').getContext('2d');
+            new Chart(topPumpsCtx, {
+                type: 'bar',
+                data: {
+                    labels: topPumpsData.slice(0, 5).map(d => d.name.length > 10 ? d.name.slice(0, 10) + '...' : d.name),
+                    datasets: [{
+                        label: 'Revenue',
+                        data: topPumpsData.slice(0, 5).map(d => d.revenue),
+                        backgroundColor: 'rgba(251, 146, 60, 0.8)',
+                        borderColor: 'rgb(251, 146, 60)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return '₹' + (value/1000).toFixed(0) + 'K';
+                                },
+                                color: '#9CA3AF'
+                            },
+                            grid: {
+                                color: 'rgba(75, 85, 99, 0.3)'
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                color: '#9CA3AF'
+                            },
+                            grid: {
+                                color: 'rgba(75, 85, 99, 0.3)'
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Simple auto-refresh every 60 seconds (non-intrusive)
+            setTimeout(() => {
+                window.location.reload();
+            }, 60000);
+
+            // Export Functions
+            function exportInvestorData(format) {
+                const investorData = {
+                    metrics: {
+                        total_revenue: {{ total_revenue }},
+                        total_transactions: {{ total_transactions }},
+                        total_cab_owners: {{ total_cab_owners }},
+                        total_pump_owners: {{ total_pump_owners }},
+                        total_pumps: {{ total_pumps }},
+                        active_subscriptions: {{ active_subscriptions }},
+                        today_transactions: {{ today_transactions }},
+                        monthly_transactions: {{ monthly_transactions }},
+                        total_vehicles: {{ total_vehicles }},
+                        total_subscription_revenue: {{ total_subscription_revenue }}
+                    },
+                    financial: {
+                        total_driver_wallet_balance: {{ total_driver_wallet_balance }},
+                        total_pump_wallet_balance: {{ total_pump_wallet_balance }},
+                        pending_settlements: {{ pending_settlements }},
+                        total_settled_amount: {{ total_settled_amount }},
+                        today_revenue: {{ today_revenue }},
+                        avg_transaction_value: {{ avg_transaction_value }},
+                        monthly_revenue: {{ monthly_revenue }},
+                        quarterly_revenue: {{ quarterly_revenue }}
+                    },
+                    daily_data: {{ daily_data | tojson }},
+                    fuel_distribution: {{ fuel_distribution | tojson }},
+                    top_pumps_data: {{ top_pumps_data | tojson }},
+                    export_date: new Date().toISOString()
+                };
+
+                if (format === 'csv') {
+                    exportInvestorToCSV(investorData);
+                } else if (format === 'pdf') {
+                    exportInvestorToPDF(investorData);
+                }
+            }
+
+            function exportInvestorToCSV(data) {
+                let csv = 'Fuel Flux Investor Dashboard Export\n';
+                csv += `Export Date: ${data.export_date}\n\n`;
+                
+                // Key Metrics
+                csv += 'KEY METRICS\n';
+                csv += 'Metric,Value\n';
+                csv += `Total Revenue,₹${data.metrics.total_revenue}\n`;
+                csv += `Total Transactions,${data.metrics.total_transactions}\n`;
+                csv += `Total Cab Owners,${data.metrics.total_cab_owners}\n`;
+                csv += `Total Pump Owners,${data.metrics.total_pump_owners}\n`;
+                csv += `Total Pumps,${data.metrics.total_pumps}\n`;
+                csv += `Active Subscriptions,${data.metrics.active_subscriptions}\n`;
+                csv += `Today's Transactions,${data.metrics.today_transactions}\n`;
+                csv += `Monthly Transactions,${data.metrics.monthly_transactions}\n`;
+                csv += `Total Vehicles,${data.metrics.total_vehicles}\n`;
+                csv += `Subscription Revenue,₹${data.metrics.total_subscription_revenue}\n\n`;
+                
+                // Financial Data
+                csv += 'FINANCIAL SUMMARY\n';
+                csv += 'Category,Amount\n';
+                csv += `Driver Wallet Balance,₹${data.financial.total_driver_wallet_balance}\n`;
+                csv += `Pump Wallet Balance,₹${data.financial.total_pump_wallet_balance}\n`;
+                csv += `Pending Settlements,${data.financial.pending_settlements}\n`;
+                csv += `Total Settled Amount,₹${data.financial.total_settled_amount}\n`;
+                csv += `Today's Revenue,₹${data.financial.today_revenue}\n`;
+                csv += `Average Transaction Value,₹${data.financial.avg_transaction_value}\n`;
+                csv += `Monthly Revenue,₹${data.financial.monthly_revenue}\n`;
+                csv += `Quarterly Revenue,₹${data.financial.quarterly_revenue}\n\n`;
+                
+                // Daily Data
+                csv += 'DAILY DATA (Last 7 Days)\n';
+                csv += 'Date,Revenue,Transactions\n';
+                data.daily_data.slice(-7).forEach(day => {
+                    csv += `"${day.date}","${day.revenue}","${day.transactions}"\n`;
+                });
+
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', `fuel_flux_investor_dashboard_${new Date().toISOString().split('T')[0]}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+
+            function exportInvestorToPDF(data) {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                // Title
+                doc.setFontSize(20);
+                doc.text('Fuel Flux Investor Dashboard', 14, 20);
+                doc.setFontSize(10);
+                doc.text(`Export Date: ${new Date().toLocaleDateString()}`, 14, 30);
+                
+                let yPosition = 50;
+                
+                // Key Metrics
+                doc.setFontSize(14);
+                doc.text('Key Metrics', 14, yPosition);
+                yPosition += 10;
+                doc.setFontSize(10);
+                doc.text(`Total Revenue: ₹${data.metrics.total_revenue}`, 20, yPosition);
+                yPosition += 7;
+                doc.text(`Total Transactions: ${data.metrics.total_transactions}`, 20, yPosition);
+                yPosition += 7;
+                doc.text(`Total Pumps: ${data.metrics.total_pumps}`, 20, yPosition);
+                yPosition += 7;
+                doc.text(`Active Users: ${data.metrics.total_cab_owners + data.metrics.total_pump_owners}`, 20, yPosition);
+                yPosition += 15;
+                
+                // Financial Summary
+                doc.setFontSize(14);
+                doc.text('Financial Summary', 14, yPosition);
+                yPosition += 10;
+                doc.setFontSize(10);
+                doc.text(`Driver Wallets: ₹${data.financial.total_driver_wallet_balance}`, 20, yPosition);
+                yPosition += 7;
+                doc.text(`Pump Wallets: ₹${data.financial.total_pump_wallet_balance}`, 20, yPosition);
+                yPosition += 7;
+                doc.text(`Today's Revenue: ₹${data.financial.today_revenue}`, 20, yPosition);
+                yPosition += 7;
+                doc.text(`Monthly Revenue: ₹${data.financial.monthly_revenue}`, 20, yPosition);
+                
+                doc.save(`fuel_flux_investor_dashboard_${new Date().toISOString().split('T')[0]}.pdf`);
+            }
+
+            function printInvestorDashboard() {
+                const printContent = `
+                    <div style="font-family: Arial, sans-serif; padding: 20px;">
+                        <h1 style="color: #FB923C; margin-bottom: 20px;">Fuel Flux Investor Dashboard</h1>
+                        <p style="margin-bottom: 30px;"><strong>Export Date:</strong> ${new Date().toLocaleDateString()}</p>
+                        
+                        <h2 style="color: #FB923C; margin-bottom: 15px;">Key Metrics</h2>
+                        <table style="width: 100%; margin-bottom: 30px; border-collapse: collapse;">
+                            <tr style="background-color: #1F2937;">
+                                <th style="padding: 10px; text-align: left; border: 1px solid #374151;">Metric</th>
+                                <th style="padding: 10px; text-align: left; border: 1px solid #374151;">Value</th>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px; border: 1px solid #374151;">Total Revenue</td>
+                                <td style="padding: 10px; border: 1px solid #374151;">₹{{ "%.2f"|format(total_revenue) }}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px; border: 1px solid #374151;">Total Transactions</td>
+                                <td style="padding: 10px; border: 1px solid #374151;">{{ total_transactions }}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px; border: 1px solid #374151;">Total Pumps</td>
+                                <td style="padding: 10px; border: 1px solid #374151;">{{ total_pumps }}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px; border: 1px solid #374151;">Active Users</td>
+                                <td style="padding: 10px; border: 1px solid #374151;">{{ total_cab_owners + total_pump_owners }}</td>
+                            </tr>
+                        </table>
+                        
+                        <h2 style="color: #FB923C; margin-bottom: 15px;">Financial Summary</h2>
+                        <table style="width: 100%; margin-bottom: 30px; border-collapse: collapse;">
+                            <tr style="background-color: #1F2937;">
+                                <th style="padding: 10px; text-align: left; border: 1px solid #374151;">Category</th>
+                                <th style="padding: 10px; text-align: left; border: 1px solid #374151;">Amount</th>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px; border: 1px solid #374151;">Driver Wallets</td>
+                                <td style="padding: 10px; border: 1px solid #374151;">₹{{ "%.2f"|format(total_driver_wallet_balance) }}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px; border: 1px solid #374151;">Pump Wallets</td>
+                                <td style="padding: 10px; border: 1px solid #374151;">₹{{ "%.2f"|format(total_pump_wallet_balance) }}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px; border: 1px solid #374151;">Today's Revenue</td>
+                                <td style="padding: 10px; border: 1px solid #374151;">₹{{ "%.2f"|format(today_revenue) }}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px; border: 1px solid #374151;">Monthly Revenue</td>
+                                <td style="padding: 10px; border: 1px solid #374151;">₹{{ "%.2f"|format(monthly_revenue) }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                `;
+                
+                const printWindow = window.open('', '_blank');
+                printWindow.document.write(`
+                    <html>
+                        <head>
+                            <title>Fuel Flux Investor Dashboard - Print</title>
+                            <style>
+                                body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+                                table { width: 100%; border-collapse: collapse; }
+                                th, td { padding: 10px; border: 1px solid #374151; text-align: left; }
+                                th { background-color: #1F2937; color: #FB923C; }
+                            </style>
+                        </head>
+                        <body>${printContent}</body>
+                    </html>
+                `);
+                printWindow.document.close();
+                printWindow.print();
+            }
+        </script>
+    </body>
+    </html>

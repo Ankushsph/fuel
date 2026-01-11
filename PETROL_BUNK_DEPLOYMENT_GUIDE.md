@@ -307,8 +307,8 @@ RTSP Port: 554
 ### **Application Access:**
 ```
 Dashboard: http://[server-ip]:5001
-Admin Email: web3.ankitrai@gmail.com
-Admin Pass: 123466
+Admin Email: (set via env var ADMIN_EMAIL)
+Admin Pass: (set via env var ADMIN_PASSWORD)
 ```
 
 ### **Common RTSP Formats:**

@@ -1,6 +1,7 @@
 # vehicle_count.py
 
 import cv2
+import os
 import threading
 import time
 from flask import Blueprint, request, jsonify, current_app, render_template
@@ -23,49 +24,78 @@ rtsp_threads = {}
 lock = threading.Lock()
 
 
+def _resolve_video_source(rtsp_or_file: str):
+    src = (rtsp_or_file or "").strip()
+    if src.lower().startswith("file:"):
+        rel_path = src[5:].lstrip("/\\")
+        rel_path_norm = rel_path.replace("\\", "/")
+        if not rel_path_norm.lower().startswith("uploads/videos/") or not rel_path_norm.lower().endswith(".mp4"):
+            raise ValueError("Invalid video file source")
+
+        base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "uploads", "videos"))
+        abs_path = os.path.abspath(os.path.join(os.path.dirname(__file__), rel_path_norm))
+        if not abs_path.startswith(base_dir + os.sep):
+            raise ValueError("Invalid video file path")
+        if not os.path.exists(abs_path):
+            raise FileNotFoundError("Video file not found")
+        return abs_path, True
+
+    return src, False
+
+
 def process_rtsp(pump_id, rtsp_url):
     """
     Process RTSP feed in a background thread, count vehicles using YOLO.
     """
     print(f"🔄 Starting vehicle counting for pump {pump_id}...")
     print(f"📹 RTSP URL: {rtsp_url}")
+
+    try:
+        capture_source, is_file_source = _resolve_video_source(rtsp_url)
+    except Exception as e:
+        print(f"❌ Invalid video source for pump {pump_id}: {e}")
+        with lock:
+            latest_counts[pump_id] = 0
+        return
     
-    # Try multiple backends for better compatibility
     cap = None
-    connection_methods = [
-        (cv2.CAP_FFMPEG, "FFMPEG"),
-        (cv2.CAP_ANY, "ANY")
-    ]
-    
-    for backend, backend_name in connection_methods:
-        print(f"🔌 Trying {backend_name} backend...")
-        cap = cv2.VideoCapture(rtsp_url, backend)
-        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-        cap.set(cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, 20000)
-        cap.set(cv2.CAP_PROP_READ_TIMEOUT_MSEC, 20000)
+    if is_file_source:
+        cap = cv2.VideoCapture(capture_source)
+    else:
+        # Try multiple backends for better compatibility
+        connection_methods = [
+            (cv2.CAP_FFMPEG, "FFMPEG"),
+            (cv2.CAP_ANY, "ANY")
+        ]
         
-        # Give camera time to connect and verify with frame read
-        max_attempts = 8
-        connected = False
-        
-        for attempt in range(max_attempts):
-            if cap.isOpened():
-                ret, test_frame = cap.read()
-                if ret and test_frame is not None:
-                    print(f"✅ Connected with {backend_name} on attempt {attempt + 1}")
-                    connected = True
-                    break
-            time.sleep(1.5)
-        
-        if connected:
-            break
-        else:
-            if cap:
-                cap.release()
-            cap = None
+        for backend, backend_name in connection_methods:
+            print(f"🔌 Trying {backend_name} backend...")
+            cap = cv2.VideoCapture(capture_source, backend)
+            cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+            cap.set(cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, 20000)
+            cap.set(cv2.CAP_PROP_READ_TIMEOUT_MSEC, 20000)
+            
+            max_attempts = 8
+            connected = False
+            
+            for attempt in range(max_attempts):
+                if cap.isOpened():
+                    ret, test_frame = cap.read()
+                    if ret and test_frame is not None:
+                        print(f"✅ Connected with {backend_name} on attempt {attempt + 1}")
+                        connected = True
+                        break
+                time.sleep(1.5)
+            
+            if connected:
+                break
+            else:
+                if cap:
+                    cap.release()
+                cap = None
     
     if not cap or not cap.isOpened():
-        print(f"❌ Failed to open RTSP stream for pump {pump_id} after all attempts")
+        print(f"❌ Failed to open video source for pump {pump_id} after all attempts")
         with lock:
             latest_counts[pump_id] = 0
         return
@@ -97,6 +127,14 @@ def process_rtsp(pump_id, rtsp_url):
     while True:
         ret, frame = cap.read()
         if not ret or frame is None:
+            if is_file_source:
+                try:
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                    time.sleep(0.05)
+                    continue
+                except Exception:
+                    pass
+
             consecutive_failures += 1
             print(f"⚠️  Frame read failed for pump {pump_id} (attempt {consecutive_failures}/{max_failures})")
             if consecutive_failures >= max_failures:
@@ -111,16 +149,23 @@ def process_rtsp(pump_id, rtsp_url):
         # Run YOLO detection if model is available
         if model:
             try:
-                # Run detection on frame
-                results = model(frame, classes=[2,3,5,7], verbose=False, conf=0.3)  
-                # class IDs for vehicles (COCO: car=2, motorcycle=3, bus=5, truck=7)
-                # Lower confidence threshold to detect more vehicles
+                # Prefer tracking to reduce double-counting (unique track IDs)
+                if hasattr(model, "track"):
+                    results = model.track(frame, classes=[2, 3, 5, 7], verbose=False, conf=0.3, persist=True)
+                else:
+                    results = model(frame, classes=[2, 3, 5, 7], verbose=False, conf=0.3)
 
-                # Count vehicles
                 count = 0
                 for r in results:
-                    if hasattr(r, 'boxes'):
-                        count += len(r.boxes)
+                    if hasattr(r, "boxes") and r.boxes is not None:
+                        ids = getattr(r.boxes, "id", None)
+                        if ids is not None:
+                            try:
+                                count += len(set(int(x) for x in ids.tolist()))
+                            except Exception:
+                                count += len(r.boxes)
+                        else:
+                            count += len(r.boxes)
 
                 with lock:
                     latest_counts[pump_id] = count

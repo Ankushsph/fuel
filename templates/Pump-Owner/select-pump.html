@@ -43,6 +43,8 @@
   <!-- Toast -->
   <div id="toast"></div>
 
+  <div id="flashedMessagesData" data-messages='{{ get_flashed_messages(with_categories=true) | tojson | e }}' hidden></div>
+
   <!-- Header / Navigation -->
   <nav class="bg-fuel-gray p-2 md:p-4 shadow-lg">
     <div class="flex justify-between items-center gap-2">
@@ -85,35 +87,60 @@
         </button>
       </div>
 
-      <!-- Add Pump Form (toggle visibility) -->
-      <form id="addPumpForm" class="flex flex-col md:flex-row gap-4 mb-4 hidden">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <input type="text" name="pump_name" placeholder="Pump Name" required
-               class="flex-1 p-3 rounded-lg bg-fuel-black text-white border border-gray-600"/>
-        <input type="text" name="location" placeholder="Location" required
-               class="flex-1 p-3 rounded-lg bg-fuel-black text-white border border-gray-600"/>
-        <button type="submit" class="bg-fuel-orange text-white px-4 py-2 rounded-lg hover:bg-orange-600 font-semibold transition">
-          Add Pump
-        </button>
-      </form>
-
       <!-- Pumps Grid -->
       <div id="pumpsList" class="flex flex-col gap-3 overflow-y-auto flex-1">
-        {% for pump in pumps %}
-        <div class="pump-item bg-fuel-black rounded-xl p-3 md:p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 hover:bg-fuel-gray cursor-pointer transition mb-3"
-            data-pump-id="{{ pump.id }}">
-          <div class="flex-1">
-            <h3 class="text-base md:text-lg font-semibold text-fuel-orange">{{ pump.name }}</h3>
-            <p class="text-sm text-gray-400">{{ pump.location }}</p>
+        <!-- Approved Pumps -->
+        {% if approved_pumps %}
+          <div class="mb-6">
+            <h2 class="text-lg font-semibold text-green-400 mb-3">✅ Approved Pumps</h2>
+            {% for pump in approved_pumps %}
+              <div class="pump-item bg-fuel-black rounded-xl p-3 md:p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 hover:bg-fuel-gray cursor-pointer transition mb-3"
+                    data-pump-id="{{ pump.id }}">
+                <div class="flex-1">
+                  <h3 class="text-base md:text-lg font-semibold text-fuel-orange">{{ pump.name }}</h3>
+                  <p class="text-sm text-gray-400">{{ pump.location }}</p>
+                  <p class="text-xs text-green-400 mt-1">✅ Verified - Click to access dashboard</p>
+                </div>
+                <a href="{{ url_for('pump_dashboard.pump_dashboard', pump_id=pump.id) }}?show_subscription=true"
+                   class="bg-fuel-orange text-white px-3 py-2 rounded-lg hover:bg-orange-600 font-semibold transition text-sm w-full sm:w-auto text-center">
+                  Open
+                </a>
+              </div>
+            {% endfor %}
           </div>
-          <button data-pump-id="{{ pump.id }}" 
-                  class="bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 font-semibold transition delete-pump text-sm w-full sm:w-auto">
-            Remove
-          </button>
-        </div>
-        {% else %}
-        <div class="text-gray-400 text-center py-6 text-sm md:text-base">No pumps added yet.</div>
-        {% endfor %}
+        {% endif %}
+
+        <!-- Pending Pumps -->
+        {% if pending_requests %}
+          <div class="mb-6">
+            <h2 class="text-lg font-semibold text-yellow-400 mb-3">⏳ Pending Verification</h2>
+            {% for reg_request in pending_requests %}
+              <div class="pump-item bg-fuel-black rounded-xl p-3 md:p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 hover:bg-fuel-gray cursor-pointer transition mb-3 border border-yellow-600">
+                <div class="flex-1">
+                  <h3 class="text-base md:text-lg font-semibold text-fuel-orange">{{ reg_request.pump.name }}</h3>
+                  <p class="text-sm text-gray-400">{{ reg_request.pump_address }}</p>
+                  <p class="text-xs text-yellow-400 mt-1">⏳ Pending Admin Verification</p>
+                  <p class="text-xs text-gray-500">Submitted: {{ reg_request.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                </div>
+                <div class="flex flex-col gap-2">
+                  <a href="{{ url_for('pump_dashboard.pump_dashboard', pump_id=reg_request.pump.id) }}?show_subscription=true"
+                     class="bg-yellow-600 text-white px-3 py-2 rounded-lg hover:bg-yellow-700 font-semibold transition text-sm w-full sm:w-auto text-center">
+                    Complete Subscription
+                  </a>
+                  <button data-pump-id="{{ reg_request.pump.id }}" 
+                          class="bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 font-semibold transition delete-pump text-sm w-full sm:w-auto">
+                    Remove
+                  </button>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <!-- No pumps message -->
+        {% if not approved_pumps and not pending_requests %}
+          <div class="text-gray-400 text-center py-6 text-sm md:text-base">No pumps added yet.</div>
+        {% endif %}
       </div>
 
 
@@ -137,19 +164,24 @@
 
   // Show Flask flash messages (if any) using the same toast UI
   document.addEventListener('DOMContentLoaded', () => {
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          showToast({{ message|tojson }}, "{{ category }}");
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
+    const flashedMessagesEl = document.getElementById('flashedMessagesData');
+    const rawMessages = flashedMessagesEl ? flashedMessagesEl.getAttribute('data-messages') : '[]';
+    let flashedMessages = [];
+    try {
+      flashedMessages = JSON.parse(rawMessages || '[]');
+    } catch (e) {
+      flashedMessages = [];
+    }
+    if (Array.isArray(flashedMessages)) {
+      flashedMessages.forEach((item) => {
+        if (Array.isArray(item) && item.length >= 2) {
+          const category = item[0];
+          const message = item[1];
+          showToast(message, category);
+        }
+      });
+    }
   });
-
-  // Toggle Add Pump Form
-  const addPumpBtn = document.getElementById('addPumpBtn');
-  const addPumpForm = document.getElementById('addPumpForm');
-  addPumpBtn.addEventListener('click', () => addPumpForm.classList.toggle('hidden'));
 
   // CSRF token
   const csrfMeta = document.querySelector('meta[name="csrf-token"]');
@@ -193,42 +225,8 @@
       pumpItem.classList.add('ring-2', 'ring-fuel-orange');
 
       const pumpId = pumpItem.dataset.pumpId;
-      window.location.href = `/pump/${pumpId}/dashboard`;
-    }
-  });
-
-  // Add Pump via AJAX
-  addPumpForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const formData = Object.fromEntries(new FormData(addPumpForm).entries());
-
-    try {
-      const res = await fetch('/pump/add', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrfToken
-        },
-        body: JSON.stringify(formData)
-      });
-
-      const text = await res.text();
-      try {
-        const result = JSON.parse(text);
-        if (res.ok && result.success) {
-          showToast(result.message, 'success');
-          setTimeout(() => location.reload(), 1000);
-        } else {
-          showToast(result.message || "Failed to add pump.", 'error');
-        }
-      } catch {
-        console.error("Non-JSON response:", text);
-        showToast("Server error: Invalid response.", 'error');
-      }
-    } catch (err) {
-      console.error(err);
-      showToast("Network error. Try again.", 'error');
+      if (!pumpId) return;
+      window.location.href = `/pump/${pumpId}/dashboard?show_subscription=true`;
     }
   });
 
@@ -275,6 +273,13 @@
 
     <form action="{{ url_for('pump.submit_pump_registration') }}" method="POST" enctype="multipart/form-data" class="space-y-3 text-sm md:text-base">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div>
+        <label for="pumpName" class="text-orange-500 block mb-1 text-sm">Pump Name:</label>
+        <input type="text" id="pumpName" name="pumpName"
+               class="rounded-md w-full border p-1.5 text-sm text-orange-500 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-500 "
+               placeholder="Enter pump name" required>
+      </div>
 
       <div>
         <label for="ownerName" class="text-orange-500 block mb-1 text-sm">Pump Owner Name:</label>

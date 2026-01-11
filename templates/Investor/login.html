@@ -3,31 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Investor Portal - FuelFlux</title>
+    <title>Investor Portal - Fuel Flux</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
     <style>
-        .gradient-bg {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
         .glass-effect {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(31, 41, 55, 0.9);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(251, 146, 60, 0.2);
         }
     </style>
 </head>
-<body class="gradient-bg min-h-screen flex items-center justify-center">
+<body class="bg-fuel-black min-h-screen flex items-center justify-center">
     <div class="max-w-md w-full mx-4">
         <!-- Logo and Header -->
         <div class="text-center mb-8">
-            <div class="inline-flex items-center justify-center w-20 h-20 bg-white rounded-full mb-4">
-                <svg class="w-12 h-12 text-purple-600" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
-                </svg>
+            <div class="inline-flex items-center justify-center w-20 h-20 bg-fuel-orange/20 rounded-full mb-4">
+                <img src="{{ url_for('static', filename='images/logo2.png') }}" 
+                     alt="Fuel Flux Logo" 
+                     class="w-12 h-12" 
+                     style="background: none !important; background-color: transparent !important; mix-blend-mode: screen;" />
             </div>
-            <h1 class="text-3xl font-bold text-white mb-2">Investor Portal</h1>
-            <p class="text-purple-100">FuelFlux Business Analytics</p>
+            <h1 class="text-3xl font-bold text-fuel-orange mb-2">Investor Portal</h1>
+            <p class="text-gray-300">Fuel Flux Business Analytics</p>
         </div>
 
         <!-- Login Form -->

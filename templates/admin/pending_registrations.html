@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>Pending Registrations - Admin Dashboard - Fuel Flux</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+</head>
+<body class="bg-fuel-black text-white min-h-screen flex flex-col">
+  
+  <!-- Header -->
+  <header class="bg-fuel-gray p-4 shadow-md">
+    <div class="flex justify-between items-center">
+      <div class="flex items-center gap-2">
+        <img src="{{ url_for('static', filename='images/logo2.png') }}" 
+             alt="Fuel Flux Logo" 
+             class="h-5 md:h-6 w-auto" 
+             style="background: none !important; background-color: transparent !important; mix-blend-mode: screen;" />
+        <span class="text-fuel-orange font-bold text-base md:text-lg">Admin Dashboard</span>
+      </div>
+      <div class="flex gap-3">
+        <a href="{{ url_for('admin.dashboard') }}" 
+           class="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg font-semibold transition">
+          ← Back to Dashboard
+        </a>
+        <a href="{{ url_for('admin.admin_logout') }}" 
+           class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-semibold transition">
+          Logout
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 p-6">
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-3xl font-bold text-fuel-orange">⛽ Pending Pump Registrations</h1>
+      <span class="bg-blue-600 px-4 py-2 rounded-full text-lg font-semibold">
+        {{ registrations|length }} Pending
+      </span>
+    </div>
+
+    {% if registrations %}
+      <div class="space-y-4">
+        {% for reg in registrations %}
+        <div id="reg-{{ reg.id }}" class="bg-fuel-gray rounded-xl p-6">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Left Column - Registration Details -->
+            <div class="space-y-4">
+              <div>
+                <h3 class="text-xl font-bold text-fuel-orange mb-3">📋 Registration Details</h3>
+                <div class="space-y-2">
+                  <div class="flex justify-between">
+                    <span class="text-gray-400">Owner Name:</span>
+                    <span class="font-semibold">{{ reg.owner_name }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-400">Contact Number:</span>
+                    <span class="font-semibold">{{ reg.contact_number }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-400">Email:</span>
+                    <span class="font-semibold">{{ reg.owner.email }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-400">Submitted:</span>
+                    <span class="font-semibold">{{ reg.created_at.strftime('%d %b %Y, %I:%M %p') }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 class="text-lg font-semibold text-fuel-orange mb-2">🏢 Pump Information</h4>
+                <div class="space-y-2">
+                  <div class="flex justify-between">
+                    <span class="text-gray-400">Pump Name:</span>
+                    <span class="font-semibold">{{ reg.pump.name }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-400">Location:</span>
+                    <span class="font-semibold">{{ reg.pump.location }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="text-gray-400">Pump ID:</span>
+                    <span class="font-semibold">#{{ reg.pump.id }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Column - Documents & Actions -->
+            <div class="space-y-4">
+              <div>
+                <h4 class="text-lg font-semibold text-fuel-orange mb-2">📄 Submitted Documents</h4>
+                {% if reg.documents %}
+                  <div class="space-y-2">
+                    {% if reg.documents is iterable %}
+                      {% for doc in reg.documents %}
+                        <div class="flex items-center justify-between bg-fuel-black p-3 rounded-lg">
+                          <span class="text-sm">{{ doc }}</span>
+                          <a href="{{ url_for('admin.view_document', filename=doc) }}" 
+                             target="_blank" 
+                             class="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm transition">
+                            View
+                          </a>
+                        </div>
+                      {% endfor %}
+                    {% else %}
+                      <div class="flex items-center justify-between bg-fuel-black p-3 rounded-lg">
+                        <span class="text-sm">{{ reg.documents }}</span>
+                        <a href="{{ url_for('admin.view_document', filename=reg.documents) }}" 
+                           target="_blank" 
+                           class="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm transition">
+                          View
+                        </a>
+                      </div>
+                    {% endif %}
+                  </div>
+                {% else %}
+                  <p class="text-gray-400 text-sm">No documents uploaded</p>
+                {% endif %}
+              </div>
+
+              <div>
+                <h4 class="text-lg font-semibold text-fuel-orange mb-2">🔐 Verification Actions</h4>
+                <div class="flex gap-3">
+                  <button onclick="approveRegistration({{ reg.id }})" 
+                          class="flex-1 bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-semibold transition">
+                    ✅ Approve
+                  </button>
+                  <button onclick="rejectRegistration({{ reg.id }})" 
+                          class="flex-1 bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-semibold transition">
+                    ❌ Reject
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="text-center py-12">
+        <div class="text-6xl mb-4">🎉</div>
+        <h2 class="text-2xl font-bold text-fuel-orange mb-2">No Pending Registrations</h2>
+        <p class="text-gray-400">All pump registrations have been processed!</p>
+        <a href="{{ url_for('admin.dashboard') }}" 
+           class="inline-block mt-4 bg-fuel-orange hover:bg-orange-600 px-6 py-2 rounded-lg font-semibold transition">
+          Back to Dashboard
+        </a>
+      </div>
+    {% endif %}
+  </main>
+
+  <!-- Rejection Modal -->
+  <div id="rejectionModal" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center opacity-0 invisible transition-opacity duration-300 z-50">
+    <div class="bg-fuel-gray rounded-xl p-6 w-full max-w-md">
+      <h3 class="text-xl font-bold text-fuel-orange mb-4">❌ Reject Registration</h3>
+      <p class="text-gray-300 mb-4">Please provide a reason for rejecting this registration:</p>
+      <textarea id="rejectionReason" 
+                class="w-full p-3 rounded bg-fuel-black text-white focus:outline-none border border-gray-600 focus:border-fuel-orange" 
+                rows="4" 
+                placeholder="Enter rejection reason..."></textarea>
+      <div class="flex gap-3 mt-4">
+        <button onclick="closeRejectionModal()" 
+                class="flex-1 bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg font-semibold transition">
+          Cancel
+        </button>
+        <button onclick="confirmRejection()" 
+                class="flex-1 bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-semibold transition">
+          Confirm Rejection
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentRegistrationId = null;
+
+    function getCSRFToken() {
+      const token = document.querySelector('meta[name="csrf-token"]');
+      return token ? token.getAttribute('content') : '';
+    }
+
+    function approveRegistration(regId) {
+      if (confirm('Are you sure you want to approve this pump registration?')) {
+        fetch(`/admin/registrations/verify/${regId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
+          },
+          body: JSON.stringify({
+            action: 'approve'
+          })
+        })
+        .then(response => {
+          console.log('Response status:', response.status);
+          if (!response.ok) {
+            return response.text().then(text => {
+              console.error('Error response:', text);
+              throw new Error(`HTTP ${response.status}: ${text}`);
+            });
+          }
+          return response.json();
+        })
+        .then(data => {
+          console.log('Response data:', data);
+          if (data.success) {
+            alert(data.message);
+            location.reload();
+          } else {
+            alert('Error: ' + (data.error || 'Unknown error occurred'));
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          alert('An error occurred while processing the request: ' + error.message);
+        });
+      }
+    }
+
+    function rejectRegistration(regId) {
+      currentRegistrationId = regId;
+      document.getElementById('rejectionModal').classList.remove('opacity-0','invisible');
+      document.getElementById('rejectionModal').classList.add('opacity-100','visible');
+    }
+
+    function closeRejectionModal() {
+      document.getElementById('rejectionModal').classList.add('opacity-0','invisible');
+      document.getElementById('rejectionModal').classList.remove('opacity-100','visible');
+      document.getElementById('rejectionReason').value = '';
+      currentRegistrationId = null;
+    }
+
+    function confirmRejection() {
+      const reason = document.getElementById('rejectionReason').value.trim();
+      
+      if (!reason) {
+        alert('Please provide a rejection reason');
+        return;
+      }
+
+      fetch(`/admin/registrations/verify/${currentRegistrationId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify({
+          action: 'reject',
+          reason: reason
+        })
+      })
+        .then(response => {
+          console.log('Response status:', response.status);
+          if (!response.ok) {
+            return response.text().then(text => {
+              console.error('Error response:', text);
+              throw new Error(`HTTP ${response.status}: ${text}`);
+            });
+          }
+          return response.json();
+        })
+        .then(data => {
+          console.log('Response data:', data);
+          if (data.success) {
+            alert(data.message);
+            closeRejectionModal();
+            location.reload();
+          } else {
+            alert('Error: ' + (data.error || 'Unknown error occurred'));
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          alert('An error occurred while processing the request: ' + error.message);
+        });
+    }
+
+    // Close modal when clicking outside
+    document.getElementById('rejectionModal').addEventListener('click', function(e) {
+      if (e.target === this) {
+        closeRejectionModal();
+      }
+    });
+  </script>
+
+</body>
+</html>

@@ -16,8 +16,35 @@ subscription_bp = Blueprint("subscription", __name__)
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'pdf'}
 
+PLAN_PRICES_INR = {
+    "silver": 5000,
+    "gold": 5000,
+    "diamond": 15000,
+}
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# ------------------------
+# 🔹 View Subscription Plans Page
+# ------------------------
+@subscription_bp.route("/plans")
+@login_required
+def plans():
+    """Show subscription plans for a specific pump"""
+    pump_id = request.args.get('pump_id', type=int)
+    if not pump_id:
+        flash("Pump ID is required", "error")
+        return redirect(url_for('pump.select_pump'))
+    
+    # Check if pump exists and belongs to user
+    pump = Pump.query.filter_by(id=pump_id, owner_id=current_user.id).first()
+    if not pump:
+        flash("Pump not found", "error")
+        return redirect(url_for('pump.select_pump'))
+    
+    return render_template("subscription-plans.html", pump=pump, pump_id=pump_id)
+
 
 # ------------------------
 # 🔹 View Subscription Page (optional)
@@ -61,8 +88,9 @@ def subscribe():
 
     # Base prices (in ₹)
     plan_prices = {
-        "Gold": 5000,
-        "Diamond": 15000
+        "Silver": PLAN_PRICES_INR["silver"],
+        "Gold": PLAN_PRICES_INR["gold"],
+        "Diamond": PLAN_PRICES_INR["diamond"],
     }
 
     # Duration multipliers
@@ -141,11 +169,12 @@ def subscription_status(pump_id):
 def current_subscription(pump_id):
     sub = PumpSubscription.query.filter_by(user_id=current_user.id, pump_id=pump_id).first()
     if not sub:
-        return jsonify({"plan": None, "status": "not taken"})
+        return jsonify({"plan": None, "status": "not taken", "active": False})
 
     return jsonify({
         "plan": sub.subscription_type,  # Silver, Gold, Diamond
-        "status": sub.subscription_status
+        "status": sub.subscription_status,
+        "active": sub.subscription_status == "active",
     })
 
 
@@ -171,9 +200,9 @@ def create_order():
 
     # Calculate total price
     plan_prices = {
-        "Silver": 5000,
-        "Gold": 10000,
-        "Diamond": 15000
+        "Silver": PLAN_PRICES_INR["silver"],
+        "Gold": PLAN_PRICES_INR["gold"],
+        "Diamond": PLAN_PRICES_INR["diamond"],
     }
     duration_map = {
         "1 Month": 1,
@@ -327,9 +356,9 @@ def submit_qr_payment():
     
     # Calculate amount
     plan_prices = {
-        "Silver": 5000,
-        "Gold": 10000,
-        "Diamond": 15000
+        "Silver": PLAN_PRICES_INR["silver"],
+        "Gold": PLAN_PRICES_INR["gold"],
+        "Diamond": PLAN_PRICES_INR["diamond"],
     }
     duration_map = {
         "1 Month": 1,
@@ -413,3 +442,14 @@ def payment_status(verification_id):
         "verified_at": verification.verified_at.strftime("%Y-%m-%d %H:%M:%S") if verification.verified_at else None,
         "rejection_reason": verification.rejection_reason if verification.status == 'rejected' else None
     })
+
+
+@subscription_bp.route("/is-new-pump/<int:pump_id>")
+@login_required
+def is_new_pump(pump_id):
+    pump = Pump.query.filter_by(id=pump_id, owner_id=current_user.id).first()
+    if not pump:
+        return jsonify({"error": "Pump not found"}), 404
+
+    sub = PumpSubscription.query.filter_by(user_id=current_user.id, pump_id=pump_id).first()
+    return jsonify({"is_new": sub is None})

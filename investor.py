@@ -81,11 +81,6 @@ def forgot_password():
             # For now, just log the OTP for development
             print(f"OTP for {email}: {otp}")
             
-            # Send to specific email as requested
-            if email == 'web3.ankitrai@gmail.com':
-                print(f"OTP sent to web3.ankitrai@gmail.com: {otp}")
-                print("NOTE: Configure email service to send actual OTP emails")
-            
             flash('A 6-digit OTP has been sent to your email', 'success')
             return redirect(url_for('investor.verify_otp'))
             

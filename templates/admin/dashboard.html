@@ -6,6 +6,8 @@
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>Admin Dashboard - Fuel Flux</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body class="bg-fuel-black text-white min-h-screen flex flex-col">
   
@@ -34,7 +36,23 @@
 
   <!-- Main Content -->
   <main class="flex-1 p-6">
-    <h1 class="text-3xl font-bold text-fuel-orange mb-6">Welcome, Admin 👋</h1>
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-3xl font-bold text-fuel-orange">Welcome, Admin 👋</h1>
+      <div class="flex gap-2">
+        <button onclick="exportDashboardData('csv')" 
+                class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg font-semibold transition flex items-center gap-2">
+          📊 Export CSV
+        </button>
+        <button onclick="exportDashboardData('pdf')" 
+                class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg font-semibold transition flex items-center gap-2">
+          📄 Export PDF
+        </button>
+        <button onclick="printDashboard()" 
+                class="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg font-semibold transition flex items-center gap-2">
+          🖨️ Print
+        </button>
+      </div>
+    </div>
 
     <!-- Statistics Cards -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -74,7 +92,7 @@
                     <div class="text-sm text-gray-400">{{ payment.plan_type }} - {{ payment.duration }}</div>
                     <div class="text-fuel-orange font-bold mt-1">₹{{ payment.amount }}</div>
                   </div>
-                  <button onclick="verifyPayment({{ payment.id }})" 
+                  <button onclick="verifyPayment('{{ payment.id }}')" 
                           class="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-sm">
                     Verify
                   </button>
@@ -110,7 +128,7 @@
                     <div class="text-sm text-gray-400">Wallet top-up request</div>
                     <div class="text-fuel-orange font-bold mt-1">₹{{ t.amount }}</div>
                   </div>
-                  <button onclick="verifyWalletTopup({{ t.id }})" 
+                  <button onclick="verifyWalletTopup('{{ t.id }}')" 
                           class="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-sm">
                     Verify
                   </button>
@@ -146,7 +164,7 @@
                     <div class="text-sm text-gray-400">{{ reg.pump.name }}</div>
                     <div class="text-xs text-gray-500 mt-1">{{ reg.contact_number }}</div>
                   </div>
-                  <button onclick="verifyRegistration({{ reg.id }})" 
+                  <button onclick="verifyRegistration('{{ reg.id }}')" 
                           class="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-sm">
                     Verify
                   </button>
@@ -166,23 +184,11 @@
     </div>
   </main>
 
-  <script>
-    function verifyPayment(paymentId) {
-      window.location.href = `/admin/payments/pending#payment-${paymentId}`;
-    }
+  <script src="{{ url_for('static', filename='js/admin-dashboard.js') }}"></script>
 
-    function verifyWalletTopup(topupId) {
-      window.location.href = `/admin/wallet-topups/pending#topup-${topupId}`;
-    }
-
-    function verifyRegistration(regId) {
-      window.location.href = `/admin/registrations/pending#reg-${regId}`;
-    }
-  </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 
 </body>
 </html>
-
-
-
 

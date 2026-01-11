@@ -43,3 +43,26 @@ data.db
 
 # Logs
 *.log
+
+# ClinkerOpt (removed from this project)
+clinkeropt.py
+services/clinkeropt_service.py
+services/adani_xlsx_importer.py
+templates/ClinkerOpt/
+CLINKEROPT_*.md
+migrations/versions/*clinkeropt*
+
+# Local/backup templates and scripts
+templates/**/*backup*.html
+templates/**/*fixed*.html
+templates/**/*exact*.html
+templates/**/*old*.html
+templates/**/*clean*.html
+templates/**/*final*.html
+templates/**/dashboard.js
+templates/Pump-Owner/sales_register.js
+test_*.py
+
+# Local backup python files
+*_backup.py
+*_fixed.py

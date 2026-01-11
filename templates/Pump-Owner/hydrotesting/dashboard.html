@@ -4,21 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hydrotesting Dashboard - {{ pump.name }}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="bg-gray-900">
+<body class="bg-fuel-black text-white min-h-screen">
     <div class="min-h-screen">
         <!-- Header -->
-        <header class="bg-gradient-to-r from-orange-600 to-orange-700 text-white shadow-lg">
+        <header class="bg-fuel-gray shadow-lg">
             <div class="container mx-auto px-4 py-6">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h1 class="text-3xl font-bold">Hydrotesting Management</h1>
-                        <p class="text-orange-100 mt-1">{{ pump.name }} - {{ pump.location }}</p>
+                        <h1 class="text-3xl font-bold text-fuel-orange">Hydrotesting Management</h1>
+                        <p class="text-gray-400 mt-1">{{ pump.name }} - {{ pump.location }}</p>
                     </div>
-                    <a href="{{ url_for('pump_dashboard.dashboard', pump_id=pump.id) }}" 
-                       class="bg-white text-orange-600 px-6 py-2 rounded-lg hover:bg-orange-50 transition font-semibold">
+                    <a href="{{ url_for('pump_dashboard.pump_dashboard', pump_id=pump.id) }}" 
+                       class="bg-fuel-black text-fuel-orange px-6 py-2 rounded-lg hover:bg-fuel-gray transition font-semibold">
                         <i class="fas fa-arrow-left mr-2"></i>Back to Main Dashboard
                     </a>
                 </div>
@@ -26,13 +26,13 @@
         </header>
 
         <!-- Notifications Banner -->
-        <div id="notificationBanner" class="hidden bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4">
+        <div id="notificationBanner" class="hidden bg-yellow-900 border-l-4 border-yellow-600 text-yellow-300 p-4">
             <div class="container mx-auto px-4 flex items-center justify-between">
                 <div class="flex items-center">
                     <i class="fas fa-exclamation-triangle mr-3 text-xl"></i>
                     <span id="notificationMessage"></span>
                 </div>
-                <button onclick="dismissNotification()" class="text-yellow-700 hover:text-yellow-900">
+                <button onclick="dismissNotification()" class="text-yellow-300 hover:text-white">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
@@ -41,50 +41,50 @@
         <div class="container mx-auto px-4 py-8">
             <!-- Summary Cards -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                <div class="bg-gray-800 rounded-lg shadow-md p-6 border-l-4 border-green-500">
+                <div class="bg-fuel-gray rounded-lg shadow-md p-6 border-l-4 border-green-500">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-gray-300 text-sm font-medium">Compliant</p>
-                            <p class="text-3xl font-bold text-green-600 mt-2">{{ compliant_count }}</p>
+                            <p class="text-3xl font-bold text-green-400 mt-2">{{ compliant_count }}</p>
                         </div>
-                        <div class="bg-green-100 rounded-full p-4">
+                        <div class="bg-green-900 rounded-full p-4">
                             <i class="fas fa-check-circle text-green-600 text-2xl"></i>
                         </div>
                     </div>
                 </div>
 
-                <div class="bg-gray-800 rounded-lg shadow-md p-6 border-l-4 border-yellow-500">
+                <div class="bg-fuel-gray rounded-lg shadow-md p-6 border-l-4 border-yellow-500">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-gray-300 text-sm font-medium">Due Soon (30 days)</p>
-                            <p class="text-3xl font-bold text-yellow-600 mt-2">{{ due_soon_count }}</p>
+                            <p class="text-3xl font-bold text-yellow-400 mt-2">{{ due_soon_count }}</p>
                         </div>
-                        <div class="bg-yellow-100 rounded-full p-4">
-                            <i class="fas fa-exclamation-triangle text-yellow-600 text-2xl"></i>
+                        <div class="bg-yellow-900 rounded-full p-4">
+                            <i class="fas fa-exclamation-triangle text-yellow-400 text-2xl"></i>
                         </div>
                     </div>
                 </div>
 
-                <div class="bg-gray-800 rounded-lg shadow-md p-6 border-l-4 border-orange-500">
+                <div class="bg-fuel-gray rounded-lg shadow-md p-6 border-l-4 border-fuel-orange">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-gray-300 text-sm font-medium">Warning (90 days)</p>
-                            <p class="text-3xl font-bold text-orange-600 mt-2">{{ warning_count }}</p>
+                            <p class="text-3xl font-bold text-fuel-orange mt-2">{{ warning_count }}</p>
                         </div>
-                        <div class="bg-orange-100 rounded-full p-4">
-                            <i class="fas fa-clock text-orange-600 text-2xl"></i>
+                        <div class="bg-fuel-orange/20 rounded-full p-4">
+                            <i class="fas fa-clock text-fuel-orange text-2xl"></i>
                         </div>
                     </div>
                 </div>
 
-                <div class="bg-gray-800 rounded-lg shadow-md p-6 border-l-4 border-red-500">
+                <div class="bg-fuel-gray rounded-lg shadow-md p-6 border-l-4 border-red-500">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-gray-300 text-sm font-medium">Expired</p>
-                            <p class="text-3xl font-bold text-red-600 mt-2">{{ expired_count }}</p>
+                            <p class="text-3xl font-bold text-red-400 mt-2">{{ expired_count }}</p>
                         </div>
-                        <div class="bg-red-100 rounded-full p-4">
-                            <i class="fas fa-times-circle text-red-600 text-2xl"></i>
+                        <div class="bg-red-900 rounded-full p-4">
+                            <i class="fas fa-times-circle text-red-400 text-2xl"></i>
                         </div>
                     </div>
                 </div>
@@ -93,53 +93,53 @@
             <!-- Quick Actions -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <a href="{{ url_for('hydrotesting.add_test', pump_id=pump.id) }}" 
-                   class="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg shadow-lg p-6 hover:shadow-xl transition transform hover:-translate-y-1">
+                   class="bg-fuel-gray text-white rounded-lg shadow-lg p-6 hover:shadow-xl transition transform hover:-translate-y-1 border border-fuel-orange">
                     <div class="flex items-center">
-                        <div class="bg-white bg-opacity-20 rounded-full p-4 mr-4">
-                            <i class="fas fa-plus-circle text-3xl"></i>
+                        <div class="bg-fuel-orange/20 rounded-full p-4 mr-4">
+                            <i class="fas fa-plus-circle text-3xl text-fuel-orange"></i>
                         </div>
                         <div>
-                            <h3 class="text-xl font-bold">Add New Test</h3>
-                            <p class="text-blue-100 text-sm mt-1">Record hydrotest results</p>
+                            <h3 class="text-xl font-bold text-fuel-orange">Add New Test</h3>
+                            <p class="text-gray-400 text-sm mt-1">Record hydrotest results</p>
                         </div>
                     </div>
                 </a>
 
                 <a href="{{ url_for('hydrotesting.tanks_list', pump_id=pump.id) }}" 
-                   class="bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg shadow-lg p-6 hover:shadow-xl transition transform hover:-translate-y-1">
+                   class="bg-fuel-gray text-white rounded-lg shadow-lg p-6 hover:shadow-xl transition transform hover:-translate-y-1 border border-fuel-orange">
                     <div class="flex items-center">
-                        <div class="bg-white bg-opacity-20 rounded-full p-4 mr-4">
-                            <i class="fas fa-database text-3xl"></i>
+                        <div class="bg-fuel-orange/20 rounded-full p-4 mr-4">
+                            <i class="fas fa-database text-3xl text-fuel-orange"></i>
                         </div>
                         <div>
-                            <h3 class="text-xl font-bold">Manage Tanks</h3>
-                            <p class="text-purple-100 text-sm mt-1">View & manage storage tanks</p>
+                            <h3 class="text-xl font-bold text-fuel-orange">Manage Tanks</h3>
+                            <p class="text-gray-400 text-sm mt-1">View & manage storage tanks</p>
                         </div>
                     </div>
                 </a>
 
                 <a href="{{ url_for('hydrotesting.pipelines_list', pump_id=pump.id) }}" 
-                   class="bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg shadow-lg p-6 hover:shadow-xl transition transform hover:-translate-y-1">
+                   class="bg-fuel-gray text-white rounded-lg shadow-lg p-6 hover:shadow-xl transition transform hover:-translate-y-1 border border-fuel-orange">
                     <div class="flex items-center">
-                        <div class="bg-white bg-opacity-20 rounded-full p-4 mr-4">
-                            <i class="fas fa-project-diagram text-3xl"></i>
+                        <div class="bg-fuel-orange/20 rounded-full p-4 mr-4">
+                            <i class="fas fa-project-diagram text-3xl text-fuel-orange"></i>
                         </div>
                         <div>
-                            <h3 class="text-xl font-bold">Manage Pipelines</h3>
-                            <p class="text-green-100 text-sm mt-1">View & manage pipelines</p>
+                            <h3 class="text-xl font-bold text-fuel-orange">Manage Pipelines</h3>
+                            <p class="text-gray-400 text-sm mt-1">View & manage pipelines</p>
                         </div>
                     </div>
                 </a>
 
                 <a href="{{ url_for('hydrotesting.anpr_dashboard', pump_id=pump.id) }}" 
-                   class="bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg shadow-lg p-6 hover:shadow-xl transition transform hover:-translate-y-1">
+                   class="bg-fuel-gray text-white rounded-lg shadow-lg p-6 hover:shadow-xl transition transform hover:-translate-y-1 border border-fuel-orange">
                     <div class="flex items-center">
-                        <div class="bg-white bg-opacity-20 rounded-full p-4 mr-4">
-                            <i class="fas fa-camera text-3xl"></i>
+                        <div class="bg-fuel-orange/20 rounded-full p-4 mr-4">
+                            <i class="fas fa-camera text-3xl text-fuel-orange"></i>
                         </div>
                         <div>
-                            <h3 class="text-xl font-bold">🚗 ANPR Gate Control</h3>
-                            <p class="text-red-100 text-sm mt-1">Vehicle compliance & gate control</p>
+                            <h3 class="text-xl font-bold text-fuel-orange">🚗 ANPR Gate Control</h3>
+                            <p class="text-gray-400 text-sm mt-1">Vehicle compliance & gate control</p>
                         </div>
                     </div>
                 </a>
@@ -147,10 +147,10 @@
 
             <!-- Expiring Soon Section -->
             {% if expiring_soon %}
-            <div class="bg-gray-800 rounded-lg shadow-md p-6 mb-8">
+            <div class="bg-fuel-gray rounded-lg shadow-md p-6 mb-8">
                 <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-2xl font-bold text-white">
-                        <i class="fas fa-exclamation-circle text-yellow-500 mr-2"></i>
+                    <h2 class="text-2xl font-bold text-fuel-orange">
+                        <i class="fas fa-exclamation-circle text-yellow-400 mr-2"></i>
                         Tests Expiring Soon
                     </h2>
                     <a href="{{ url_for('hydrotesting.history', pump_id=pump.id) }}" 
@@ -162,54 +162,31 @@
                     <table class="min-w-full divide-y divide-gray-700">
                         <thead class="bg-gray-700">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Equipment</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Test Type</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Last Test</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Next Due</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Days Left</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Action</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Test ID</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Date</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Expires In</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="bg-gray-800 divide-y divide-gray-700">
                             {% for test in expiring_soon %}
                             <tr class="hover:bg-gray-700">
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm font-medium text-white">
-                                        {% if test.tank %}
-                                            <i class="fas fa-database text-purple-500 mr-2"></i>{{ test.tank.name }}
-                                        {% elif test.pipeline %}
-                                            <i class="fas fa-project-diagram text-green-500 mr-2"></i>{{ test.pipeline.name }}
-                                        {% endif %}
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                                        {{ test.test_type.replace('_', ' ').title() }}
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {{ test.test_date.strftime('%d/%m/%Y') }}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {{ test.next_due_date.strftime('%d/%m/%Y') }}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    {% set days = test.get_days_until_expiry() %}
-                                    {% if days <= 30 %}
-                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
-                                            {{ days }} days
-                                        </span>
-                                    {% elif days <= 90 %}
-                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                                            {{ days }} days
-                                        </span>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{{ test.id }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{{ test.test_date.strftime('%Y-%m-%d') }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    {% if test.status == 'compliant' %}
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Compliant</span>
+                                    {% elif test.status == 'warning' %}
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Warning</span>
+                                    {% else %}
+                                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">Expired</span>
                                     {% endif %}
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                    <a href="{{ url_for('hydrotesting.view_test', test_id=test.id, pump_id=pump.id) }}" 
-                                       class="text-blue-600 hover:text-blue-900 font-medium">
-                                        View Details
-                                    </a>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{{ test.expires_in }} days</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <a href="{{ url_for('hydrotesting.view_test', pump_id=pump.id, test_id=test.id) }}" 
+                                       class="text-orange-400 hover:text-orange-300">View Details</a>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -218,223 +195,21 @@
                 </div>
             </div>
             {% endif %}
-
-            <!-- Overdue Tests Section -->
-            {% if overdue_tests %}
-            <div class="bg-gray-800 border-l-4 border-red-500 rounded-lg shadow-md p-6 mb-8">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-2xl font-bold text-red-400">
-                        <i class="fas fa-times-circle mr-2"></i>
-                        Overdue Tests - Immediate Action Required
-                    </h2>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-700">
-                        <thead class="bg-gray-700">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Equipment</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Test Type</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Last Test</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Expired On</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Days Overdue</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-gray-800 divide-y divide-gray-700">
-                            {% for test in overdue_tests %}
-                            <tr class="hover:bg-gray-700">
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm font-medium text-white">
-                                        {% if test.tank %}
-                                            <i class="fas fa-database text-purple-500 mr-2"></i>{{ test.tank.name }}
-                                        {% elif test.pipeline %}
-                                            <i class="fas fa-project-diagram text-green-500 mr-2"></i>{{ test.pipeline.name }}
-                                        {% endif %}
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
-                                        {{ test.test_type.replace('_', ' ').title() }}
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                                    {{ test.test_date.strftime('%d/%m/%Y') }}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                                    {{ test.next_due_date.strftime('%d/%m/%Y') }}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-600 text-white">
-                                        {{ -test.get_days_until_expiry() }} days
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                    <a href="{{ url_for('hydrotesting.add_test', pump_id=pump.id) }}" 
-                                       class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 font-medium">
-                                        Schedule Test
-                                    </a>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            {% endif %}
-
-            <!-- Recent Tests -->
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-2xl font-bold text-gray-800">
-                        <i class="fas fa-history text-blue-500 mr-2"></i>
-                        Recent Tests
-                    </h2>
-                    <a href="{{ url_for('hydrotesting.history', pump_id=pump.id) }}" 
-                       class="text-blue-600 hover:text-blue-800 font-medium">
-                        View All History <i class="fas fa-arrow-right ml-1"></i>
-                    </a>
-                </div>
-                
-                {% if all_hydrotests %}
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Equipment</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Test Type</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Test Date</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Result</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PESO Status</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            {% for test in all_hydrotests %}
-                            <tr class="hover:bg-gray-50">
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm font-medium text-gray-900">
-                                        {% if test.tank %}
-                                            <i class="fas fa-database text-purple-500 mr-2"></i>{{ test.tank.name }}
-                                        {% elif test.pipeline %}
-                                            <i class="fas fa-project-diagram text-green-500 mr-2"></i>{{ test.pipeline.name }}
-                                        {% endif %}
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                                        {{ test.test_type.replace('_', ' ').title() }}
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                    {{ test.test_date.strftime('%d/%m/%Y') }}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    {% if test.result == 'Pass' %}
-                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                                            <i class="fas fa-check-circle mr-1"></i>Pass
-                                        </span>
-                                    {% else %}
-                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
-                                            <i class="fas fa-times-circle mr-1"></i>Fail
-                                        </span>
-                                    {% endif %}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    {% if test.peso_approved %}
-                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                                            <i class="fas fa-certificate mr-1"></i>Approved
-                                        </span>
-                                    {% else %}
-                                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
-                                            Pending
-                                        </span>
-                                    {% endif %}
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                    <a href="{{ url_for('hydrotesting.view_test', test_id=test.id, pump_id=pump.id) }}" 
-                                       class="text-blue-600 hover:text-blue-900 font-medium">
-                                        View Details
-                                    </a>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% else %}
-                <div class="text-center py-12">
-                    <i class="fas fa-clipboard-list text-gray-300 text-6xl mb-4"></i>
-                    <p class="text-gray-500 text-lg">No hydrotest records found</p>
-                    <a href="{{ url_for('hydrotesting.add_test', pump_id=pump.id) }}" 
-                       class="mt-4 inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700">
-                        Add First Test
-                    </a>
-                </div>
-                {% endif %}
-            </div>
-
-            <!-- Additional Links -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-                <a href="{{ url_for('hydrotesting.compliance_report', pump_id=pump.id) }}" 
-                   class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition border-l-4 border-blue-500">
-                    <div class="flex items-center">
-                        <i class="fas fa-file-alt text-blue-500 text-3xl mr-4"></i>
-                        <div>
-                            <h3 class="text-lg font-bold text-gray-800">Compliance Report</h3>
-                            <p class="text-gray-600 text-sm">Generate PESO report</p>
-                        </div>
-                    </div>
-                </a>
-
-                <a href="{{ url_for('hydrotesting.contractors', pump_id=pump.id) }}" 
-                   class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition border-l-4 border-purple-500">
-                    <div class="flex items-center">
-                        <i class="fas fa-users text-purple-500 text-3xl mr-4"></i>
-                        <div>
-                            <h3 class="text-lg font-bold text-gray-800">Contractors</h3>
-                            <p class="text-gray-600 text-sm">View PESO contractors</p>
-                        </div>
-                    </div>
-                </a>
-
-                <a href="{{ url_for('hydrotesting.history', pump_id=pump.id) }}" 
-                   class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition border-l-4 border-green-500">
-                    <div class="flex items-center">
-                        <i class="fas fa-history text-green-500 text-3xl mr-4"></i>
-                        <div>
-                            <h3 class="text-lg font-bold text-gray-800">Full History</h3>
-                            <p class="text-gray-600 text-sm">View all test records</p>
-                        </div>
-                    </div>
-                </a>
-            </div>
         </div>
     </div>
 
     <script>
-        // Check for notifications on page load
-        window.addEventListener('load', function() {
-            checkNotifications();
-            setInterval(checkNotifications, 300000); // Check every 5 minutes
-        });
-
-        function checkNotifications() {
-            fetch('/hydrotesting/api/check_notifications')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success && data.count > 0) {
-                        const banner = document.getElementById('notificationBanner');
-                        const message = document.getElementById('notificationMessage');
-                        message.textContent = `You have ${data.count} hydrotest(s) expiring soon. Please review and schedule testing.`;
-                        banner.classList.remove('hidden');
-                    }
-                })
-                .catch(error => console.error('Error checking notifications:', error));
-        }
-
         function dismissNotification() {
-            document.getElementById('notificationBanner').classList.add('hidden');
+            const banner = document.getElementById('notificationBanner');
+            if (banner) {
+                banner.classList.add('hidden');
+            }
         }
+
+        // Auto-dismiss notifications after 10 seconds
+        setTimeout(() => {
+            dismissNotification();
+        }, 10000);
     </script>
 </body>
 </html>

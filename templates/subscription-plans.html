@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>Subscription Plans - Fuel Flux</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+  <style>
+    #toast {
+      position: fixed;
+      top: -100px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 50;
+      padding: 1rem 1.5rem;
+      border-radius: 0.5rem;
+      font-weight: 500;
+      color: white;
+      opacity: 0;
+      transition: all 0.5s ease-in-out;
+      min-width: 250px;
+      text-align: center;
+    }
+
+    #toast.show {
+      top: 2rem;
+      opacity: 1;
+    }
+
+    #toast.success {
+      background-color: #16a34a;
+    }
+
+    #toast.error {
+      background-color: #dc2626;
+    }
+  </style>
+</head>
+<body class="bg-fuel-black text-white min-h-screen flex flex-col">
+
+  <!-- Toast -->
+  <div id="toast"></div>
+
+  <!-- Header / Navigation -->
+  <nav class="bg-fuel-gray p-2 md:p-4 shadow-lg">
+    <div class="flex justify-between items-center gap-2">
+      <div class="flex items-center gap-1 md:gap-3 flex-1 min-w-0">
+        <img src="{{ url_for('static', filename='images/logo2.png') }}" 
+             alt="Fuel Flux Logo" 
+             class="h-6 md:h-10 w-auto flex-shrink-0"
+             style="background: none !important; background-color: transparent !important; mix-blend-mode: screen;" />
+        <span class="text-fuel-orange font-bold text-xs md:text-xl truncate hidden sm:inline">Pump Owner</span>
+      </div>
+      
+      <!-- Desktop Menu -->
+      <div class="hidden md:flex items-center space-x-4 flex-shrink-0">
+        <a href="{{ url_for('pump.select_pump') }}" class="text-fuel-orange hover:text-white transition-colors">← Back to Pumps</a>
+        <a href="{{ url_for('auth.logout') }}" class="bg-fuel-orange hover:bg-orange-600 px-4 py-2 rounded-lg font-semibold transition">Logout</a>
+      </div>
+      
+      <!-- Mobile Menu Button -->
+      <button id="mobile-menu-btn" class="md:hidden text-white text-lg focus:outline-none flex-shrink-0">☰</button>
+    </div>
+    
+    <!-- Mobile Menu -->
+    <div id="mobile-menu" class="hidden md:hidden mt-3 space-y-2 pb-2">
+      <a href="{{ url_for('pump.select_pump') }}" class="block text-fuel-orange hover:text-white transition-colors py-2">← Back to Pumps</a>
+      <a href="{{ url_for('auth.logout') }}" class="block bg-fuel-orange hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-semibold transition text-center">Logout</a>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <div class="flex-1 flex justify-center items-start p-4 md:p-6">
+    <div class="bg-fuel-gray w-full max-w-4xl rounded-2xl shadow-lg p-4 md:p-6 flex flex-col space-y-4 md:space-y-6 min-h-[500px] md:h-[550px]">
+
+      <!-- Header -->
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+        <div>
+          <h1 class="text-xl md:text-2xl font-bold text-fuel-orange">Subscription Plans</h1>
+          <p class="text-sm text-gray-400">Choose a plan for: {{ pump.name }}</p>
+          <p class="text-xs text-gray-500">{{ pump.location }}</p>
+        </div>
+      </div>
+
+      <!-- Plans Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        
+        <!-- Silver Plan -->
+        <div class="bg-fuel-black rounded-xl p-6 border border-gray-600 hover:border-fuel-orange transition-all cursor-pointer plan-card" 
+             data-plan="Silver" data-duration="1 Month" data-price="999">
+          <div class="text-center mb-4">
+            <h3 class="text-xl font-bold text-gray-300 mb-2">Silver</h3>
+            <div class="text-3xl font-bold text-fuel-orange mb-4">₹999<span class="text-sm text-gray-400">/month</span></div>
+            <ul class="text-sm text-gray-400 space-y-2 text-left">
+              <li>✓ Basic Dashboard Access</li>
+              <li>✓ Pump Management</li>
+              <li>✓ Monthly Reports</li>
+              <li>✗ Advanced Analytics</li>
+              <li>✗ Priority Support</li>
+            </ul>
+          </div>
+          <button onclick="selectPlan('Silver', '1 Month', 999)" 
+                  class="w-full bg-gray-600 hover:bg-gray-700 text-white py-3 rounded-lg font-semibold transition">
+            Select Silver
+          </button>
+        </div>
+
+        <!-- Gold Plan -->
+        <div class="bg-fuel-black rounded-xl p-6 border border-gray-600 hover:border-fuel-orange transition-all cursor-pointer plan-card" 
+             data-plan="Gold" data-duration="6 Months" data-price="4999">
+          <div class="text-center mb-4">
+            <h3 class="text-xl font-bold text-yellow-400 mb-2">Gold</h3>
+            <div class="text-3xl font-bold text-fuel-orange mb-4">₹4,999<span class="text-sm text-gray-400">/6 months</span></div>
+            <ul class="text-sm text-gray-400 space-y-2 text-left">
+              <li>✓ Full Dashboard Access</li>
+              <li>✓ Advanced Analytics</li>
+              <li>✓ Priority Support</li>
+              <li>✓ Receipt Processing</li>
+              <li>✓ Daily Reports</li>
+            </ul>
+          </div>
+          <button onclick="selectPlan('Gold', '6 Months', 4999)" 
+                  class="w-full bg-yellow-600 hover:bg-yellow-700 text-white py-3 rounded-lg font-semibold transition">
+            Select Gold
+          </button>
+        </div>
+
+        <!-- Diamond Plan -->
+        <div class="bg-fuel-black rounded-xl p-6 border-2 border-fuel-orange transition-all cursor-pointer plan-card" 
+             data-plan="Diamond" data-duration="Annual" data-price="9999">
+          <div class="text-center mb-4">
+            <h3 class="text-xl font-bold text-fuel-orange mb-2">Diamond</h3>
+            <div class="text-3xl font-bold text-fuel-orange mb-4">₹9,999<span class="text-sm text-gray-400">/year</span></div>
+            <ul class="text-sm text-gray-400 space-y-2 text-left">
+              <li>✓ Everything in Gold</li>
+              <li>✓ API Access</li>
+              <li>✓ Custom Reports</li>
+              <li>✓ White-label Options</li>
+              <li>✓ Dedicated Support</li>
+            </ul>
+          </div>
+          <button onclick="selectPlan('Diamond', 'Annual', 9999)" 
+                  class="w-full bg-fuel-orange hover:bg-orange-600 text-white py-3 rounded-lg font-semibold transition">
+            Select Diamond
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Payment Modal -->
+  <div id="paymentModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-fuel-gray rounded-xl p-6 max-w-md w-full mx-4">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-xl font-bold text-fuel-orange">Complete Subscription</h3>
+        <button onclick="closePaymentModal()" class="text-gray-400 hover:text-white">✕</button>
+      </div>
+      
+      <div class="mb-4">
+        <p class="text-sm text-gray-300 mb-2">Plan: <span id="selectedPlan" class="font-bold text-fuel-orange"></span></p>
+        <p class="text-sm text-gray-300 mb-2">Duration: <span id="selectedDuration" class="font-bold"></span></p>
+        <p class="text-lg font-bold text-fuel-orange">Total: ₹<span id="selectedPrice"></span></p>
+      </div>
+      
+      <div class="flex gap-2">
+        <button onclick="proceedToPayment()" 
+                class="flex-1 bg-fuel-orange hover:bg-orange-600 text-white py-3 rounded-lg font-semibold transition">
+          Proceed to Payment
+        </button>
+        <button onclick="closePaymentModal()" 
+                class="px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold transition">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  let selectedPlan = '';
+  let selectedDuration = '';
+  let selectedPrice = 0;
+
+  // Select plan
+  function selectPlan(plan, duration, price) {
+    selectedPlan = plan;
+    selectedDuration = duration;
+    selectedPrice = price;
+    
+    // Update modal
+    document.getElementById('selectedPlan').textContent = plan;
+    document.getElementById('selectedDuration').textContent = duration;
+    document.getElementById('selectedPrice').textContent = price;
+    
+    // Show modal
+    document.getElementById('paymentModal').classList.remove('hidden');
+  }
+
+  // Close modal
+  function closePaymentModal() {
+    document.getElementById('paymentModal').classList.add('hidden');
+  }
+
+  // Proceed to payment
+  function proceedToPayment() {
+    if (!selectedPlan) return;
+    
+    // Redirect to payment processing
+    window.location.href = `/subscription/subscribe?pump_id={{ pump_id }}&plan_type=${selectedPlan}&duration=${selectedDuration}`;
+  }
+
+  // Toast helper
+  function showToast(message, messageType = 'success') {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.className = 'show ' + messageType;
+    setTimeout(() => toast.className = '', 3000);
+  }
+
+  // Mobile menu toggle
+  document.getElementById('mobile-menu-btn').addEventListener('click', function() {
+    const menu = document.getElementById('mobile-menu');
+    menu.classList.toggle('hidden');
+  });
+
+  // Show flash messages
+  document.addEventListener('DOMContentLoaded', () => {
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          showToast({{ message|tojson }}, "{{ category }}");
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  });
+</script>
+
+</body>
+</html>

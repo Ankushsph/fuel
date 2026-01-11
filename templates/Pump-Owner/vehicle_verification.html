@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="csrf-token" content="{{ csrf_token() }}">
+  <meta name="pump-id" content="{{ pump.id }}">
   <title>Vehicle Verification - Fuel Flux</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
   <style>
@@ -70,6 +71,18 @@
             <input type="text" name="rtsp_url" placeholder="rtsp://username:password@ip:port/stream" required
                    class="w-full p-3 rounded-lg bg-fuel-black text-white border border-gray-600">
             <p class="text-xs text-gray-400 mt-1">Example: rtsp://admin:password@192.168.1.100:554/stream1</p>
+            <div class="mt-3">
+              <label class="block text-xs font-medium mb-1 text-gray-300">Or upload MP4 video (optional)</label>
+              <div class="flex gap-2 flex-wrap">
+                <input type="file" id="mp4UploadInput" accept="video/mp4"
+                       class="flex-1 p-3 rounded-lg bg-fuel-black text-white border border-gray-600">
+                <button type="button" onclick="uploadMp4ToRtspField()"
+                        class="bg-blue-600 hover:bg-blue-700 px-4 py-3 rounded-lg text-sm font-semibold">
+                  Upload & Use
+                </button>
+              </div>
+              <p class="text-xs text-gray-500 mt-1">This will fill the RTSP field with a file source like: file:uploads/videos/xxx.mp4</p>
+            </div>
           </div>
         </div>
         <button type="submit" class="bg-fuel-orange hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold">
@@ -104,7 +117,7 @@
   </div>
 
   <script>
-    const pumpId = {{ pump.id }};
+    const pumpId = Number(document.querySelector('meta[name="pump-id"]')?.getAttribute('content') || '0');
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
     function showToast(message, type = 'success') {
@@ -112,6 +125,48 @@
       toast.textContent = message;
       toast.className = 'show ' + type;
       setTimeout(() => toast.className = '', 3000);
+    }
+
+    async function uploadMp4ToRtspField() {
+      const input = document.getElementById('mp4UploadInput');
+      if (!input || !input.files || input.files.length === 0) {
+        showToast('Please select an MP4 file', 'error');
+        return;
+      }
+
+      const file = input.files[0];
+      const formData = new FormData();
+      formData.append('video', file);
+
+      try {
+        showToast('Uploading video...', 'success');
+        const res = await fetch(`/pump/${pumpId}/video/upload`, {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': csrfToken
+          },
+          body: formData
+        });
+        if (!res.ok) {
+          const errText = await res.text();
+          showToast('Upload failed (server). Open console for details.', 'error');
+          console.error('Upload failed:', res.status, errText);
+          return;
+        }
+
+        const data = await res.json();
+        if (!data.success) {
+          showToast(data.message || 'Upload failed', 'error');
+          return;
+        }
+
+        const rtspInput = document.querySelector('input[name="rtsp_url"]');
+        rtspInput.value = data.video_source;
+        showToast('Video uploaded. Saved as file source.', 'success');
+      } catch (err) {
+        console.error(err);
+        showToast('Upload error', 'error');
+      }
     }
 
     // Load streams

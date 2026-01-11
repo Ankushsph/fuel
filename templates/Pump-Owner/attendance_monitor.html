@@ -4,8 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="csrf-token" content="{{ csrf_token() }}">
+  <meta name="pump-id" content="{{ pump.id }}">
   <title>Live Attendance Monitor - Fuel Flux</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
   <style>
     #toast {
       position: fixed;
@@ -49,10 +52,22 @@
         <a href="{{ url_for('pump_dashboard.dashboard') }}" class="text-fuel-orange hover:text-white">← Back to Dashboard</a>
         <h1 class="text-xl font-bold text-fuel-orange">Live Attendance Monitor</h1>
       </div>
-      <div class="flex gap-3">
-        <a href="{{ url_for('employee.employee_management', pump_id=pump.id) }}" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg">Manage Employees</a>
-        <a href="{{ url_for('attendance_monitor.attendance_report', pump_id=pump.id) }}" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg">View Reports</a>
-        <a href="{{ url_for('auth.logout') }}" class="bg-fuel-orange hover:bg-orange-600 px-4 py-2 rounded-lg">Logout</a>
+      <div class="flex gap-3 flex-wrap">
+        <button onclick="exportAttendanceData('csv')" 
+                class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-semibold">
+          📊 Export CSV
+        </button>
+        <button onclick="exportAttendanceData('pdf')" 
+                class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-semibold">
+          📄 Export PDF
+        </button>
+        <button onclick="printAttendanceData()" 
+                class="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-semibold">
+          🖨️ Print
+        </button>
+        <a href="{{ url_for('employee.employee_management', pump_id=pump.id) }}" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm font-semibold">Manage Employees</a>
+        <a href="{{ url_for('attendance_monitor.attendance_report', pump_id=pump.id) }}" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg text-sm font-semibold">View Reports</a>
+        <a href="{{ url_for('auth.logout') }}" class="bg-fuel-orange hover:bg-orange-600 px-4 py-2 rounded-lg text-sm font-semibold">Logout</a>
       </div>
     </div>
   </nav>
@@ -87,13 +102,32 @@
           </button>
         </div>
       </div>
+
+      <div class="mt-4">
+        <label class="block text-sm font-medium mb-2">Or upload MP4 video:</label>
+        <div class="flex gap-2 flex-wrap">
+          <input type="file" id="mp4UploadInput" accept="video/mp4"
+                 class="flex-1 p-3 rounded-lg bg-fuel-black text-white border border-gray-600">
+          <button onclick="uploadAndLoadMp4()"
+                  class="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg">
+            Upload & Load
+          </button>
+        </div>
+        <p class="text-xs text-gray-400 mt-1">Uploaded videos are used as a camera source (file playback loops automatically).</p>
+      </div>
     </div>
 
     <!-- Video Stream -->
     <div class="bg-fuel-gray rounded-xl p-6">
       <h2 class="text-2xl font-bold text-fuel-orange mb-4">Live Feed</h2>
       <div class="text-center">
-        <img id="videoStream" src="" alt="Video Stream" style="display: none; max-width: 100%; height: auto;">
+        <div class="relative inline-block" style="max-width: 100%;">
+          <video id="videoPlayer" style="display: none; max-width: 100%; height: auto;" autoplay muted loop playsinline controls></video>
+          <img id="videoStream" src="" alt="Video Stream" style="display: none; max-width: 100%; height: auto;">
+          <div id="peopleOverlay" style="display:none;" class="absolute top-2 left-2 bg-black bg-opacity-60 text-white px-3 py-1 rounded">
+            People: --
+          </div>
+        </div>
         <p id="noStream" class="text-gray-400 py-8">Select a stream above to start monitoring</p>
         <p id="loadingStream" class="text-fuel-orange py-4" style="display: none;">🔄 Connecting to camera stream...</p>
       </div>
@@ -122,8 +156,9 @@
   </div>
 
   <script>
-    const pumpId = {{ pump.id }};
+    const pumpId = Number(document.querySelector('meta[name="pump-id"]')?.getAttribute('content') || '0');
     let currentStreamUrl = null;
+    let peoplePollTimer = null;
 
     function showToast(message, type = 'success') {
       const toast = document.getElementById('toast');
@@ -141,8 +176,8 @@
       rtspUrl = rtspUrl.trim();
       
       // Basic client-side validation
-      if (!rtspUrl.startsWith('rtsp://') && !rtspUrl.startsWith('rtsps://')) {
-        showToast('RTSP URL must start with rtsp:// or rtsps://', 'error');
+      if (!rtspUrl.startsWith('rtsp://') && !rtspUrl.startsWith('rtsps://') && !rtspUrl.toLowerCase().startsWith('file:')) {
+        showToast('Video source must be rtsp://... or file:uploads/videos/<name>.mp4', 'error');
         return;
       }
       
@@ -152,10 +187,12 @@
       
       try {
         console.log('Loading RTSP stream:', rtspUrl);
-        
-        // Stream format is valid, load it directly
+
+        // Store current stream URL
         currentStreamUrl = rtspUrl;
         const videoElement = document.getElementById('videoStream');
+        const videoPlayer = document.getElementById('videoPlayer');
+        const peopleOverlay = document.getElementById('peopleOverlay');
         const noStream = document.getElementById('noStream');
         const loadingStream = document.getElementById('loadingStream');
         
@@ -163,56 +200,120 @@
         noStream.style.display = 'none';
         loadingStream.style.display = 'block';
         videoElement.style.display = 'none';
+        videoPlayer.style.display = 'none';
+        peopleOverlay.style.display = 'none';
         
-        // Build video feed URL with proper encoding
-        const feedUrl = `/attendance_monitor/${pumpId}/video_feed?rtsp_url=${encodeURIComponent(rtspUrl)}`;
-        console.log('Loading stream from:', feedUrl);
-        
-        // Set up error handling before setting src
-        videoElement.onerror = function() {
-          console.error('Video stream error');
-          showToast('Stream error: Unable to display video feed. Check camera connection and network.', 'error');
-          videoElement.style.display = 'none';
-          loadingStream.style.display = 'none';
-          noStream.style.display = 'block';
-        };
-        
-        videoElement.onload = function() {
-          console.log('Video stream loaded successfully');
-          loadingStream.style.display = 'none';
-          videoElement.style.display = 'block';
-          showToast('Stream connected! Face recognition active.', 'success');
-        };
-        
-        // Set the source to start loading
-        videoElement.src = feedUrl;
-        
-        // Check if stream loads - multipart streams need special handling
-        let loadCheckInterval = setInterval(() => {
-          if (videoElement.complete && videoElement.naturalWidth > 0) {
-            clearInterval(loadCheckInterval);
+        if (rtspUrl.toLowerCase().startsWith('file:')) {
+          const mp4Url = `/attendance_monitor/${pumpId}/video_file?src=${encodeURIComponent(rtspUrl)}&_ts=${Date.now()}`;
+          console.log('Loading MP4 from:', mp4Url);
+
+          videoPlayer.onerror = function() {
+            console.error('MP4 playback error');
+            showToast('Video error: unable to play MP4.', 'error');
+            videoPlayer.style.display = 'none';
             loadingStream.style.display = 'none';
-            videoElement.style.display = 'block';
-            showToast('Stream connected!', 'success');
-          }
-        }, 500);
-        
-        // Timeout after 15 seconds
-        setTimeout(() => {
-          clearInterval(loadCheckInterval);
-          if (loadingStream.style.display !== 'none') {
-            // Still loading - check if there's an error
-            if (!videoElement.complete || videoElement.naturalWidth === 0) {
+            noStream.style.display = 'block';
+          };
+
+          videoPlayer.oncanplay = function() {
+            loadingStream.style.display = 'none';
+            videoPlayer.style.display = 'block';
+            peopleOverlay.style.display = 'block';
+          };
+
+          videoPlayer.src = mp4Url;
+          videoPlayer.load();
+          videoPlayer.play().catch(() => {});
+
+        } else {
+          const feedUrl = `/attendance_monitor/${pumpId}/video_feed?rtsp_url=${encodeURIComponent(rtspUrl)}&_ts=${Date.now()}`;
+          console.log('Loading stream from:', feedUrl);
+
+          videoElement.onerror = function() {
+            console.error('Video stream error');
+            showToast('Stream error: Unable to display video feed. Check camera connection and network.', 'error');
+            videoElement.style.display = 'none';
+            loadingStream.style.display = 'none';
+            noStream.style.display = 'block';
+            peopleOverlay.style.display = 'none';
+          };
+
+          videoElement.src = feedUrl;
+          setTimeout(() => {
+            if (loadingStream.style.display !== 'none') {
               loadingStream.style.display = 'none';
-              noStream.style.display = 'block';
-              showToast('Stream connection timeout. Check camera and network.', 'error');
+              videoElement.style.display = 'block';
+              peopleOverlay.style.display = 'block';
             }
+          }, 1200);
+        }
+
+        if (peoplePollTimer) {
+          clearInterval(peoplePollTimer);
+        }
+        peoplePollTimer = setInterval(async () => {
+          try {
+            const res = await fetch(`/attendance_monitor/${pumpId}/people_count?src=${encodeURIComponent(rtspUrl)}&_ts=${Date.now()}`);
+            const data = await res.json();
+            if (data && data.success) {
+              const count = data.count;
+              if (count === null || typeof count === 'undefined') {
+                peopleOverlay.textContent = 'People: --';
+              } else {
+                peopleOverlay.textContent = `People: ${count}`;
+              }
+            }
+          } catch (e) {
+            // ignore
           }
-        }, 15000);
-        
+        }, 1000);
+
       } catch (err) {
         console.error('Error validating stream:', err);
         showToast('Error: ' + err.message, 'error');
+      }
+    }
+
+    async function uploadAndLoadMp4() {
+      const input = document.getElementById('mp4UploadInput');
+      if (!input || !input.files || input.files.length === 0) {
+        showToast('Please select an MP4 file', 'error');
+        return;
+      }
+
+      const file = input.files[0];
+      const formData = new FormData();
+      formData.append('video', file);
+
+      try {
+        showToast('Uploading video...', 'success');
+        const res = await fetch(`/pump/${pumpId}/video/upload`, {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+          },
+          body: formData
+        });
+        if (!res.ok) {
+          const errText = await res.text();
+          showToast('Upload failed (server). Open console for details.', 'error');
+          console.error('Upload failed:', res.status, errText);
+          return;
+        }
+
+        const data = await res.json();
+        if (!data.success) {
+          showToast(data.message || 'Upload failed', 'error');
+          return;
+        }
+
+        const videoSource = data.video_source;
+        document.getElementById('rtspUrlInput').value = videoSource;
+        showToast('Video uploaded. Loading...', 'success');
+        loadStream(videoSource);
+      } catch (err) {
+        console.error(err);
+        showToast('Upload error', 'error');
       }
     }
 
@@ -332,6 +433,198 @@
       loadEmployeeStatus();
       loadRecentAttendance();
     }, 5000);
+
+    // Export Functions
+    async function exportAttendanceData(format) {
+      try {
+        // Test function to ensure button works
+        console.log('Export button clicked for format:', format);
+        showToast(`Exporting ${format.toUpperCase()} data...`, 'success');
+        
+        // Get current attendance data
+        const res = await fetch(`/employee/${pumpId}/attendance/list?limit=1000`);
+        const data = await res.json();
+        
+        if (!data.success) {
+          showToast('Error loading attendance data', 'error');
+          return;
+        }
+
+        const attendanceData = {
+          pump_id: pumpId,
+          pump_name: '{{ pump.name if pump else "Unknown Pump" }}',
+          export_date: new Date().toISOString(),
+          employees: data.attendance || []
+        };
+
+        if (format === 'csv') {
+          exportAttendanceToCSV(attendanceData);
+        } else if (format === 'pdf') {
+          exportAttendanceToPDF(attendanceData);
+        }
+      } catch (error) {
+        console.error('Export error:', error);
+        showToast('Error exporting data', 'error');
+      }
+    }
+
+    function exportAttendanceToCSV(data) {
+      let csv = 'Fuel Flux Attendance Monitor Export\n';
+      csv += `Pump: ${data.pump_name}\n`;
+      csv += `Export Date: ${data.export_date}\n\n`;
+      
+      csv += 'Employee Name,Date,Status,Check In Time,Check Out Time,Hours Worked\n';
+      
+      data.employees.forEach(record => {
+        const checkIn = record.check_in_time ? new Date(record.check_in_time).toLocaleString() : 'N/A';
+        const checkOut = record.check_out_time ? new Date(record.check_out_time).toLocaleString() : 'N/A';
+        const hoursWorked = record.check_in_time && record.check_out_time ? 
+          ((new Date(record.check_out_time) - new Date(record.check_in_time)) / (1000 * 60 * 60)).toFixed(2) : 'N/A';
+        
+        csv += `"${record.employee_name}","${record.date}","${record.status}","${checkIn}","${checkOut}","${hoursWorked}"\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `fuel_flux_attendance_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      showToast('Attendance data exported successfully', 'success');
+    }
+
+    function exportAttendanceToPDF(data) {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      
+      // Title
+      doc.setFontSize(20);
+      doc.text('Fuel Flux Attendance Monitor', 14, 20);
+      doc.setFontSize(10);
+      doc.text(`Pump: ${data.pump_name}`, 14, 30);
+      doc.text(`Export Date: ${new Date().toLocaleDateString()}`, 14, 40);
+      
+      // Prepare table data
+      const tableData = data.employees.map(record => {
+        const checkIn = record.check_in_time ? new Date(record.check_in_time).toLocaleTimeString() : 'N/A';
+        const checkOut = record.check_out_time ? new Date(record.check_out_time).toLocaleTimeString() : 'N/A';
+        const hoursWorked = record.check_in_time && record.check_out_time ? 
+          ((new Date(record.check_out_time) - new Date(record.check_in_time)) / (1000 * 60 * 60)).toFixed(2) : 'N/A';
+        
+        return [
+          record.employee_name || 'N/A',
+          record.date || 'N/A',
+          record.status || 'N/A',
+          checkIn,
+          checkOut,
+          hoursWorked + (hoursWorked !== 'N/A' ? ' hrs' : '')
+        ];
+      });
+      
+      // Add table
+      doc.autoTable({
+        head: [['Employee', 'Date', 'Status', 'Check In', 'Check Out', 'Hours']],
+        body: tableData,
+        startY: 60,
+        theme: 'grid',
+        styles: {
+          fontSize: 8,
+          cellPadding: 2,
+          fillColor: [31, 41, 55],
+          textColor: [255, 255, 255],
+          lineColor: [75, 85, 99]
+        },
+        headStyles: {
+          fillColor: [251, 146, 60],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold'
+        }
+      });
+      
+      doc.save(`fuel_flux_attendance_${new Date().toISOString().split('T')[0]}.pdf`);
+      showToast('Attendance PDF exported successfully', 'success');
+    }
+
+    async function printAttendanceData() {
+      try {
+        console.log('Print button clicked');
+        showToast('Preparing print data...', 'success');
+        
+        const res = await fetch(`/employee/${pumpId}/attendance/list?limit=1000`);
+        const data = await res.json();
+        
+        if (!data.success) {
+          showToast('Error loading attendance data', 'error');
+          return;
+        }
+
+        const printContent = `
+          <div style="font-family: Arial, sans-serif; padding: 20px;">
+            <h1 style="color: #FB923C; margin-bottom: 20px;">Fuel Flux Attendance Monitor</h1>
+            <p style="margin-bottom: 10px;"><strong>Pump:</strong> {{ pump.name if pump else "Unknown Pump" }}</p>
+            <p style="margin-bottom: 30px;"><strong>Export Date:</strong> ${new Date().toLocaleDateString()}</p>
+            
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+              <thead>
+                <tr style="background-color: #1F2937; color: #FB923C;">
+                  <th style="padding: 10px; border: 1px solid #374151; text-align: left;">Employee Name</th>
+                  <th style="padding: 10px; border: 1px solid #374151; text-align: left;">Date</th>
+                  <th style="padding: 10px; border: 1px solid #374151; text-align: left;">Status</th>
+                  <th style="padding: 10px; border: 1px solid #374151; text-align: left;">Check In</th>
+                  <th style="padding: 10px; border: 1px solid #374151; text-align: left;">Check Out</th>
+                  <th style="padding: 10px; border: 1px solid #374151; text-align: left;">Hours Worked</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data.attendance.map(record => {
+                  const checkIn = record.check_in_time ? new Date(record.check_in_time).toLocaleTimeString() : 'N/A';
+                  const checkOut = record.check_out_time ? new Date(record.check_out_time).toLocaleTimeString() : 'N/A';
+                  const hoursWorked = record.check_in_time && record.check_out_time ? 
+                    ((new Date(record.check_out_time) - new Date(record.check_in_time)) / (1000 * 60 * 60)).toFixed(2) : 'N/A';
+                  
+                  return `
+                    <tr>
+                      <td style="padding: 10px; border: 1px solid #374151;">${record.employee_name || 'N/A'}</td>
+                      <td style="padding: 10px; border: 1px solid #374151;">${record.date || 'N/A'}</td>
+                      <td style="padding: 10px; border: 1px solid #374151;">${record.status || 'N/A'}</td>
+                      <td style="padding: 10px; border: 1px solid #374151;">${checkIn}</td>
+                      <td style="padding: 10px; border: 1px solid #374151;">${checkOut}</td>
+                      <td style="padding: 10px; border: 1px solid #374151;">${hoursWorked}${hoursWorked !== 'N/A' ? ' hrs' : ''}</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+        
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+          <html>
+            <head>
+              <title>Fuel Flux Attendance - Print</title>
+              <style>
+                body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+                table { width: 100%; border-collapse: collapse; }
+                th, td { padding: 10px; border: 1px solid #374151; text-align: left; }
+                th { background-color: #1F2937; color: #FB923C; }
+              </style>
+            </head>
+            <body>${printContent}</body>
+          </html>
+        `);
+        printWindow.document.close();
+        printWindow.print();
+        showToast('Print dialog opened', 'success');
+      } catch (error) {
+        console.error('Print error:', error);
+        showToast('Error preparing print data', 'error');
+      }
+    }
   </script>
 </body>
 </html>

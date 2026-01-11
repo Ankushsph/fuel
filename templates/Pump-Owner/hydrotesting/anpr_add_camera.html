@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="pump-id" content="{{ pump.id }}">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Add ANPR Camera - Hydrotesting</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -69,6 +71,19 @@
                         <p class="text-gray-400 text-sm mt-1">
                             <i class="fas fa-info-circle"></i> Format: rtsp://username:password@ip:port/stream
                         </p>
+
+                        <div class="mt-4">
+                            <label class="block text-gray-300 mb-2">Or upload MP4 video (optional)</label>
+                            <div class="flex gap-2 flex-wrap">
+                                <input type="file" id="mp4UploadInput" accept="video/mp4"
+                                       class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-orange-500">
+                                <button type="button" onclick="uploadMp4ToRtspField()"
+                                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition">
+                                    Upload & Use
+                                </button>
+                            </div>
+                            <p class="text-gray-400 text-sm mt-1">This will set RTSP URL to a file source like: file:uploads/videos/xxx.mp4</p>
+                        </div>
                     </div>
                 </div>
 
@@ -192,3 +207,39 @@
     </div>
 </body>
 </html>
+
+<script>
+    async function uploadMp4ToRtspField() {
+        const pumpId = Number(document.querySelector('meta[name="pump-id"]')?.getAttribute('content') || '0');
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        const input = document.getElementById('mp4UploadInput');
+        if (!pumpId || !input || !input.files || input.files.length === 0) {
+            return;
+        }
+
+        const file = input.files[0];
+        const formData = new FormData();
+        formData.append('video', file);
+
+        try {
+            const res = await fetch(`/pump/${pumpId}/video/upload`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken
+                },
+                body: formData
+            });
+            const data = await res.json();
+            if (!data.success) {
+                return;
+            }
+
+            const rtspInput = document.querySelector('input[name="rtsp_url"]');
+            if (rtspInput) {
+                rtspInput.value = data.video_source;
+            }
+        } catch (e) {
+            // ignore
+        }
+    }
+</script>

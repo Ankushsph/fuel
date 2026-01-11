@@ -2,7 +2,9 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user
 from extensions import db
-from models import Pump, PumpOwner
+from models import Pump, PumpOwner, PumpRegistrationRequest
+from datetime import datetime
+from sqlalchemy.orm import joinedload
 
 pump_bp = Blueprint("pump", __name__, url_prefix="/pump")
 
@@ -18,13 +20,44 @@ def select_pump():
         flash("Access denied.", "error")
         return redirect(url_for("auth.index"))
 
-    pumps = Pump.query.filter_by(owner_id=current_user.id).all()
-    # Pass 'user' to template
-    return render_template("/Pump-Owner/select-pump.html", pumps=pumps, user=current_user)
+    # Get verified/approved pumps (pumps that have been verified by admin)
+    # These are pumps where verified_at is not None
+    all_owner_pumps = Pump.query.filter_by(owner_id=current_user.id).all()
+    approved_pumps = [p for p in all_owner_pumps if p.verified_at is not None]
+    
+    print(f"DEBUG: Found {len(all_owner_pumps)} total pumps for user {current_user.id}")
+    print(f"DEBUG: Found {len(approved_pumps)} approved/verified pumps")
+    for pump in approved_pumps:
+        print(f"DEBUG: Verified Pump {pump.id} - {pump.name} - verified_at: {pump.verified_at}")
+    
+    # Get pending registration requests (only those that are still pending)
+    # Use join to eagerly load pump relationship
+    pending_requests = PumpRegistrationRequest.query.options(
+        joinedload(PumpRegistrationRequest.pump)
+    ).filter_by(
+        owner_id=current_user.id, 
+        status='pending'
+    ).all()
+    
+    # Filter out pending requests for pumps that are already verified
+    verified_pump_ids = {p.id for p in approved_pumps}
+    pending_requests = [req for req in pending_requests if req.pump_id not in verified_pump_ids]
+    
+    # Ensure all pending requests have valid pump relationships
+    pending_requests = [req for req in pending_requests if req.pump is not None]
+    
+    print(f"DEBUG: Found {len(pending_requests)} pending requests (excluding verified pumps)")
+    
+    return render_template("/Pump-Owner/select-pump.html", 
+                      approved_pumps=approved_pumps, 
+                      verified_pumps=approved_pumps,
+                      unverified_pumps=[], 
+                      pending_requests=pending_requests, 
+                      user=current_user)
 
 
 # -------------------------
-# Add Pump
+# Add Pump Registration Request
 # -------------------------
 @pump_bp.route("/add", methods=["POST"])
 @login_required
@@ -34,30 +67,55 @@ def add_pump():
 
     # Try parsing JSON safely
     try:
-        data = request.get_json(force=True)  # force=True ensures parsing even if is_json=False
+        data = request.get_json(force=True)
     except Exception as e:
         return jsonify({"success": False, "message": "Invalid JSON data."}), 400
 
     name = data.get("pump_name")
     location = data.get("location")
+    contact_number = data.get("contact_number")
+    opening_time = data.get("opening_time")
+    closing_time = data.get("closing_time")
 
     if not name:
         return jsonify({"success": False, "message": "Pump name is required."}), 400
     if not location:
         return jsonify({"success": False, "message": "Location is required."}), 400
+    if not contact_number:
+        return jsonify({"success": False, "message": "Contact number is required."}), 400
 
-    # Create and save pump
+    # Create pump registration request (not direct pump)
     try:
+        # First create the pump record (unverified)
         new_pump = Pump(name=name, location=location, owner_id=current_user.id)
         db.session.add(new_pump)
+        db.session.flush()  # Get the ID without committing
+        
+        # Ensure we have a valid pump ID
+        if not new_pump.id:
+            raise Exception("Failed to create pump record")
+        
+        # Create registration request for admin approval
+        registration_request = PumpRegistrationRequest(
+            pump_id=new_pump.id,
+            owner_id=current_user.id,
+            owner_name=current_user.full_name or current_user.email,
+            pump_address=location,
+            contact_number=contact_number,
+            opening_time=opening_time or "09:00",
+            closing_time=closing_time or "18:00",
+            status='pending'
+        )
+        db.session.add(registration_request)
         db.session.commit()
+        
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "message": "Database error: " + str(e)}), 500
 
     return jsonify({
         "success": True,
-        "message": f"Pump '{name}' added successfully!"
+        "message": f"Pump registration request for '{name}' submitted! Pending admin approval."
     }), 200
 
 
@@ -117,6 +175,7 @@ def submit_pump_registration():
         flash("Access denied.", "error")
         return redirect(url_for("auth.index"))
 
+    pump_name = request.form.get("pumpName")
     owner_name = request.form.get("ownerName")
     address = request.form.get("address")
     contact = request.form.get("contact")
@@ -124,19 +183,34 @@ def submit_pump_registration():
     close_time = request.form.get("closeTime")
     documents = request.files.getlist("documents[]")
     
-    # Get pump_id from form or use the last created pump
+    # Create a new pump for this registration (reliable linking)
+    # Optional: allow passing pump_id if future UI supports it
     pump_id = request.form.get("pump_id")
-    if not pump_id:
-        # Use the most recent pump for this owner
-        latest_pump = Pump.query.filter_by(owner_id=current_user.id).order_by(Pump.id.desc()).first()
-        if not latest_pump:
-            flash("Please add a pump first before registering.", "error")
-            return redirect(url_for("pump.select_pump"))
-        pump_id = latest_pump.id
 
     try:
         # Import PumpRegistrationRequest
         from models import PumpRegistrationRequest
+
+        if not pump_id:
+            if not pump_name:
+                flash("Pump name is required.", "error")
+                return redirect(url_for("pump.select_pump"))
+
+            new_pump = Pump(
+                name=pump_name.strip(),
+                location=address.strip() if address else "",
+                owner_id=current_user.id,
+            )
+            db.session.add(new_pump)
+            db.session.flush()
+
+            pump_id = new_pump.id
+        else:
+            existing_pump = Pump.query.filter_by(id=int(pump_id), owner_id=current_user.id).first()
+            if not existing_pump:
+                flash("Pump not found.", "error")
+                return redirect(url_for("pump.select_pump"))
+            pump_id = existing_pump.id
         
         # Save uploaded documents
         saved_documents = []
