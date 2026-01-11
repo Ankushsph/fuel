@@ -198,32 +198,32 @@ if _is_server_process():
         
         # Auto-start all saved RTSP monitoring streams
         try:
-            from models import StationVehicle, VehicleVerification
-            from vehicle_count import start_rtsp_thread as start_vehicle_count
-            from vehicle_verification import start_rtsp_thread as start_plate_detection
-            
-            # Start vehicle counting for all saved streams
-            vehicle_streams = StationVehicle.query.all()
-            for stream in vehicle_streams:
-                try:
-                    start_vehicle_count(stream.owner_id, stream.rtsp_url)
-                    print(f"🚗 Auto-started vehicle counting for: {stream.station_name}")
-                except Exception as e:
-                    print(f"⚠️  Could not auto-start vehicle counting for {stream.station_name}: {e}")
-            
-            # Start plate detection for all saved streams
-            plate_streams = VehicleVerification.query.all()
-            for stream in plate_streams:
-                try:
-                    start_plate_detection(stream)
-                    print(f"🛑 Auto-started plate detection for: {stream.station_name}")
-                except Exception as e:
-                    print(f"⚠️  Could not auto-start plate detection for {stream.station_name}: {e}")
-            
-            if vehicle_streams or plate_streams:
-                print(f"\n✅ Auto-started monitoring for {len(vehicle_streams)} vehicle counting + {len(plate_streams)} plate detection streams")
-            else:
-                print("ℹ️  No saved streams found. Add streams to start monitoring.")
+            enable_autostart = os.getenv("ENABLE_AUTOSTART_STREAMS", "").strip().lower() in {"1", "true", "yes"}
+            if enable_autostart:
+                from models import StationVehicle, VehicleVerification
+                from vehicle_count import start_rtsp_thread as start_vehicle_count
+                from vehicle_verification import start_rtsp_thread as start_plate_detection
+                
+                vehicle_streams = StationVehicle.query.all()
+                for stream in vehicle_streams:
+                    try:
+                        start_vehicle_count(stream.owner_id, stream.rtsp_url)
+                        print(f"🚗 Auto-started vehicle counting for: {stream.station_name}")
+                    except Exception as e:
+                        print(f"⚠️  Could not auto-start vehicle counting for {stream.station_name}: {e}")
+                
+                plate_streams = VehicleVerification.query.all()
+                for stream in plate_streams:
+                    try:
+                        start_plate_detection(stream)
+                        print(f"🛑 Auto-started plate detection for: {stream.station_name}")
+                    except Exception as e:
+                        print(f"⚠️  Could not auto-start plate detection for {stream.station_name}: {e}")
+                
+                if vehicle_streams or plate_streams:
+                    print(f"\n✅ Auto-started monitoring for {len(vehicle_streams)} vehicle counting + {len(plate_streams)} plate detection streams")
+                else:
+                    print("ℹ️  No saved streams found. Add streams to start monitoring.")
         except Exception as e:
             print(f"⚠️  Auto-start warning: {e}")
         

@@ -18,7 +18,6 @@ from models import (
     PumpSubscription,
     PumpReceipt,
 )
-from lib.receipt_processor import process_receipt
 
 pump_dashboard_bp = Blueprint("pump_dashboard", __name__)
 
@@ -47,6 +46,7 @@ def _has_gold_features(owner_id: int, pump_id: int) -> bool:
     if not sub or not sub.subscription_type:
         return False
     return sub.subscription_type.strip().lower() in RECEIPT_FEATURE_PLANS
+
 
 # Pump Owner Dashboard
 @pump_dashboard_bp.route("/dashboard")
@@ -94,6 +94,7 @@ def dashboard():
         pump=selected_pump,
         pumps=pumps
     )
+
 
 # Pump Owner Dashboard with pump_id parameter
 @pump_dashboard_bp.route("/<int:pump_id>/dashboard")
@@ -512,6 +513,7 @@ def upload_receipt(pump_id):
     file.save(destination)
 
     try:
+        from lib.receipt_processor import process_receipt
         ocr_result = process_receipt(destination)
     except Exception as exc:  # pragma: no cover - OCR errors handled at runtime
         current_app.logger.exception("OCR processing failed")

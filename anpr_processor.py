@@ -4,7 +4,6 @@ Uses OpenCV + EasyOCR for real-time number plate detection
 """
 
 import cv2
-import easyocr
 import numpy as np
 from datetime import datetime
 import threading
@@ -25,6 +24,7 @@ class ANPRProcessor:
     def initialize_ocr(self):
         """Initialize EasyOCR reader"""
         try:
+            import easyocr
             self.reader = easyocr.Reader(['en'], gpu=False)
             print("✅ EasyOCR initialized successfully")
         except Exception as e:

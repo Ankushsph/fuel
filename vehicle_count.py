@@ -5,18 +5,29 @@ import os
 import threading
 import time
 from flask import Blueprint, request, jsonify, current_app, render_template
-from ultralytics import YOLO
 from models import db, StationVehicle, Pump, PumpOwner
 
 vehicle_count_bp = Blueprint('vehicle_count', __name__)
 
-# --- Load YOLOv8 model (make sure you have your weights ready) ---
 MODEL_PATH = "model/yolov8m.pt"  # adjust path
-try:
-    model = YOLO(MODEL_PATH)
-except Exception as e:
-    print(f"Warning: Could not load YOLO model: {e}")
-    model = None
+_model = None
+
+
+def _get_model():
+    global _model
+    if _model is not None:
+        return _model
+    try:
+        from ultralytics import YOLO
+        if not os.path.exists(MODEL_PATH):
+            _model = None
+            return None
+        _model = YOLO(MODEL_PATH)
+        return _model
+    except Exception as e:
+        print(f"Warning: Could not load YOLO model: {e}")
+        _model = None
+        return None
 
 # --- Dictionary to keep latest vehicle count per pump ---
 latest_counts = {}
@@ -101,8 +112,10 @@ def process_rtsp(pump_id, rtsp_url):
         return
 
     print(f"✅ Started RTSP processing for pump {pump_id}")
+
+    model = _get_model()
     print(f"🤖 YOLO model loaded: {model is not None}")
-    
+
     if not model:
         print(f"⚠️  WARNING: YOLO model not loaded! Vehicle counting will not work.")
         print(f"⚠️  Please ensure model/yolov8m.pt exists")
