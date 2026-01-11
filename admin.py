@@ -40,13 +40,16 @@ def admin_required(f):
 def admin_login():
     """Admin login page"""
     if request.method == 'POST':
-        if not ADMIN_EMAIL or not ADMIN_PASSWORD:
+        admin_email = os.getenv("ADMIN_EMAIL", "").strip().lower()
+        admin_password = os.getenv("ADMIN_PASSWORD", "")
+
+        if not admin_email or not admin_password:
             flash("Admin login is not configured.", "error")
             return redirect(url_for('admin.admin_login'))
         email = request.form.get('email', '').strip().lower()
         password = request.form.get('password', '')
         
-        if email == ADMIN_EMAIL and password == ADMIN_PASSWORD:
+        if email == admin_email and password == admin_password:
             session['is_admin'] = True
             session['admin_email'] = email
             flash("✅ Admin login successful!", "success")
