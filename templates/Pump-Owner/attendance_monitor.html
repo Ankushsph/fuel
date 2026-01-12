@@ -112,6 +112,10 @@
                   class="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg">
             Upload & Load
           </button>
+          <button onclick="useDemoMp4()"
+                  class="bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded-lg">
+            Use Demo MP4
+          </button>
         </div>
         <p class="text-xs text-gray-400 mt-1">Uploaded videos are used as a camera source (file playback loops automatically).</p>
       </div>
@@ -165,6 +169,31 @@
       toast.textContent = message;
       toast.className = 'show ' + type;
       setTimeout(() => toast.className = '', 3000);
+    }
+
+    async function useDemoMp4() {
+      try {
+        showToast('Preparing demo video...', 'success');
+        const res = await fetch(`/pump/${pumpId}/video/demo`, { credentials: 'same-origin' });
+        if (!res.ok) {
+          const errText = await res.text();
+          console.error('Demo video failed:', res.status, errText);
+          showToast('Demo video failed (server)', 'error');
+          return;
+        }
+        const data = await res.json();
+        if (!data.success) {
+          showToast(data.message || 'Demo video failed', 'error');
+          return;
+        }
+        const videoSource = data.video_source;
+        document.getElementById('rtspUrlInput').value = videoSource;
+        showToast('Demo video ready. Loading...', 'success');
+        loadStream(videoSource);
+      } catch (err) {
+        console.error(err);
+        showToast('Demo video error', 'error');
+      }
     }
 
     async function loadStream(rtspUrl) {

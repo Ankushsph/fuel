@@ -2,6 +2,7 @@
 import os
 import uuid
 import time
+import urllib.request
 from datetime import datetime
 
 from extensions import db
@@ -703,3 +704,35 @@ def upload_video(pump_id):
     except Exception as e:
         current_app.logger.exception("Video upload failed")
         return jsonify({"success": False, "message": f"Upload failed: {str(e)}"}), 500
+
+
+@pump_dashboard_bp.route("/<int:pump_id>/video/demo", methods=["GET"])
+@login_required
+def ensure_demo_video(pump_id):
+    owner = current_user
+    pump = _pump_with_access(owner, pump_id)
+    if not pump:
+        return jsonify({"success": False, "message": "Pump not found"}), 404
+
+    demo_url = "https://raw.githubusercontent.com/Ankushsph/mp4video/main/whatsapp-video-2026-01-09-at-63927-am-v97ismlx_Jsy3ltKY.mp4"
+    target_dir = os.path.join(current_app.root_path, "uploads", "videos")
+    os.makedirs(target_dir, exist_ok=True)
+    target_name = "demo_cctv.mp4"
+    target_path = os.path.join(target_dir, target_name)
+
+    try:
+        if not os.path.exists(target_path) or os.path.getsize(target_path) < 1024:
+            tmp_path = target_path + ".tmp"
+            with urllib.request.urlopen(demo_url, timeout=60) as resp, open(tmp_path, "wb") as out:
+                while True:
+                    chunk = resp.read(1024 * 256)
+                    if not chunk:
+                        break
+                    out.write(chunk)
+            os.replace(tmp_path, target_path)
+
+        video_source = f"file:uploads/videos/{target_name}"
+        return jsonify({"success": True, "video_source": video_source})
+    except Exception as e:
+        current_app.logger.exception("Demo video download failed")
+        return jsonify({"success": False, "message": f"Demo download failed: {str(e)}"}), 500

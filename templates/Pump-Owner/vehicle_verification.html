@@ -80,6 +80,10 @@
                         class="bg-blue-600 hover:bg-blue-700 px-4 py-3 rounded-lg text-sm font-semibold">
                   Upload & Use
                 </button>
+                <button type="button" onclick="useDemoMp4ToRtspField()"
+                        class="bg-purple-600 hover:bg-purple-700 px-4 py-3 rounded-lg text-sm font-semibold">
+                  Use Demo MP4
+                </button>
               </div>
               <p class="text-xs text-gray-500 mt-1">This will fill the RTSP field with a file source like: file:uploads/videos/xxx.mp4</p>
             </div>
@@ -125,6 +129,30 @@
       toast.textContent = message;
       toast.className = 'show ' + type;
       setTimeout(() => toast.className = '', 3000);
+    }
+
+    async function useDemoMp4ToRtspField() {
+      try {
+        showToast('Preparing demo video...', 'success');
+        const res = await fetch(`/pump/${pumpId}/video/demo`, { credentials: 'same-origin' });
+        if (!res.ok) {
+          const errText = await res.text();
+          console.error('Demo video failed:', res.status, errText);
+          showToast('Demo video failed (server)', 'error');
+          return;
+        }
+        const data = await res.json();
+        if (!data.success) {
+          showToast(data.message || 'Demo video failed', 'error');
+          return;
+        }
+        const rtspInput = document.querySelector('input[name="rtsp_url"]');
+        rtspInput.value = data.video_source;
+        showToast('Demo video ready. You can add the stream now.', 'success');
+      } catch (err) {
+        console.error(err);
+        showToast('Demo video error', 'error');
+      }
     }
 
     async function uploadMp4ToRtspField() {

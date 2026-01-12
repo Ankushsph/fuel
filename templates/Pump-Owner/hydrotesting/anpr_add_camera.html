@@ -81,6 +81,10 @@
                                         class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition">
                                     Upload & Use
                                 </button>
+                                <button type="button" onclick="useDemoMp4ToRtspField()"
+                                        class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition">
+                                    Use Demo MP4
+                                </button>
                             </div>
                             <p class="text-gray-400 text-sm mt-1">This will set RTSP URL to a file source like: file:uploads/videos/xxx.mp4</p>
                         </div>
@@ -234,6 +238,30 @@
                 return;
             }
 
+            const rtspInput = document.querySelector('input[name="rtsp_url"]');
+            if (rtspInput) {
+                rtspInput.value = data.video_source;
+            }
+        } catch (e) {
+            // ignore
+        }
+    }
+
+    async function useDemoMp4ToRtspField() {
+        const pumpId = Number(document.querySelector('meta[name="pump-id"]')?.getAttribute('content') || '0');
+        if (!pumpId) {
+            return;
+        }
+
+        try {
+            const res = await fetch(`/pump/${pumpId}/video/demo`, { credentials: 'same-origin' });
+            if (!res.ok) {
+                return;
+            }
+            const data = await res.json();
+            if (!data.success) {
+                return;
+            }
             const rtspInput = document.querySelector('input[name="rtsp_url"]');
             if (rtspInput) {
                 rtspInput.value = data.video_source;
